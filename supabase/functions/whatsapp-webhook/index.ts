@@ -72,15 +72,16 @@ async function downloadAndStoreMedia(
   try {
     // Use POST /message/download endpoint with messageId in body
     const downloadUrl = `${UAZAPI_SERVER_URL}/message/download`;
-    console.log("Downloading media from:", downloadUrl, "with messageId:", messageId);
+    console.log("Downloading media from:", downloadUrl, "with id:", messageId);
 
+    // UAZAPI v2 expects "id" (lowercase) for the message ID
     const response = await fetch(downloadUrl, {
       method: "POST",
       headers: {
         "token": UAZAPI_INSTANCE_TOKEN,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ messageId }),
+      body: JSON.stringify({ id: messageId }),
     });
 
     if (!response.ok) {
