@@ -57,56 +57,69 @@ serve(async (req) => {
       throw new Error("Contact phone number not found");
     }
 
-    // Format phone for UAZAPI (remove non-digits and add @s.whatsapp.net)
-    const formattedPhone = phone.replace(/\D/g, "") + "@s.whatsapp.net";
+    // Format phone for UAZAPI - just the number without formatting
+    const formattedPhone = phone.replace(/\D/g, "");
+
+    console.log(`Sending ${messageType} message to ${formattedPhone}`);
 
     let uazapiResponse;
+    let requestBody: Record<string, unknown>;
 
     if (messageType === "text") {
-      // Send text message via UAZAPI
-      uazapiResponse = await fetch(`${UAZAPI_SERVER_URL}/sendText`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "token": UAZAPI_INSTANCE_TOKEN,
-        },
-        body: JSON.stringify({
-          to: formattedPhone,
-          text: content,
-        }),
-      });
-    } else if (mediaUrl) {
-      // Send media message
-      const mediaEndpoints: Record<string, string> = {
-        image: "/sendImage",
-        audio: "/sendAudio",
-        video: "/sendVideo",
-        document: "/sendDocument",
+      // Send text message via UAZAPI - correct endpoint: /send/text
+      requestBody = {
+        number: formattedPhone,
+        text: content,
       };
 
-      uazapiResponse = await fetch(`${UAZAPI_SERVER_URL}${mediaEndpoints[messageType]}`, {
+      console.log("Request body:", JSON.stringify(requestBody));
+
+      uazapiResponse = await fetch(`${UAZAPI_SERVER_URL}/send/text`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "token": UAZAPI_INSTANCE_TOKEN,
         },
-        body: JSON.stringify({
-          to: formattedPhone,
-          url: mediaUrl,
-          caption: content,
-        }),
+        body: JSON.stringify(requestBody),
+      });
+    } else if (mediaUrl) {
+      // Send media message - correct endpoint: /send/media
+      requestBody = {
+        number: formattedPhone,
+        url: mediaUrl,
+        caption: content,
+        mediaType: messageType,
+      };
+
+      console.log("Request body:", JSON.stringify(requestBody));
+
+      uazapiResponse = await fetch(`${UAZAPI_SERVER_URL}/send/media`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "token": UAZAPI_INSTANCE_TOKEN,
+        },
+        body: JSON.stringify(requestBody),
       });
     } else {
       throw new Error("Media URL required for non-text messages");
     }
 
+    const responseText = await uazapiResponse.text();
+    console.log("UAZAPI response status:", uazapiResponse.status);
+    console.log("UAZAPI response:", responseText);
+
     if (!uazapiResponse.ok) {
-      const errorText = await uazapiResponse.text();
-      console.error("UAZAPI error:", errorText);
-      throw new Error(`Failed to send message via UAZAPI: ${uazapiResponse.status}`);
+      console.error("UAZAPI error:", responseText);
+      throw new Error(`Failed to send message via UAZAPI: ${uazapiResponse.status} - ${responseText}`);
     }
 
-    const uazapiData = await uazapiResponse.json();
+    let uazapiData;
+    try {
+      uazapiData = JSON.parse(responseText);
+    } catch {
+      uazapiData = { raw: responseText };
+    }
 
     // Save message to database
     const { data: message, error: msgError } = await supabase
