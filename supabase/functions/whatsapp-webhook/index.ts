@@ -70,64 +70,65 @@ async function downloadAndStoreMedia(
   }
 
   try {
-    // First, get the download link using /message/getLink endpoint
-    const getLinkUrl = `${UAZAPI_SERVER_URL}/message/getLink/${messageId}`;
-    console.log("Getting media link from:", getLinkUrl);
+    // Use POST /message/download endpoint with messageId in body
+    const downloadUrl = `${UAZAPI_SERVER_URL}/message/download`;
+    console.log("Downloading media from:", downloadUrl, "with messageId:", messageId);
 
-    const linkResponse = await fetch(getLinkUrl, {
-      method: "GET",
+    const response = await fetch(downloadUrl, {
+      method: "POST",
       headers: {
         "token": UAZAPI_INSTANCE_TOKEN,
+        "Content-Type": "application/json",
       },
+      body: JSON.stringify({ messageId }),
     });
 
-    if (!linkResponse.ok) {
-      console.error(`Failed to get media link: ${linkResponse.status} ${linkResponse.statusText}`);
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Failed to download media: ${response.status} ${response.statusText}`, errorText);
+      return null;
+    }
+
+    // Check content type to determine if it's JSON with URL or binary data
+    const contentType = response.headers.get("content-type") || "";
+    
+    if (contentType.includes("application/json")) {
+      // Response contains a URL
+      const data = await response.json();
+      console.log("Download response:", JSON.stringify(data));
       
-      // Try alternative endpoint /media/download
-      const altUrl = `${UAZAPI_SERVER_URL}/media/download/${messageId}`;
-      console.log("Trying alternative endpoint:", altUrl);
+      const mediaDownloadUrl = data.url || data.link || data.base64;
       
-      const altResponse = await fetch(altUrl, {
-        method: "GET",
-        headers: {
-          "token": UAZAPI_INSTANCE_TOKEN,
-        },
-      });
+      if (data.base64) {
+        // Convert base64 to binary and upload
+        const base64Data = data.base64.replace(/^data:[^;]+;base64,/, "");
+        const binaryString = atob(base64Data);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        return await uploadToStorage(supabase, bytes.buffer, messageId, messageType, mimetype || data.mimetype, SUPABASE_URL!);
+      }
       
-      if (!altResponse.ok) {
-        console.error(`Alternative endpoint also failed: ${altResponse.status}`);
+      if (!mediaDownloadUrl) {
+        console.error("No download URL in response:", data);
         return null;
       }
       
-      // If alt returns binary data directly
-      const mediaBuffer = await altResponse.arrayBuffer();
+      // Download from the URL
+      const mediaResponse = await fetch(mediaDownloadUrl);
+      if (!mediaResponse.ok) {
+        console.error(`Failed to download from URL: ${mediaResponse.status}`);
+        return null;
+      }
+      const mediaBuffer = await mediaResponse.arrayBuffer();
       return await uploadToStorage(supabase, mediaBuffer, messageId, messageType, mimetype, SUPABASE_URL!);
+    } else {
+      // Response is binary data
+      const mediaBuffer = await response.arrayBuffer();
+      const responseMimetype = contentType.split(";")[0].trim() || mimetype;
+      return await uploadToStorage(supabase, mediaBuffer, messageId, messageType, responseMimetype, SUPABASE_URL!);
     }
-
-    const linkData = await linkResponse.json();
-    console.log("Link response:", JSON.stringify(linkData));
-
-    // Get the actual media URL from response
-    const mediaDownloadUrl = linkData.url || linkData.link || linkData.mediaUrl;
-    
-    if (!mediaDownloadUrl) {
-      console.error("No download URL in response:", linkData);
-      return null;
-    }
-
-    console.log("Downloading media from:", mediaDownloadUrl);
-
-    // Download the actual media file
-    const mediaResponse = await fetch(mediaDownloadUrl);
-    
-    if (!mediaResponse.ok) {
-      console.error(`Failed to download media: ${mediaResponse.status}`);
-      return null;
-    }
-
-    const mediaBuffer = await mediaResponse.arrayBuffer();
-    return await uploadToStorage(supabase, mediaBuffer, messageId, messageType, mimetype, SUPABASE_URL!);
   } catch (error) {
     console.error("Error downloading/storing media:", error);
     return null;
