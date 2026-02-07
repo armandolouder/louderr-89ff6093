@@ -32,6 +32,7 @@ export function ChatView({ conversation }: ChatViewProps) {
       sendMessage.mutate({
         conversationId: conversation.id,
         content: message.trim(),
+        channel: conversation.channel,
       });
       setMessage("");
     }

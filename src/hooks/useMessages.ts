@@ -67,8 +67,28 @@ export function useSendMessage() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ conversationId, content }: { conversationId: string; content: string }) => {
-      // Insert message
+    mutationFn: async ({ 
+      conversationId, 
+      content,
+      channel = "whatsapp"
+    }: { 
+      conversationId: string; 
+      content: string;
+      channel?: "whatsapp" | "instagram";
+    }) => {
+      // For WhatsApp, use the edge function to send via UAZAPI
+      if (channel === "whatsapp") {
+        const { data, error } = await supabase.functions.invoke("send-whatsapp", {
+          body: { conversationId, content, messageType: "text" },
+        });
+
+        if (error) throw error;
+        if (!data.success) throw new Error(data.error || "Failed to send message");
+        
+        return data.message;
+      }
+
+      // For Instagram (or fallback), save directly to database
       const { data: message, error: messageError } = await supabase
         .from("messages")
         .insert({
