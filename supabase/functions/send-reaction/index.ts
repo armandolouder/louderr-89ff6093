@@ -61,10 +61,10 @@ serve(async (req) => {
     console.log(`Sending reaction ${emoji} to message ${whatsappMessageId}`);
 
     // Send reaction via UAZAPI - endpoint: /message/react
+    // UAZAPI v2 expects "Id" (capital I) for the message ID
     const requestBody = {
-      msgId: whatsappMessageId,
+      Id: whatsappMessageId,
       emoji: emoji,
-      // Some APIs require the chat ID
       chatid: chatId,
     };
 
