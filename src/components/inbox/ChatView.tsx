@@ -2,8 +2,10 @@ import { useState, useRef, useEffect } from "react";
 import { Send, Paperclip, Smile, MoreVertical, Phone, User, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ChannelBadge } from "./ChannelBadge";
+import { MediaPreview } from "./MediaPreview";
+import { ReactionPicker } from "./ReactionPicker";
 import { Conversation } from "@/hooks/useConversations";
 import { useMessages, useSendMessage } from "@/hooks/useMessages";
 import { cn } from "@/lib/utils";
@@ -49,6 +51,9 @@ export function ChatView({ conversation }: ChatViewProps) {
       <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-card">
         <div className="flex items-center gap-4">
           <Avatar className="w-10 h-10">
+            {conversation.contact.avatar_url && (
+              <AvatarImage src={conversation.contact.avatar_url} alt={conversation.contact.name} />
+            )}
             <AvatarFallback className="bg-secondary text-secondary-foreground">
               {initials}
             </AvatarFallback>
@@ -87,34 +92,88 @@ export function ChatView({ conversation }: ChatViewProps) {
             Nenhuma mensagem ainda
           </div>
         ) : (
-          messages?.map((msg) => (
-            <div
-              key={msg.id}
-              className={cn(
-                "flex",
-                msg.sender_type === "agent" ? "justify-end" : "justify-start"
-              )}
-            >
+          messages?.map((msg) => {
+            const messageType = (msg.message_type || "text") as "text" | "image" | "audio" | "video" | "document";
+            const reactions = (msg.metadata as Record<string, unknown>)?.reactions as { emoji: string; sent_at: string }[] | undefined;
+            
+            return (
               <div
+                key={msg.id}
                 className={cn(
-                  "max-w-[70%] px-4 py-2.5 rounded-2xl",
-                  msg.sender_type === "agent"
-                    ? "bg-primary text-primary-foreground rounded-br-md"
-                    : "bg-secondary text-secondary-foreground rounded-bl-md"
+                  "flex group",
+                  msg.sender_type === "agent" ? "justify-end" : "justify-start"
                 )}
               >
-                <p className="text-sm">{msg.content}</p>
-                <p
-                  className={cn(
-                    "text-xs mt-1",
-                    msg.sender_type === "agent" ? "text-primary-foreground/70" : "text-muted-foreground"
+                <div className="flex items-end gap-1">
+                  {/* Reaction picker for received messages */}
+                  {msg.sender_type === "contact" && (
+                    <ReactionPicker 
+                      messageId={msg.id} 
+                      conversationId={conversation.id}
+                      existingReactions={reactions}
+                    />
                   )}
-                >
-                  {format(new Date(msg.created_at), "HH:mm")}
-                </p>
+                  
+                  <div
+                    className={cn(
+                      "max-w-[70%] px-4 py-2.5 rounded-2xl relative",
+                      msg.sender_type === "agent"
+                        ? "bg-primary text-primary-foreground rounded-br-md"
+                        : "bg-secondary text-secondary-foreground rounded-bl-md"
+                    )}
+                  >
+                    <MediaPreview 
+                      type={messageType}
+                      url={msg.media_url}
+                      content={msg.content}
+                      isAgent={msg.sender_type === "agent"}
+                    />
+                    <div className={cn(
+                      "flex items-center gap-2 mt-1",
+                      msg.sender_type === "agent" ? "justify-end" : "justify-start"
+                    )}>
+                      <p
+                        className={cn(
+                          "text-xs",
+                          msg.sender_type === "agent" ? "text-primary-foreground/70" : "text-muted-foreground"
+                        )}
+                      >
+                        {format(new Date(msg.created_at), "HH:mm")}
+                      </p>
+                      {msg.sender_type === "agent" && msg.status && (
+                        <span className={cn(
+                          "text-xs",
+                          msg.status === "read" ? "text-primary-foreground" : "text-primary-foreground/50"
+                        )}>
+                          {msg.status === "sent" && "✓"}
+                          {msg.status === "delivered" && "✓✓"}
+                          {msg.status === "read" && "✓✓"}
+                        </span>
+                      )}
+                    </div>
+                    
+                    {/* Display reactions on message */}
+                    {reactions && reactions.length > 0 && (
+                      <div className="absolute -bottom-3 left-2 flex gap-0.5 bg-card rounded-full px-1 py-0.5 shadow-sm border border-border">
+                        {reactions.map((r, idx) => (
+                          <span key={idx} className="text-xs">{r.emoji}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Reaction picker for sent messages */}
+                  {msg.sender_type === "agent" && (
+                    <ReactionPicker 
+                      messageId={msg.id} 
+                      conversationId={conversation.id}
+                      existingReactions={reactions}
+                    />
+                  )}
+                </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
         <div ref={messagesEndRef} />
       </div>

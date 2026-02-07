@@ -23,6 +23,14 @@ interface UazapiMessage {
   isGroup: boolean;
   wasSentByApi: boolean;
   status: string;
+  // Media fields
+  mediaUrl?: string;
+  media_url?: string;
+  url?: string;
+  base64?: string;
+  mimetype?: string;
+  filename?: string;
+  caption?: string;
 }
 
 interface UazapiChat {
@@ -42,6 +50,7 @@ interface UazapiPayload {
   owner: string;
   token: string;
   instanceName: string;
+  BaseUrl?: string;
 }
 
 serve(async (req) => {
@@ -67,6 +76,9 @@ serve(async (req) => {
       const msg = payload.message;
       const chat = payload.chat;
 
+      // Log full message for debugging media
+      console.log("Full message payload:", JSON.stringify(msg, null, 2));
+
       // Skip outgoing messages and messages sent by API
       if (msg.fromMe || msg.wasSentByApi) {
         console.log("Skipping outgoing/API message");
@@ -89,22 +101,58 @@ serve(async (req) => {
       const phone = msg.chatid.replace("@s.whatsapp.net", "").replace("@c.us", "");
       const contactName = msg.senderName || chat.wa_name || chat.name || phone;
 
-      // Get message content
-      const content = msg.text || msg.content || "[Mensagem sem texto]";
-
-      // Determine message type
+      // Determine message type and extract media URL
       let messageType: "text" | "image" | "audio" | "video" | "document" = "text";
-      if (msg.type === "image" || msg.mediaType === "image") {
+      let mediaUrl: string | null = null;
+      let content = "";
+
+      // Check message type
+      const msgType = (msg.type || msg.messageType || "").toLowerCase();
+      
+      if (msgType === "image" || msgType === "imageMessage" || msg.mediaType === "image") {
         messageType = "image";
-      } else if (msg.type === "audio" || msg.mediaType === "audio" || msg.type === "ptt") {
+        mediaUrl = msg.mediaUrl || msg.media_url || msg.url || null;
+        content = msg.caption || msg.text || "[Imagem]";
+      } else if (msgType === "audio" || msgType === "ptt" || msgType === "audioMessage" || msg.mediaType === "audio") {
         messageType = "audio";
-      } else if (msg.type === "video" || msg.mediaType === "video") {
+        mediaUrl = msg.mediaUrl || msg.media_url || msg.url || null;
+        content = "[Áudio]";
+      } else if (msgType === "video" || msgType === "videoMessage" || msg.mediaType === "video") {
         messageType = "video";
-      } else if (msg.type === "document" || msg.mediaType === "document") {
+        mediaUrl = msg.mediaUrl || msg.media_url || msg.url || null;
+        content = msg.caption || msg.text || "[Vídeo]";
+      } else if (msgType === "document" || msgType === "documentMessage" || msg.mediaType === "document") {
         messageType = "document";
+        mediaUrl = msg.mediaUrl || msg.media_url || msg.url || null;
+        content = msg.filename || msg.caption || msg.text || "[Documento]";
+      } else if (msgType === "sticker" || msgType === "stickerMessage") {
+        messageType = "image";
+        mediaUrl = msg.mediaUrl || msg.media_url || msg.url || null;
+        content = "[Sticker]";
+      } else {
+        // Text message
+        content = msg.text || msg.content || "";
+        // Handle case where content is an object
+        if (typeof content === "object") {
+          content = JSON.stringify(content);
+        }
+        if (!content) {
+          content = "[Mensagem não suportada]";
+        }
       }
 
-      console.log(`Processing message from ${contactName} (${phone}): ${content}`);
+      // If we have base64 media, we might need to construct a download URL
+      // UAZAPI often provides media through their download endpoint
+      if (!mediaUrl && msg.messageid && messageType !== "text" && payload.BaseUrl) {
+        // Construct download URL using UAZAPI's download endpoint
+        mediaUrl = `${payload.BaseUrl}/message/download/${msg.messageid}`;
+        console.log("Constructed media download URL:", mediaUrl);
+      }
+
+      console.log(`Processing ${messageType} message from ${contactName} (${phone}): ${content.substring(0, 50)}`);
+      if (mediaUrl) {
+        console.log("Media URL:", mediaUrl);
+      }
 
       // Find or create contact
       let { data: contact } = await supabase
@@ -143,6 +191,13 @@ serve(async (req) => {
         .limit(1)
         .single();
 
+      // Create display text for conversation list
+      const displayContent = messageType === "text" ? content : 
+        messageType === "image" ? "📷 Imagem" :
+        messageType === "audio" ? "🎵 Áudio" :
+        messageType === "video" ? "🎬 Vídeo" :
+        messageType === "document" ? "📄 Documento" : content;
+
       if (!conversation) {
         console.log("Creating new conversation");
         const { data: newConv, error: convError } = await supabase
@@ -151,7 +206,7 @@ serve(async (req) => {
             contact_id: contact.id,
             channel: "whatsapp",
             status: "novo",
-            last_message: content,
+            last_message: displayContent,
             last_message_at: new Date().toISOString(),
             unread_count: 1,
           })
@@ -168,7 +223,7 @@ serve(async (req) => {
         await supabase
           .from("conversations")
           .update({
-            last_message: content,
+            last_message: displayContent,
             last_message_at: new Date().toISOString(),
             unread_count: (conversation.unread_count || 0) + 1,
             status: conversation.status === "finalizado" ? "novo" : conversation.status,
@@ -199,6 +254,7 @@ serve(async (req) => {
           content,
           sender_type: "contact",
           message_type: messageType,
+          media_url: mediaUrl,
           status: "delivered",
           metadata: {
             whatsapp_message_id: msg.messageid,
@@ -206,6 +262,8 @@ serve(async (req) => {
             sender_name: msg.senderName,
             timestamp: msg.messageTimestamp,
             instance_name: payload.instanceName,
+            mimetype: msg.mimetype,
+            filename: msg.filename,
           },
         });
 
