@@ -70,7 +70,40 @@ Esta documentação descreve a integração do sistema de mensagens WhatsApp uti
 
 ---
 
-### 3. `send-reaction`
+### 3. `delete-message`
+
+**Responsabilidade:** Deletar mensagens do chat (local e WhatsApp).
+
+**Endpoint:** `POST /functions/v1/delete-message`
+
+**Payload:**
+```json
+{
+  "messageId": "uuid",
+  "conversationId": "uuid",
+  "deleteForEveryone": true
+}
+```
+
+**Endpoint UAZAPI:** `POST /message/delete`
+
+**Body UAZAPI:**
+```json
+{
+  "Id": "WHATSAPP_MESSAGE_ID",
+  "chatid": "5521999999999@s.whatsapp.net",
+  "everyone": true
+}
+```
+
+**Comportamento:**
+- Deleta a mensagem no WhatsApp (para todos se `deleteForEveryone: true`)
+- Remove a mensagem do banco de dados local
+- Atualiza o `last_message` da conversa
+
+---
+
+### 4. `send-reaction`
 
 **Responsabilidade:** Enviar reações (emojis) para mensagens.
 
@@ -106,6 +139,7 @@ Esta documentação descreve a integração do sistema de mensagens WhatsApp uti
 |----------|-------|------|---------|
 | `/send/text` | `number` | lowercase | `"number": "5521..."` |
 | `/message/react` | `Id` | **PascalCase** | `"Id": "ABC123"` |
+| `/message/delete` | `Id` | **PascalCase** | `"Id": "ABC123"` |
 | `/message/download` | `id` | lowercase | `"id": "ABC123"` |
 
 ### Resposta do Download de Mídia

@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ChannelBadge } from "./ChannelBadge";
 import { MediaPreview } from "./MediaPreview";
 import { ReactionPicker } from "./ReactionPicker";
+import { MessageActions } from "./MessageActions";
 import { Conversation } from "@/hooks/useConversations";
 import { useMessages, useSendMessage } from "@/hooks/useMessages";
 import { cn } from "@/lib/utils";
@@ -105,13 +106,20 @@ export function ChatView({ conversation }: ChatViewProps) {
                 )}
               >
                 <div className="flex items-end gap-1">
-                  {/* Reaction picker for received messages */}
+                  {/* Message actions and reaction picker for received messages */}
                   {msg.sender_type === "contact" && (
-                    <ReactionPicker 
-                      messageId={msg.id} 
-                      conversationId={conversation.id}
-                      existingReactions={reactions}
-                    />
+                    <>
+                      <MessageActions
+                        messageId={msg.id}
+                        conversationId={conversation.id}
+                        isVisible={true}
+                      />
+                      <ReactionPicker 
+                        messageId={msg.id} 
+                        conversationId={conversation.id}
+                        existingReactions={reactions}
+                      />
+                    </>
                   )}
                   
                   <div
@@ -162,13 +170,20 @@ export function ChatView({ conversation }: ChatViewProps) {
                     )}
                   </div>
 
-                  {/* Reaction picker for sent messages */}
+                  {/* Message actions and reaction picker for sent messages */}
                   {msg.sender_type === "agent" && (
-                    <ReactionPicker 
-                      messageId={msg.id} 
-                      conversationId={conversation.id}
-                      existingReactions={reactions}
-                    />
+                    <>
+                      <ReactionPicker 
+                        messageId={msg.id} 
+                        conversationId={conversation.id}
+                        existingReactions={reactions}
+                      />
+                      <MessageActions
+                        messageId={msg.id}
+                        conversationId={conversation.id}
+                        isVisible={true}
+                      />
+                    </>
                   )}
                 </div>
               </div>
