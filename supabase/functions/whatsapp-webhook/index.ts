@@ -53,6 +53,89 @@ interface UazapiPayload {
   BaseUrl?: string;
 }
 
+// Download media from UAZAPI and upload to Supabase Storage
+async function downloadAndStoreMedia(
+  supabase: ReturnType<typeof createClient>,
+  messageId: string,
+  messageType: string,
+  mimetype: string | null
+): Promise<string | null> {
+  const UAZAPI_SERVER_URL = Deno.env.get("UAZAPI_SERVER_URL");
+  const UAZAPI_INSTANCE_TOKEN = Deno.env.get("UAZAPI_INSTANCE_TOKEN");
+  const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+
+  if (!UAZAPI_SERVER_URL || !UAZAPI_INSTANCE_TOKEN) {
+    console.error("UAZAPI credentials not configured");
+    return null;
+  }
+
+  try {
+    // Use UAZAPI download endpoint to get decrypted media
+    const downloadUrl = `${UAZAPI_SERVER_URL}/message/download/${messageId}`;
+    console.log("Downloading media from:", downloadUrl);
+
+    const response = await fetch(downloadUrl, {
+      method: "GET",
+      headers: {
+        "token": UAZAPI_INSTANCE_TOKEN,
+      },
+    });
+
+    if (!response.ok) {
+      console.error(`Failed to download media: ${response.status} ${response.statusText}`);
+      return null;
+    }
+
+    const mediaBuffer = await response.arrayBuffer();
+    const contentType = response.headers.get("content-type") || mimetype || "application/octet-stream";
+    
+    // Determine file extension based on content type
+    const extMap: Record<string, string> = {
+      "image/jpeg": "jpg",
+      "image/png": "png",
+      "image/webp": "webp",
+      "image/gif": "gif",
+      "video/mp4": "mp4",
+      "audio/ogg": "ogg",
+      "audio/mpeg": "mp3",
+      "audio/opus": "opus",
+      "application/pdf": "pdf",
+    };
+    const ext = extMap[contentType] || "bin";
+    
+    // Generate unique filename
+    const timestamp = Date.now();
+    const folder = messageType === "image" ? "images" :
+                   messageType === "video" ? "videos" :
+                   messageType === "audio" ? "audios" : "documents";
+    const filename = `${folder}/${timestamp}_${messageId}.${ext}`;
+
+    console.log(`Uploading to storage: ${filename} (${contentType})`);
+
+    // Upload to Supabase Storage
+    const { error: uploadError } = await supabase.storage
+      .from("whatsapp-media")
+      .upload(filename, mediaBuffer, {
+        contentType,
+        upsert: true,
+      });
+
+    if (uploadError) {
+      console.error("Storage upload error:", uploadError);
+      return null;
+    }
+
+    // Get public URL
+    const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/whatsapp-media/${filename}`;
+    console.log("Media stored at:", publicUrl);
+    
+    return publicUrl;
+  } catch (error) {
+    console.error("Error downloading/storing media:", error);
+    return null;
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -104,14 +187,15 @@ serve(async (req) => {
       let messageType: "text" | "image" | "audio" | "video" | "document" = "text";
       let mimetype: string | null = null;
       let filename: string | null = null;
+      let originalMediaUrl: string | null = null;
 
       // Check if content is an object (media message)
       if (typeof msg.content === "object" && msg.content !== null) {
         const contentObj = msg.content as UazapiMediaContent;
         
-        // Extract URL from content object
+        // Store original URL for reference (WhatsApp CDN URL - encrypted)
         if (contentObj.URL) {
-          mediaUrl = contentObj.URL;
+          originalMediaUrl = contentObj.URL;
         }
         
         // Get mimetype and filename
@@ -150,10 +234,22 @@ serve(async (req) => {
         if (!content) content = "[Sticker]";
       }
 
-      // If we have media type but no URL, try to construct download URL
-      if (messageType !== "text" && !mediaUrl && payload.BaseUrl && msg.messageid) {
-        mediaUrl = `${payload.BaseUrl}/message/download/${msg.messageid}`;
-        console.log("Constructed download URL:", mediaUrl);
+      // Download and store media in Supabase Storage for permanent access
+      if (messageType !== "text" && msg.messageid) {
+        console.log(`Downloading ${messageType} media for message ${msg.messageid}`);
+        const storedUrl = await downloadAndStoreMedia(
+          supabase,
+          msg.messageid,
+          messageType,
+          mimetype
+        );
+        
+        if (storedUrl) {
+          mediaUrl = storedUrl;
+          console.log("Media stored successfully:", mediaUrl);
+        } else {
+          console.log("Failed to store media, no URL will be saved");
+        }
       }
 
       // Final fallback for empty content
@@ -275,6 +371,7 @@ serve(async (req) => {
             instance_name: payload.instanceName,
             mimetype,
             filename,
+            original_media_url: originalMediaUrl,
           },
         });
 
