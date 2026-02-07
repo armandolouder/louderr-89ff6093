@@ -28,43 +28,69 @@ serve(async (req) => {
 
     console.log(`Checking UAZAPI status at: ${UAZAPI_SERVER_URL}`);
 
-    // Try to get instance info from UAZAPI
-    const response = await fetch(`${UAZAPI_SERVER_URL}/instance/info`, {
-      method: "GET",
-      headers: {
-        "token": UAZAPI_INSTANCE_TOKEN,
-      },
-    });
+    // Try different endpoints to check instance status
+    // UAZAPI v2 uses /status or / for basic connectivity check
+    const endpoints = ["/status", "/instance/status", "/"];
+    let connected = false;
+    let instanceData: Record<string, unknown> = {};
 
-    const responseText = await response.text();
-    console.log("UAZAPI status response:", response.status, responseText);
-
-    if (response.ok) {
-      let data;
+    for (const endpoint of endpoints) {
       try {
-        data = JSON.parse(responseText);
-      } catch {
-        data = { raw: responseText };
-      }
+        console.log(`Trying endpoint: ${UAZAPI_SERVER_URL}${endpoint}`);
+        const response = await fetch(`${UAZAPI_SERVER_URL}${endpoint}`, {
+          method: "GET",
+          headers: {
+            "token": UAZAPI_INSTANCE_TOKEN,
+          },
+        });
 
+        const responseText = await response.text();
+        console.log(`Response from ${endpoint}:`, response.status, responseText.substring(0, 200));
+
+        if (response.ok) {
+          try {
+            instanceData = JSON.parse(responseText);
+          } catch {
+            instanceData = { raw: responseText };
+          }
+          connected = true;
+          break;
+        }
+      } catch (e) {
+        console.log(`Error on ${endpoint}:`, e.message);
+      }
+    }
+
+    if (connected) {
+      const data = instanceData as Record<string, unknown>;
+      
+      // Extract nested status info from UAZAPI v2 response
+      const checkedInstance = (data.status as Record<string, unknown>)?.checked_instance as Record<string, unknown> | undefined;
+      const isHealthy = checkedInstance?.is_healthy || data.server_status === "running";
+      const instanceName = checkedInstance?.name || data.name || data.pushname;
+      const connectionStatus = checkedInstance?.connection_status || data.status;
+      
       return new Response(
         JSON.stringify({
           success: true,
-          connected: true,
+          connected: isHealthy || connectionStatus === "connected",
           serverUrl: UAZAPI_SERVER_URL.replace(/https?:\/\//, "").split("/")[0],
-          phoneNumber: data.phone || data.wid?.user || null,
-          name: data.pushname || data.name || null,
-          status: data.status || "connected",
+          phoneNumber: data.phone || (data.wid as Record<string, unknown>)?.user || null,
+          name: instanceName || null,
+          status: connectionStatus || "connected",
+          message: checkedInstance?.message || null,
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     } else {
+      // If none of the endpoints worked, the server might still be reachable
+      // but just doesn't have these info endpoints. Check if we can send messages.
       return new Response(
         JSON.stringify({
           success: true,
           connected: false,
           serverUrl: UAZAPI_SERVER_URL.replace(/https?:\/\//, "").split("/")[0],
-          error: `API returned status ${response.status}`,
+          error: "Não foi possível verificar o status. Verifique se a URL e o token estão corretos.",
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );

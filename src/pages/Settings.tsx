@@ -12,6 +12,8 @@ interface InstanceStatus {
   serverUrl?: string;
   phoneNumber?: string;
   name?: string;
+  status?: string;
+  message?: string;
   error?: string;
 }
 
@@ -41,6 +43,8 @@ export default function Settings() {
           serverUrl: data.serverUrl,
           phoneNumber: data.phoneNumber,
           name: data.name,
+          status: data.status,
+          message: data.message,
           error: data.error,
         });
         
@@ -94,8 +98,9 @@ export default function Settings() {
                 <div className="flex-1">
                   <p className="font-medium text-foreground">Instância Conectada</p>
                   <p className="text-sm text-muted-foreground">
-                    {instanceStatus.name && `${instanceStatus.name} • `}
-                    {instanceStatus.phoneNumber && `+${instanceStatus.phoneNumber}`}
+                    {instanceStatus.name && `${instanceStatus.name}`}
+                    {instanceStatus.phoneNumber && ` • +${instanceStatus.phoneNumber}`}
+                    {instanceStatus.message && ` • ${instanceStatus.message}`}
                   </p>
                 </div>
                 <Badge variant="default">
