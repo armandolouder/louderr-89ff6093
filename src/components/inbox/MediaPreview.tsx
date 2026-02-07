@@ -30,22 +30,27 @@ export function MediaPreview({ type, url, content, isAgent }: MediaPreviewProps)
             src={url} 
             alt={content || "Imagem"} 
             className="w-full h-auto object-cover rounded-lg"
+            loading="lazy"
+            crossOrigin="anonymous"
             onError={(e) => {
-              // Fallback if image fails to load
+              // Fallback if image fails to load - replace img with placeholder
               const target = e.target as HTMLImageElement;
               target.style.display = "none";
-              const fallback = target.nextElementSibling as HTMLElement;
-              if (fallback) fallback.style.display = "flex";
+              const parent = target.parentElement;
+              if (parent) {
+                const fallback = parent.querySelector('.image-fallback') as HTMLElement;
+                if (fallback) fallback.style.display = "flex";
+              }
             }}
           />
           <div 
             className={cn(
-              "hidden items-center justify-center gap-2 p-4 rounded-lg",
-              isAgent ? "bg-primary-foreground/10" : "bg-secondary"
+              "image-fallback hidden items-center justify-center gap-2 p-6 rounded-lg min-w-[120px]",
+              isAgent ? "bg-primary-foreground/10" : "bg-background/50"
             )}
           >
             <Image className="w-8 h-8" />
-            <span className="text-sm">Imagem</span>
+            <span className="text-sm">📷 Imagem</span>
           </div>
         </div>
         {content && content !== "[Imagem]" && (
