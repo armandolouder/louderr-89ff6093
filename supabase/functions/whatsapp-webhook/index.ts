@@ -300,7 +300,13 @@ serve(async (req) => {
           mediaUrl = storedUrl;
           console.log("Media stored successfully:", mediaUrl);
         } else {
-          console.log("Failed to store media, no URL will be saved");
+          // Fallback to original WhatsApp URL (may expire after a few hours)
+          if (originalMediaUrl) {
+            mediaUrl = originalMediaUrl;
+            console.log("Using original WhatsApp URL as fallback:", mediaUrl);
+          } else {
+            console.log("No media URL available");
+          }
         }
       }
 
