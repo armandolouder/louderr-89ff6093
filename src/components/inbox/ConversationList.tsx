@@ -1,63 +1,10 @@
 import { useState } from "react";
-import { Search, Filter, MessageCircle, Instagram } from "lucide-react";
+import { Search, MessageCircle, Instagram, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ConversationItem, Conversation } from "./ConversationItem";
+import { ConversationItem } from "./ConversationItem";
+import { useConversations, Conversation } from "@/hooks/useConversations";
 import { cn } from "@/lib/utils";
-
-const mockConversations: Conversation[] = [
-  {
-    id: "1",
-    contactName: "Maria Silva",
-    contactPhone: "+55 11 98765-4321",
-    lastMessage: "Olá, gostaria de saber sobre o pedido #12345",
-    timestamp: "14:32",
-    unread: 3,
-    channel: "whatsapp",
-    status: "novo",
-  },
-  {
-    id: "2",
-    contactName: "João Santos",
-    lastMessage: "Vocês entregam para fora do estado?",
-    timestamp: "14:28",
-    unread: 0,
-    channel: "instagram",
-    status: "em_atendimento",
-    assignee: "Carlos",
-  },
-  {
-    id: "3",
-    contactName: "Ana Costa",
-    contactPhone: "+55 21 99876-5432",
-    lastMessage: "Perfeito, vou aguardar então!",
-    timestamp: "13:45",
-    unread: 0,
-    channel: "whatsapp",
-    status: "aguardando",
-    assignee: "Fernanda",
-  },
-  {
-    id: "4",
-    contactName: "Pedro Lima",
-    lastMessage: "Muito obrigado pelo suporte!",
-    timestamp: "12:20",
-    unread: 0,
-    channel: "instagram",
-    status: "finalizado",
-    assignee: "Carlos",
-  },
-  {
-    id: "5",
-    contactName: "Julia Oliveira",
-    contactPhone: "+55 31 91234-5678",
-    lastMessage: "Qual o prazo de entrega?",
-    timestamp: "11:55",
-    unread: 1,
-    channel: "whatsapp",
-    status: "novo",
-  },
-];
 
 interface ConversationListProps {
   selectedId?: string;
@@ -67,10 +14,12 @@ interface ConversationListProps {
 export function ConversationList({ selectedId, onSelect }: ConversationListProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [channelFilter, setChannelFilter] = useState<"all" | "whatsapp" | "instagram">("all");
+  
+  const { data: conversations, isLoading, error } = useConversations();
 
-  const filteredConversations = mockConversations.filter((conv) => {
-    const matchesSearch = conv.contactName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      conv.lastMessage.toLowerCase().includes(searchQuery.toLowerCase());
+  const filteredConversations = (conversations || []).filter((conv) => {
+    const matchesSearch = conv.contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (conv.last_message?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
     const matchesChannel = channelFilter === "all" || conv.channel === channelFilter;
     return matchesSearch && matchesChannel;
   });
@@ -127,14 +76,28 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
       </div>
       
       <div className="flex-1 overflow-auto">
-        {filteredConversations.map((conversation) => (
-          <ConversationItem
-            key={conversation.id}
-            conversation={conversation}
-            isActive={selectedId === conversation.id}
-            onClick={() => onSelect(conversation)}
-          />
-        ))}
+        {isLoading ? (
+          <div className="flex items-center justify-center h-32">
+            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : error ? (
+          <div className="p-4 text-center text-destructive">
+            Erro ao carregar conversas
+          </div>
+        ) : filteredConversations.length === 0 ? (
+          <div className="p-4 text-center text-muted-foreground">
+            Nenhuma conversa encontrada
+          </div>
+        ) : (
+          filteredConversations.map((conversation) => (
+            <ConversationItem
+              key={conversation.id}
+              conversation={conversation}
+              isActive={selectedId === conversation.id}
+              onClick={() => onSelect(conversation)}
+            />
+          ))
+        )}
       </div>
     </div>
   );

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { MessageSquareOff } from "lucide-react";
 import { ConversationList } from "@/components/inbox/ConversationList";
 import { ChatView } from "@/components/inbox/ChatView";
-import { Conversation } from "@/components/inbox/ConversationItem";
+import { Conversation } from "@/hooks/useConversations";
 
 export default function Inbox() {
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
