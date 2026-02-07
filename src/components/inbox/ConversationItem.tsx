@@ -1,18 +1,10 @@
 import { cn } from "@/lib/utils";
 import { ChannelBadge } from "./ChannelBadge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-
-export interface Conversation {
-  id: string;
-  contactName: string;
-  contactPhone?: string;
-  lastMessage: string;
-  timestamp: string;
-  unread: number;
-  channel: "whatsapp" | "instagram";
-  status: "novo" | "em_atendimento" | "aguardando" | "finalizado";
-  assignee?: string;
-}
+import { Badge } from "@/components/ui/badge";
+import { Conversation } from "@/hooks/useConversations";
+import { formatDistanceToNow } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 interface ConversationItemProps {
   conversation: Conversation;
@@ -28,12 +20,16 @@ const statusColors = {
 };
 
 export function ConversationItem({ conversation, isActive, onClick }: ConversationItemProps) {
-  const initials = conversation.contactName
+  const initials = conversation.contact.name
     .split(" ")
     .map((n) => n[0])
     .join("")
     .slice(0, 2)
     .toUpperCase();
+
+  const formattedTime = conversation.last_message_at 
+    ? formatDistanceToNow(new Date(conversation.last_message_at), { addSuffix: true, locale: ptBR })
+    : "";
 
   return (
     <div
@@ -56,24 +52,24 @@ export function ConversationItem({ conversation, isActive, onClick }: Conversati
       
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2 mb-1">
-          <h4 className="font-medium text-foreground truncate">{conversation.contactName}</h4>
-          <span className="text-xs text-muted-foreground flex-shrink-0">{conversation.timestamp}</span>
+          <h4 className="font-medium text-foreground truncate">{conversation.contact.name}</h4>
+          <span className="text-xs text-muted-foreground flex-shrink-0">{formattedTime}</span>
         </div>
         
         <div className="flex items-center gap-2 mb-1.5">
           <ChannelBadge channel={conversation.channel} />
-          {conversation.assignee && (
-            <span className="text-xs text-muted-foreground">• {conversation.assignee}</span>
+          {conversation.assignee_name && (
+            <span className="text-xs text-muted-foreground">• {conversation.assignee_name}</span>
           )}
         </div>
         
-        <p className="text-sm text-muted-foreground truncate">{conversation.lastMessage}</p>
+        <p className="text-sm text-muted-foreground truncate">{conversation.last_message || "Sem mensagens"}</p>
       </div>
       
-      {conversation.unread > 0 && (
+      {conversation.unread_count > 0 && (
         <div className="flex-shrink-0">
           <span className="inline-flex items-center justify-center min-w-5 h-5 px-1.5 text-xs font-medium bg-primary text-primary-foreground rounded-full">
-            {conversation.unread}
+            {conversation.unread_count}
           </span>
         </div>
       )}

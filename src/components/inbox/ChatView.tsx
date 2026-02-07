@@ -1,51 +1,13 @@
-import { useState } from "react";
-import { Send, Paperclip, Smile, MoreVertical, Phone, User } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { Send, Paperclip, Smile, MoreVertical, Phone, User, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ChannelBadge } from "./ChannelBadge";
-import { Conversation } from "./ConversationItem";
+import { Conversation } from "@/hooks/useConversations";
+import { useMessages, useSendMessage } from "@/hooks/useMessages";
 import { cn } from "@/lib/utils";
-
-interface Message {
-  id: string;
-  content: string;
-  timestamp: string;
-  sender: "contact" | "agent";
-}
-
-const mockMessages: Message[] = [
-  {
-    id: "1",
-    content: "Olá! Boa tarde!",
-    timestamp: "14:30",
-    sender: "contact",
-  },
-  {
-    id: "2",
-    content: "Gostaria de saber sobre o pedido #12345",
-    timestamp: "14:31",
-    sender: "contact",
-  },
-  {
-    id: "3",
-    content: "Olá Maria! Boa tarde! Vou verificar o status do seu pedido.",
-    timestamp: "14:32",
-    sender: "agent",
-  },
-  {
-    id: "4",
-    content: "O pedido #12345 está em separação e será enviado até amanhã.",
-    timestamp: "14:33",
-    sender: "agent",
-  },
-  {
-    id: "5",
-    content: "Perfeito! Muito obrigada pela informação!",
-    timestamp: "14:34",
-    sender: "contact",
-  },
-];
+import { format } from "date-fns";
 
 interface ChatViewProps {
   conversation: Conversation;
@@ -53,8 +15,12 @@ interface ChatViewProps {
 
 export function ChatView({ conversation }: ChatViewProps) {
   const [message, setMessage] = useState("");
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  const { data: messages, isLoading } = useMessages(conversation.id);
+  const sendMessage = useSendMessage();
 
-  const initials = conversation.contactName
+  const initials = conversation.contact.name
     .split(" ")
     .map((n) => n[0])
     .join("")
@@ -62,11 +28,19 @@ export function ChatView({ conversation }: ChatViewProps) {
     .toUpperCase();
 
   const handleSend = () => {
-    if (message.trim()) {
-      console.log("Enviando:", message);
+    if (message.trim() && !sendMessage.isPending) {
+      sendMessage.mutate({
+        conversationId: conversation.id,
+        content: message.trim(),
+      });
       setMessage("");
     }
   };
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   return (
     <div className="flex flex-col h-full bg-background">
@@ -80,11 +54,11 @@ export function ChatView({ conversation }: ChatViewProps) {
           </Avatar>
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="font-semibold text-foreground">{conversation.contactName}</h3>
+              <h3 className="font-semibold text-foreground">{conversation.contact.name}</h3>
               <ChannelBadge channel={conversation.channel} />
             </div>
-            {conversation.contactPhone && (
-              <p className="text-sm text-muted-foreground">{conversation.contactPhone}</p>
+            {conversation.contact.phone && (
+              <p className="text-sm text-muted-foreground">{conversation.contact.phone}</p>
             )}
           </div>
         </div>
@@ -103,34 +77,45 @@ export function ChatView({ conversation }: ChatViewProps) {
 
       {/* Messages */}
       <div className="flex-1 overflow-auto p-6 space-y-4">
-        {mockMessages.map((msg) => (
-          <div
-            key={msg.id}
-            className={cn(
-              "flex",
-              msg.sender === "agent" ? "justify-end" : "justify-start"
-            )}
-          >
+        {isLoading ? (
+          <div className="flex items-center justify-center h-full">
+            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : messages?.length === 0 ? (
+          <div className="flex items-center justify-center h-full text-muted-foreground">
+            Nenhuma mensagem ainda
+          </div>
+        ) : (
+          messages?.map((msg) => (
             <div
+              key={msg.id}
               className={cn(
-                "max-w-[70%] px-4 py-2.5 rounded-2xl",
-                msg.sender === "agent"
-                  ? "bg-primary text-primary-foreground rounded-br-md"
-                  : "bg-secondary text-secondary-foreground rounded-bl-md"
+                "flex",
+                msg.sender_type === "agent" ? "justify-end" : "justify-start"
               )}
             >
-              <p className="text-sm">{msg.content}</p>
-              <p
+              <div
                 className={cn(
-                  "text-xs mt-1",
-                  msg.sender === "agent" ? "text-primary-foreground/70" : "text-muted-foreground"
+                  "max-w-[70%] px-4 py-2.5 rounded-2xl",
+                  msg.sender_type === "agent"
+                    ? "bg-primary text-primary-foreground rounded-br-md"
+                    : "bg-secondary text-secondary-foreground rounded-bl-md"
                 )}
               >
-                {msg.timestamp}
-              </p>
+                <p className="text-sm">{msg.content}</p>
+                <p
+                  className={cn(
+                    "text-xs mt-1",
+                    msg.sender_type === "agent" ? "text-primary-foreground/70" : "text-muted-foreground"
+                  )}
+                >
+                  {format(new Date(msg.created_at), "HH:mm")}
+                </p>
+              </div>
             </div>
-          </div>
-        ))}
+          ))
+        )}
+        <div ref={messagesEndRef} />
       </div>
 
       {/* Input */}
@@ -149,8 +134,12 @@ export function ChatView({ conversation }: ChatViewProps) {
             onKeyDown={(e) => e.key === "Enter" && handleSend()}
             className="flex-1 bg-secondary border-border"
           />
-          <Button onClick={handleSend} className="shadow-glow">
-            <Send className="w-4 h-4 mr-2" />
+          <Button onClick={handleSend} disabled={sendMessage.isPending} className="shadow-glow">
+            {sendMessage.isPending ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <Send className="w-4 h-4 mr-2" />
+            )}
             Enviar
           </Button>
         </div>
