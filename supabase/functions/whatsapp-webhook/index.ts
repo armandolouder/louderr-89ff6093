@@ -70,70 +70,122 @@ async function downloadAndStoreMedia(
   }
 
   try {
-    // Use UAZAPI download endpoint to get decrypted media
-    const downloadUrl = `${UAZAPI_SERVER_URL}/message/download/${messageId}`;
-    console.log("Downloading media from:", downloadUrl);
+    // First, get the download link using /message/getLink endpoint
+    const getLinkUrl = `${UAZAPI_SERVER_URL}/message/getLink/${messageId}`;
+    console.log("Getting media link from:", getLinkUrl);
 
-    const response = await fetch(downloadUrl, {
+    const linkResponse = await fetch(getLinkUrl, {
       method: "GET",
       headers: {
         "token": UAZAPI_INSTANCE_TOKEN,
       },
     });
 
-    if (!response.ok) {
-      console.error(`Failed to download media: ${response.status} ${response.statusText}`);
-      return null;
-    }
-
-    const mediaBuffer = await response.arrayBuffer();
-    const contentType = response.headers.get("content-type") || mimetype || "application/octet-stream";
-    
-    // Determine file extension based on content type
-    const extMap: Record<string, string> = {
-      "image/jpeg": "jpg",
-      "image/png": "png",
-      "image/webp": "webp",
-      "image/gif": "gif",
-      "video/mp4": "mp4",
-      "audio/ogg": "ogg",
-      "audio/mpeg": "mp3",
-      "audio/opus": "opus",
-      "application/pdf": "pdf",
-    };
-    const ext = extMap[contentType] || "bin";
-    
-    // Generate unique filename
-    const timestamp = Date.now();
-    const folder = messageType === "image" ? "images" :
-                   messageType === "video" ? "videos" :
-                   messageType === "audio" ? "audios" : "documents";
-    const filename = `${folder}/${timestamp}_${messageId}.${ext}`;
-
-    console.log(`Uploading to storage: ${filename} (${contentType})`);
-
-    // Upload to Supabase Storage
-    const { error: uploadError } = await supabase.storage
-      .from("whatsapp-media")
-      .upload(filename, mediaBuffer, {
-        contentType,
-        upsert: true,
+    if (!linkResponse.ok) {
+      console.error(`Failed to get media link: ${linkResponse.status} ${linkResponse.statusText}`);
+      
+      // Try alternative endpoint /media/download
+      const altUrl = `${UAZAPI_SERVER_URL}/media/download/${messageId}`;
+      console.log("Trying alternative endpoint:", altUrl);
+      
+      const altResponse = await fetch(altUrl, {
+        method: "GET",
+        headers: {
+          "token": UAZAPI_INSTANCE_TOKEN,
+        },
       });
+      
+      if (!altResponse.ok) {
+        console.error(`Alternative endpoint also failed: ${altResponse.status}`);
+        return null;
+      }
+      
+      // If alt returns binary data directly
+      const mediaBuffer = await altResponse.arrayBuffer();
+      return await uploadToStorage(supabase, mediaBuffer, messageId, messageType, mimetype, SUPABASE_URL!);
+    }
 
-    if (uploadError) {
-      console.error("Storage upload error:", uploadError);
+    const linkData = await linkResponse.json();
+    console.log("Link response:", JSON.stringify(linkData));
+
+    // Get the actual media URL from response
+    const mediaDownloadUrl = linkData.url || linkData.link || linkData.mediaUrl;
+    
+    if (!mediaDownloadUrl) {
+      console.error("No download URL in response:", linkData);
       return null;
     }
 
-    // Get public URL
-    const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/whatsapp-media/${filename}`;
-    console.log("Media stored at:", publicUrl);
+    console.log("Downloading media from:", mediaDownloadUrl);
+
+    // Download the actual media file
+    const mediaResponse = await fetch(mediaDownloadUrl);
     
-    return publicUrl;
+    if (!mediaResponse.ok) {
+      console.error(`Failed to download media: ${mediaResponse.status}`);
+      return null;
+    }
+
+    const mediaBuffer = await mediaResponse.arrayBuffer();
+    return await uploadToStorage(supabase, mediaBuffer, messageId, messageType, mimetype, SUPABASE_URL!);
   } catch (error) {
     console.error("Error downloading/storing media:", error);
     return null;
   }
+}
+
+// Helper function to upload media to Supabase Storage
+async function uploadToStorage(
+  supabase: ReturnType<typeof createClient>,
+  mediaBuffer: ArrayBuffer,
+  messageId: string,
+  messageType: string,
+  mimetype: string | null,
+  supabaseUrl: string
+): Promise<string | null> {
+  const contentType = mimetype || "application/octet-stream";
+  
+  // Determine file extension based on content type
+  const extMap: Record<string, string> = {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+    "image/gif": "gif",
+    "video/mp4": "mp4",
+    "audio/ogg": "ogg",
+    "audio/mpeg": "mp3",
+    "audio/opus": "opus",
+    "application/pdf": "pdf",
+  };
+  const ext = extMap[contentType] || "bin";
+  
+  // Generate unique filename
+  const timestamp = Date.now();
+  const folder = messageType === "image" ? "images" :
+                 messageType === "video" ? "videos" :
+                 messageType === "audio" ? "audios" : "documents";
+  const filename = `${folder}/${timestamp}_${messageId}.${ext}`;
+
+  console.log(`Uploading to storage: ${filename} (${contentType})`);
+
+  // Upload to Supabase Storage
+  const { error: uploadError } = await supabase.storage
+    .from("whatsapp-media")
+    .upload(filename, mediaBuffer, {
+      contentType,
+      upsert: true,
+    });
+
+  if (uploadError) {
+    console.error("Storage upload error:", uploadError);
+    return null;
+  }
+
+  // Get public URL
+  const publicUrl = `${supabaseUrl}/storage/v1/object/public/whatsapp-media/${filename}`;
+  console.log("Media stored at:", publicUrl);
+  
+  return publicUrl;
 }
 
 serve(async (req) => {
