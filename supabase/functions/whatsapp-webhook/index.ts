@@ -94,11 +94,12 @@ async function downloadAndStoreMedia(
     const contentType = response.headers.get("content-type") || "";
     
     if (contentType.includes("application/json")) {
-      // Response contains a URL
+      // Response contains a URL or base64
       const data = await response.json();
       console.log("Download response:", JSON.stringify(data));
       
-      const mediaDownloadUrl = data.url || data.link || data.base64;
+      // UAZAPI v2 returns fileURL (not url or link)
+      const mediaDownloadUrl = data.fileURL || data.url || data.link || data.base64;
       
       if (data.base64) {
         // Convert base64 to binary and upload
