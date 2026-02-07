@@ -209,14 +209,15 @@ serve(async (req) => {
     const payload: UazapiPayload = await req.json();
     console.log("Webhook received:", payload.EventType);
 
-    // Handle incoming messages
+    // Handle incoming messages (including messages sent from mobile phone)
     if (payload.EventType === "messages" && payload.message && payload.chat) {
       const msg = payload.message;
       const chat = payload.chat;
 
-      // Skip outgoing messages and messages sent by API
-      if (msg.fromMe || msg.wasSentByApi) {
-        console.log("Skipping outgoing/API message");
+      // Skip messages sent by API (our system) to avoid duplicates
+      // But process fromMe messages (sent from mobile phone) to mirror them
+      if (msg.wasSentByApi) {
+        console.log("Skipping API-sent message (already saved locally)");
         return new Response(
           JSON.stringify({ success: true, skipped: true }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -230,6 +231,12 @@ serve(async (req) => {
           JSON.stringify({ success: true, skipped: true }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
+      }
+
+      // Determine if this is an outgoing message from mobile phone
+      const isFromMobile = msg.fromMe && !msg.wasSentByApi;
+      if (isFromMobile) {
+        console.log("Processing message sent from mobile phone (mirroring)");
       }
 
       // Extract phone number from chatid
@@ -376,7 +383,7 @@ serve(async (req) => {
             status: "novo",
             last_message: displayContent,
             last_message_at: new Date().toISOString(),
-            unread_count: 1,
+            unread_count: isFromMobile ? 0 : 1, // Don't count as unread if sent from mobile
           })
           .select()
           .single();
@@ -388,12 +395,17 @@ serve(async (req) => {
         conversation = newConv;
       } else {
         console.log("Updating existing conversation");
+        // Only increment unread_count for incoming messages (not from mobile)
+        const newUnreadCount = isFromMobile 
+          ? (conversation.unread_count || 0) 
+          : (conversation.unread_count || 0) + 1;
+        
         await supabase
           .from("conversations")
           .update({
             last_message: displayContent,
             last_message_at: new Date().toISOString(),
-            unread_count: (conversation.unread_count || 0) + 1,
+            unread_count: newUnreadCount,
             status: conversation.status === "finalizado" ? "novo" : conversation.status,
           })
           .eq("id", conversation.id);
@@ -414,16 +426,16 @@ serve(async (req) => {
         );
       }
 
-      // Save message
+      // Save message - sender_type depends on whether it was sent from mobile or by contact
       const { error: msgError } = await supabase
         .from("messages")
         .insert({
           conversation_id: conversation.id,
           content,
-          sender_type: "contact",
+          sender_type: isFromMobile ? "agent" : "contact",
           message_type: messageType,
           media_url: mediaUrl,
-          status: "delivered",
+          status: isFromMobile ? "sent" : "delivered",
           metadata: {
             whatsapp_message_id: msg.messageid,
             chatid: msg.chatid,
@@ -433,6 +445,7 @@ serve(async (req) => {
             mimetype,
             filename,
             original_media_url: originalMediaUrl,
+            from_mobile: isFromMobile,
           },
         });
 

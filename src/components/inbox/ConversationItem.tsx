@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import { ChannelBadge } from "./ChannelBadge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Conversation } from "@/hooks/useConversations";
 import { formatDistanceToNow } from "date-fns";
@@ -38,6 +38,13 @@ export function ConversationItem({ conversation, isActive, onClick }: Conversati
     >
       <div className="relative">
         <Avatar className="w-12 h-12">
+          {conversation.contact.avatar_url && (
+            <AvatarImage 
+              src={conversation.contact.avatar_url} 
+              alt={conversation.contact.name}
+              className="object-cover"
+            />
+          )}
           <AvatarFallback className="bg-secondary text-secondary-foreground text-sm font-medium">
             {initials}
           </AvatarFallback>
