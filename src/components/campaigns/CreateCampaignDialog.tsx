@@ -26,11 +26,14 @@ import {
   MessageSquare,
   Send,
   Check,
-  ImagePlus,
   X,
   Smile,
   Plus,
-  Trash2
+  Trash2,
+  ImagePlus,
+  ChevronLeft,
+  ChevronRight,
+  Phone
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -60,7 +63,102 @@ interface CreateCampaignDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-const EMOJI_LIST = ["😀", "😊", "🎉", "🔥", "💯", "✨", "❤️", "👍", "🙌", "💪", "🎁", "💰", "⭐", "🚀", "📢", "💬", "📱", "🛒", "💳", "🏷️"];
+const EMOJI_LIST = ["😀", "😊", "🎉", "🔥", "💯", "✨", "❤️", "👍", "🙌", "💪", "🎁", "💰", "⭐", "🚀", "📢", "💬", "📱", "🛒", "💳", "🏷️", "😍", "🤩", "💕", "🎊", "👏"];
+
+// WhatsApp Phone Preview Component
+function PhonePreview({ message, mediaUrl, mediaType }: { message: string; mediaUrl?: string; mediaType?: string }) {
+  const previewMessage = message.replace(/\{\{nome\}\}/gi, "João");
+  const currentTime = format(new Date(), "HH:mm");
+
+  return (
+    <div className="relative mx-auto" style={{ width: "280px" }}>
+      {/* Phone Frame */}
+      <div className="relative bg-[#0b141a] rounded-[2.5rem] p-2 shadow-2xl border-4 border-[#1f2c33]">
+        {/* Notch */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-6 bg-[#0b141a] rounded-b-2xl z-10" />
+        
+        {/* Screen */}
+        <div className="bg-[#0b141a] rounded-[2rem] overflow-hidden" style={{ height: "500px" }}>
+          {/* WhatsApp Header */}
+          <div className="bg-[#1f2c33] px-3 py-2 flex items-center gap-3">
+            <ChevronLeft className="w-5 h-5 text-[#00a884]" />
+            <div className="w-9 h-9 rounded-full bg-[#6b7c85] flex items-center justify-center">
+              <span className="text-white text-sm font-medium">L</span>
+            </div>
+            <div className="flex-1">
+              <p className="text-white text-sm font-medium">Louder</p>
+              <p className="text-[#8696a0] text-xs">online</p>
+            </div>
+          </div>
+
+          {/* Chat Background */}
+          <div 
+            className="flex-1 p-3 overflow-y-auto"
+            style={{ 
+              height: "calc(100% - 110px)",
+              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23182229' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+              backgroundColor: "#0b141a"
+            }}
+          >
+            {/* Message Bubble */}
+            <div className="flex justify-end mb-2">
+              <div className="max-w-[85%]">
+                {/* Media Preview */}
+                {mediaUrl && (
+                  <div className="bg-[#005c4b] rounded-t-lg rounded-bl-lg overflow-hidden mb-0.5">
+                    {mediaType === "video" ? (
+                      <video 
+                        src={mediaUrl} 
+                        className="w-full max-h-40 object-cover"
+                      />
+                    ) : (
+                      <img 
+                        src={mediaUrl} 
+                        alt="Preview" 
+                        className="w-full max-h-40 object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = 'none';
+                        }}
+                      />
+                    )}
+                  </div>
+                )}
+                
+                {/* Text Bubble */}
+                <div className={cn(
+                  "bg-[#005c4b] px-2.5 py-1.5 rounded-lg",
+                  mediaUrl ? "rounded-tr-none" : "rounded-tr-lg"
+                )}>
+                  <p className="text-white text-[13px] whitespace-pre-wrap leading-5">
+                    {previewMessage || "Digite sua mensagem..."}
+                  </p>
+                  <div className="flex items-center justify-end gap-1 mt-0.5">
+                    <span className="text-[10px] text-[#8696a0]">{currentTime}</span>
+                    <svg className="w-4 h-3 text-[#53bdeb]" viewBox="0 0 16 11" fill="currentColor">
+                      <path d="M11.071.653a.457.457 0 0 0-.304-.102.493.493 0 0 0-.381.178l-6.19 7.636-2.405-2.272a.463.463 0 0 0-.336-.146.47.47 0 0 0-.343.146l-.311.31a.445.445 0 0 0-.14.337c0 .136.047.25.14.343l2.996 2.996a.724.724 0 0 0 .512.203.681.681 0 0 0 .496-.203l6.636-8.418a.424.424 0 0 0 .089-.305.447.447 0 0 0-.14-.305l-.32-.298zm-1.165 0a.457.457 0 0 0-.304-.102.493.493 0 0 0-.381.178l-6.19 7.636-1.4-1.322-.311.311a.445.445 0 0 0-.14.337c0 .136.047.25.14.343l1.991 1.991a.724.724 0 0 0 .512.203.681.681 0 0 0 .496-.203l6.636-8.418a.424.424 0 0 0 .089-.305.447.447 0 0 0-.14-.305l-.32-.298-.678-.046z"/>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Input Area */}
+          <div className="bg-[#1f2c33] px-2 py-2 flex items-center gap-2">
+            <div className="flex-1 bg-[#2a3942] rounded-full px-4 py-2">
+              <span className="text-[#8696a0] text-sm">Mensagem</span>
+            </div>
+            <div className="w-10 h-10 rounded-full bg-[#00a884] flex items-center justify-center">
+              <svg className="w-5 h-5 text-[#111b21]" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M1.101 21.757L23.8 12.028 1.101 2.3l.011 7.912 13.623 1.816-13.623 1.817-.011 7.912z"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function CreateCampaignDialog({ open, onOpenChange }: CreateCampaignDialogProps) {
   const queryClient = useQueryClient();
@@ -70,6 +168,7 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateCampaignDialo
   const [selectedClusters, setSelectedClusters] = useState<string[]>([]);
   const [messages, setMessages] = useState<CampaignMessage[]>([]);
   const [selectedMessages, setSelectedMessages] = useState<number[]>([]);
+  const [activeMessageIdx, setActiveMessageIdx] = useState(0);
   const [isGenerating, setIsGenerating] = useState(false);
   const [dailyLimit, setDailyLimit] = useState(50);
   const [delayMin, setDelayMin] = useState(180);
@@ -98,6 +197,7 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateCampaignDialo
     .reduce((sum, c) => sum + c.customer_count, 0) || 0;
 
   const selectedClusterData = clusters?.find((c) => selectedClusters.includes(c.id));
+  const activeMessage = messages[activeMessageIdx];
 
   const generateMessages = async () => {
     if (!selectedClusterData) {
@@ -129,6 +229,7 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateCampaignDialo
       
       setMessages(generatedMessages);
       setSelectedMessages([0]);
+      setActiveMessageIdx(0);
       toast.success("Mensagens geradas com sucesso!");
     } catch (error) {
       console.error("Error generating messages:", error);
@@ -139,13 +240,15 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateCampaignDialo
   };
 
   const addNewMessage = () => {
-    const newVariant = String.fromCharCode(65 + messages.length); // A, B, C...
-    setMessages([...messages, {
+    const newVariant = String.fromCharCode(65 + messages.length);
+    const newMessages = [...messages, {
       content: "",
       variant: newVariant,
       mediaUrl: "",
-      mediaType: "none",
-    }]);
+      mediaType: "none" as const,
+    }];
+    setMessages(newMessages);
+    setActiveMessageIdx(newMessages.length - 1);
   };
 
   const updateMessage = (idx: number, field: keyof CampaignMessage, value: string) => {
@@ -155,12 +258,17 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateCampaignDialo
   };
 
   const removeMessage = (idx: number) => {
+    if (messages.length <= 1) return;
     setMessages(prev => prev.filter((_, i) => i !== idx));
     setSelectedMessages(prev => prev.filter(i => i !== idx).map(i => i > idx ? i - 1 : i));
+    if (activeMessageIdx >= idx && activeMessageIdx > 0) {
+      setActiveMessageIdx(activeMessageIdx - 1);
+    }
   };
 
-  const insertEmoji = (idx: number, emoji: string) => {
-    const textarea = textareaRefs.current[idx];
+  const insertEmoji = (emoji: string) => {
+    const idx = activeMessageIdx;
+    const textarea = textareaRefs.current[0];
     if (textarea) {
       const start = textarea.selectionStart;
       const end = textarea.selectionEnd;
@@ -168,7 +276,6 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateCampaignDialo
       const newContent = currentContent.substring(0, start) + emoji + currentContent.substring(end);
       updateMessage(idx, "content", newContent);
       
-      // Set cursor position after emoji
       setTimeout(() => {
         textarea.focus();
         textarea.setSelectionRange(start + emoji.length, start + emoji.length);
@@ -181,7 +288,6 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateCampaignDialo
 
   const createCampaignMutation = useMutation({
     mutationFn: async () => {
-      // Calculate scheduled_at if needed
       let scheduled_at: string | null = null;
       if (scheduleType === "scheduled" && scheduledDate) {
         const [hours, minutes] = scheduledTime.split(":").map(Number);
@@ -190,7 +296,6 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateCampaignDialo
         scheduled_at = dateTime.toISOString();
       }
 
-      // Create campaign
       const { data: campaign, error: campaignError } = await supabase
         .from("campaigns")
         .insert({
@@ -211,7 +316,6 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateCampaignDialo
 
       if (campaignError) throw campaignError;
 
-      // Save campaign messages
       const selectedMsgs = selectedMessages.map((idx) => messages[idx]);
       const { error: msgError } = await supabase.from("campaign_messages").insert(
         selectedMsgs.map((msg) => ({
@@ -224,7 +328,6 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateCampaignDialo
 
       if (msgError) throw msgError;
 
-      // Fetch customers from selected clusters and create queue entries
       let allCustomers: any[] = [];
       let offset = 0;
       const pageSize = 1000;
@@ -246,7 +349,6 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateCampaignDialo
         offset += pageSize;
       }
 
-      // Create queue entries with random message assignment
       if (allCustomers.length > 0) {
         const queueEntries = allCustomers.map((customer) => {
           const randomMsgIdx = Math.floor(Math.random() * selectedMsgs.length);
@@ -263,7 +365,6 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateCampaignDialo
           };
         });
 
-        // Insert in batches
         const batchSize = 500;
         for (let i = 0; i < queueEntries.length; i += batchSize) {
           const batch = queueEntries.slice(i, i + batchSize);
@@ -271,7 +372,6 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateCampaignDialo
           if (queueError) throw queueError;
         }
 
-        // Update campaign total
         await supabase
           .from("campaigns")
           .update({ total_recipients: queueEntries.length })
@@ -299,6 +399,7 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateCampaignDialo
     setSelectedClusters([]);
     setMessages([]);
     setSelectedMessages([]);
+    setActiveMessageIdx(0);
     setDailyLimit(50);
     setDelayMin(180);
     setDelayMax(480);
@@ -337,18 +438,21 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateCampaignDialo
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-0">
-        <DialogHeader className="px-6 pt-6 pb-2">
-          <DialogTitle>Nova Campanha</DialogTitle>
+      <DialogContent className="max-w-5xl max-h-[95vh] flex flex-col p-0 gap-0">
+        <DialogHeader className="px-6 pt-6 pb-2 shrink-0">
+          <DialogTitle className="flex items-center gap-2">
+            <Phone className="w-5 h-5" />
+            Nova Campanha
+          </DialogTitle>
           <DialogDescription>
             {step === 1 && "Defina o nome e selecione os segmentos de clientes"}
-            {step === 2 && "Gere mensagens com IA e edite as variações"}
+            {step === 2 && "Crie suas mensagens com preview em tempo real"}
             {step === 3 && "Configure o envio e agendamento"}
           </DialogDescription>
         </DialogHeader>
 
         {/* Progress */}
-        <div className="flex items-center gap-2 px-6 py-2">
+        <div className="flex items-center gap-2 px-6 py-3 border-b shrink-0">
           {[1, 2, 3].map((s) => (
             <div key={s} className="flex items-center gap-2">
               <div
@@ -362,22 +466,21 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateCampaignDialo
                 {step > s ? <Check className="w-4 h-4" /> : s}
               </div>
               {s < 3 && (
-                <div
-                  className={cn(
-                    "w-12 h-1 rounded",
-                    step > s ? "bg-primary" : "bg-muted"
-                  )}
-                />
+                <div className={cn("w-12 h-1 rounded", step > s ? "bg-primary" : "bg-muted")} />
               )}
             </div>
           ))}
+          <div className="flex-1" />
+          <Badge variant="outline" className="text-xs">
+            {totalRecipients} destinatários
+          </Badge>
         </div>
 
-        <ScrollArea className="flex-1 px-6">
-          <div className="pb-4">
-            {/* Step 1: Clusters */}
-            {step === 1 && (
-              <div className="space-y-4">
+        <div className="flex-1 overflow-hidden">
+          {/* Step 1: Clusters */}
+          {step === 1 && (
+            <ScrollArea className="h-full">
+              <div className="p-6 space-y-4 max-w-2xl mx-auto">
                 <div className="space-y-2">
                   <Label htmlFor="name">Nome da campanha</Label>
                   <Input
@@ -401,7 +504,7 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateCampaignDialo
 
                 <div className="space-y-2">
                   <Label>Selecione os segmentos</Label>
-                  <div className="grid gap-2 max-h-[300px] overflow-y-auto pr-2">
+                  <div className="grid gap-2">
                     {clusters?.map((cluster) => (
                       <div
                         key={cluster.id}
@@ -431,29 +534,25 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateCampaignDialo
                       </div>
                     ))}
                   </div>
-
-                  {selectedClusters.length > 0 && (
-                    <p className="text-sm text-muted-foreground">
-                      Total: <span className="font-medium text-foreground">{totalRecipients}</span> destinatários
-                    </p>
-                  )}
                 </div>
               </div>
-            )}
+            </ScrollArea>
+          )}
 
-            {/* Step 2: Messages */}
-            {step === 2 && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label>Mensagens da campanha</Label>
+          {/* Step 2: Messages with Phone Preview */}
+          {step === 2 && (
+            <div className="flex h-full">
+              {/* Editor Side */}
+              <div className="flex-1 border-r overflow-hidden flex flex-col">
+                <div className="p-4 border-b flex items-center justify-between shrink-0">
+                  <div className="flex items-center gap-2">
+                    <Label>Mensagens</Label>
+                    <Badge variant="secondary">{messages.length}</Badge>
+                  </div>
                   <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={addNewMessage}
-                    >
+                    <Button variant="outline" size="sm" onClick={addNewMessage}>
                       <Plus className="w-4 h-4 mr-1" />
-                      Adicionar
+                      Nova
                     </Button>
                     <Button
                       variant="outline"
@@ -462,97 +561,98 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateCampaignDialo
                       disabled={isGenerating}
                     >
                       {isGenerating ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Gerando...
-                        </>
+                        <Loader2 className="w-4 h-4 animate-spin" />
                       ) : (
                         <>
-                          <Sparkles className="w-4 h-4 mr-2" />
-                          Gerar IA
+                          <Sparkles className="w-4 h-4 mr-1" />
+                          IA
                         </>
                       )}
                     </Button>
                   </div>
                 </div>
 
-                {messages.length === 0 && !isGenerating && (
-                  <div className="text-center py-8 border rounded-lg bg-muted/50">
-                    <MessageSquare className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
-                    <p className="text-muted-foreground mb-3">
-                      Clique em "Gerar IA" ou "Adicionar" para criar mensagens
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Baseado no perfil: <span className="font-medium">{selectedClusterData?.name}</span>
-                    </p>
-                  </div>
-                )}
+                <ScrollArea className="flex-1">
+                  <div className="p-4 space-y-4">
+                    {messages.length === 0 ? (
+                      <div className="text-center py-12 border rounded-lg bg-muted/50">
+                        <MessageSquare className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
+                        <p className="text-muted-foreground mb-2">Nenhuma mensagem criada</p>
+                        <p className="text-xs text-muted-foreground">
+                          Use "IA" para gerar ou "Nova" para criar manualmente
+                        </p>
+                      </div>
+                    ) : (
+                      <>
+                        {/* Message Tabs */}
+                        <div className="flex gap-2 flex-wrap">
+                          {messages.map((msg, idx) => (
+                            <Button
+                              key={idx}
+                              variant={activeMessageIdx === idx ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => setActiveMessageIdx(idx)}
+                              className="gap-2"
+                            >
+                              <Checkbox
+                                checked={selectedMessages.includes(idx)}
+                                onCheckedChange={() => toggleMessage(idx)}
+                                onClick={(e) => e.stopPropagation()}
+                                className={activeMessageIdx === idx ? "border-primary-foreground" : ""}
+                              />
+                              Variante {msg.variant}
+                            </Button>
+                          ))}
+                        </div>
 
-                {messages.length > 0 && (
-                  <div className="space-y-4">
-                    <p className="text-xs text-muted-foreground">
-                      Edite as mensagens e selecione as que deseja usar. Use {"{{nome}}"} para personalizar.
-                    </p>
-                    {messages.map((msg, idx) => (
-                      <div
-                        key={idx}
-                        className={cn(
-                          "p-4 border rounded-lg transition-colors",
-                          selectedMessages.includes(idx)
-                            ? "border-primary bg-primary/5"
-                            : "border-border"
-                        )}
-                      >
-                        <div className="flex items-start gap-3 mb-3">
-                          <Checkbox
-                            checked={selectedMessages.includes(idx)}
-                            onCheckedChange={() => toggleMessage(idx)}
-                          />
-                          <div className="flex-1">
-                            <div className="flex items-center justify-between mb-2">
-                              <Badge variant="outline">Variante {msg.variant}</Badge>
+                        {/* Active Message Editor */}
+                        {activeMessage && (
+                          <div className="space-y-4 border rounded-lg p-4">
+                            <div className="flex items-center justify-between">
+                              <Badge>Editando: Variante {activeMessage.variant}</Badge>
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
-                                onClick={() => removeMessage(idx)}
+                                className="text-muted-foreground hover:text-destructive"
+                                onClick={() => removeMessage(activeMessageIdx)}
+                                disabled={messages.length <= 1}
                               >
                                 <Trash2 className="w-4 h-4" />
                               </Button>
                             </div>
-                            
-                            {/* Message textarea with emoji support */}
+
+                            {/* Text Editor */}
                             <div className="relative">
                               <Textarea
-                                ref={(el) => { textareaRefs.current[idx] = el; }}
-                                value={msg.content}
-                                onChange={(e) => updateMessage(idx, "content", e.target.value)}
-                                placeholder="Digite sua mensagem... Use {{nome}} para o nome do cliente"
-                                rows={4}
+                                ref={(el) => { textareaRefs.current[0] = el; }}
+                                value={activeMessage.content}
+                                onChange={(e) => updateMessage(activeMessageIdx, "content", e.target.value)}
+                                placeholder="Digite sua mensagem... Use {{nome}} para personalizar"
+                                rows={6}
                                 className="pr-10 resize-none"
                               />
                               <Popover 
-                                open={activeEmojiPicker === idx} 
-                                onOpenChange={(open) => setActiveEmojiPicker(open ? idx : null)}
+                                open={activeEmojiPicker === activeMessageIdx} 
+                                onOpenChange={(open) => setActiveEmojiPicker(open ? activeMessageIdx : null)}
                               >
                                 <PopoverTrigger asChild>
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    className="absolute top-2 right-2 h-6 w-6 p-0"
+                                    className="absolute top-2 right-2 h-8 w-8 p-0"
                                   >
-                                    <Smile className="w-4 h-4" />
+                                    <Smile className="w-5 h-5" />
                                   </Button>
                                 </PopoverTrigger>
-                                <PopoverContent className="w-64 p-2" align="end">
+                                <PopoverContent className="w-72 p-2" align="end">
                                   <div className="grid grid-cols-5 gap-1">
                                     {EMOJI_LIST.map((emoji) => (
                                       <Button
                                         key={emoji}
                                         variant="ghost"
                                         size="sm"
-                                        className="h-8 w-8 p-0 text-lg"
-                                        onClick={() => insertEmoji(idx, emoji)}
+                                        className="h-9 w-9 p-0 text-xl"
+                                        onClick={() => insertEmoji(emoji)}
                                       >
                                         {emoji}
                                       </Button>
@@ -562,74 +662,74 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateCampaignDialo
                               </Popover>
                             </div>
 
-                            {/* Media URL input */}
-                            <div className="mt-3 space-y-2">
-                              <Label className="text-xs text-muted-foreground">Imagem/Mídia (opcional)</Label>
+                            <div className="flex items-center justify-between text-xs text-muted-foreground">
+                              <span>Use {"{{nome}}"} para nome do cliente</span>
+                              <span>{activeMessage.content.length}/300</span>
+                            </div>
+
+                            {/* Media URL */}
+                            <div className="space-y-2">
+                              <Label className="text-sm flex items-center gap-2">
+                                <ImagePlus className="w-4 h-4" />
+                                Imagem/Vídeo (opcional)
+                              </Label>
                               <div className="flex gap-2">
                                 <Input
-                                  placeholder="Cole a URL da imagem ou vídeo..."
-                                  value={msg.mediaUrl}
+                                  placeholder="Cole a URL da mídia..."
+                                  value={activeMessage.mediaUrl}
                                   onChange={(e) => {
-                                    updateMessage(idx, "mediaUrl", e.target.value);
+                                    updateMessage(activeMessageIdx, "mediaUrl", e.target.value);
                                     if (e.target.value) {
                                       const isVideo = e.target.value.match(/\.(mp4|webm|mov)(\?|$)/i);
-                                      updateMessage(idx, "mediaType", isVideo ? "video" : "image");
+                                      updateMessage(activeMessageIdx, "mediaType", isVideo ? "video" : "image");
                                     } else {
-                                      updateMessage(idx, "mediaType", "none");
+                                      updateMessage(activeMessageIdx, "mediaType", "none");
                                     }
                                   }}
                                   className="flex-1"
                                 />
-                                {msg.mediaUrl && (
+                                {activeMessage.mediaUrl && (
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="shrink-0"
                                     onClick={() => {
-                                      updateMessage(idx, "mediaUrl", "");
-                                      updateMessage(idx, "mediaType", "none");
+                                      updateMessage(activeMessageIdx, "mediaUrl", "");
+                                      updateMessage(activeMessageIdx, "mediaType", "none");
                                     }}
                                   >
                                     <X className="w-4 h-4" />
                                   </Button>
                                 )}
                               </div>
-                              {msg.mediaUrl && (
-                                <div className="relative w-20 h-20 rounded border overflow-hidden">
-                                  {msg.mediaType === "video" ? (
-                                    <video 
-                                      src={msg.mediaUrl} 
-                                      className="w-full h-full object-cover"
-                                    />
-                                  ) : (
-                                    <img 
-                                      src={msg.mediaUrl} 
-                                      alt="Preview" 
-                                      className="w-full h-full object-cover"
-                                      onError={(e) => {
-                                        (e.target as HTMLImageElement).src = "/placeholder.svg";
-                                      }}
-                                    />
-                                  )}
-                                </div>
-                              )}
                             </div>
-
-                            <p className="text-xs text-muted-foreground mt-2">
-                              {msg.content.length}/300 caracteres
-                            </p>
                           </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+                        )}
 
-            {/* Step 3: Settings */}
-            {step === 3 && (
-              <div className="space-y-6">
+                        <p className="text-xs text-muted-foreground">
+                          ✓ Selecione as mensagens que serão enviadas aleatoriamente aos clientes
+                        </p>
+                      </>
+                    )}
+                  </div>
+                </ScrollArea>
+              </div>
+
+              {/* Phone Preview Side */}
+              <div className="w-[320px] bg-muted/30 p-6 flex flex-col items-center justify-center shrink-0">
+                <p className="text-xs text-muted-foreground mb-4 text-center">Preview WhatsApp</p>
+                <PhonePreview 
+                  message={activeMessage?.content || ""} 
+                  mediaUrl={activeMessage?.mediaUrl}
+                  mediaType={activeMessage?.mediaType}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: Settings */}
+          {step === 3 && (
+            <ScrollArea className="h-full">
+              <div className="p-6 space-y-6 max-w-2xl mx-auto">
                 {/* Schedule */}
                 <div className="space-y-3">
                   <Label>Quando enviar</Label>
@@ -725,46 +825,61 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateCampaignDialo
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Intervalo de {Math.floor(delayMin / 60)}m{delayMin % 60}s a {Math.floor(delayMax / 60)}m{delayMax % 60}s entre mensagens, máximo de {dailyLimit} envios por dia
+                    Intervalo de {Math.floor(delayMin / 60)}m{delayMin % 60}s a {Math.floor(delayMax / 60)}m{delayMax % 60}s entre mensagens
                   </p>
                 </div>
 
                 {/* Summary */}
-                <div className="p-4 bg-muted/50 rounded-lg space-y-2">
-                  <h4 className="font-medium text-foreground">Resumo</h4>
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <p className="text-muted-foreground">Campanha:</p>
-                    <p className="font-medium">{name}</p>
-                    <p className="text-muted-foreground">Destinatários:</p>
-                    <p className="font-medium">{totalRecipients}</p>
-                    <p className="text-muted-foreground">Variações de mensagem:</p>
-                    <p className="font-medium">{selectedMessages.length}</p>
-                    <p className="text-muted-foreground">Início:</p>
-                    <p className="font-medium">
-                      {scheduleType === "now"
-                        ? "Imediatamente"
-                        : scheduledDate
-                        ? format(scheduledDate, "PPP", { locale: ptBR }) + " às " + scheduledTime
-                        : "-"}
-                    </p>
-                    <p className="text-muted-foreground">Tempo estimado:</p>
-                    <p className="font-medium">
-                      ~{Math.ceil(totalRecipients / dailyLimit)} dias
-                    </p>
+                <div className="p-4 bg-muted/50 rounded-lg space-y-3">
+                  <h4 className="font-medium text-foreground">Resumo da Campanha</h4>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div className="space-y-1">
+                      <p className="text-muted-foreground">Nome</p>
+                      <p className="font-medium">{name}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-muted-foreground">Destinatários</p>
+                      <p className="font-medium">{totalRecipients}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-muted-foreground">Mensagens</p>
+                      <p className="font-medium">{selectedMessages.length} variações</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-muted-foreground">Tempo estimado</p>
+                      <p className="font-medium">~{Math.ceil(totalRecipients / dailyLimit)} dias</p>
+                    </div>
+                    <div className="col-span-2 space-y-1">
+                      <p className="text-muted-foreground">Início</p>
+                      <p className="font-medium">
+                        {scheduleType === "now"
+                          ? "Imediatamente após criar"
+                          : scheduledDate
+                          ? format(scheduledDate, "PPP", { locale: ptBR }) + " às " + scheduledTime
+                          : "Data não selecionada"}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
-            )}
-          </div>
-        </ScrollArea>
+            </ScrollArea>
+          )}
+        </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between px-6 py-4 border-t">
+        <div className="flex items-center justify-between px-6 py-4 border-t shrink-0">
           <Button
             variant="outline"
             onClick={() => (step > 1 ? setStep(step - 1) : onOpenChange(false))}
           >
-            {step > 1 ? "Voltar" : "Cancelar"}
+            {step > 1 ? (
+              <>
+                <ChevronLeft className="w-4 h-4 mr-1" />
+                Voltar
+              </>
+            ) : (
+              "Cancelar"
+            )}
           </Button>
           <Button
             onClick={() => {
@@ -782,7 +897,10 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateCampaignDialo
                 Criando...
               </>
             ) : step < 3 ? (
-              "Próximo"
+              <>
+                Próximo
+                <ChevronRight className="w-4 h-4 ml-1" />
+              </>
             ) : (
               <>
                 <Send className="w-4 h-4 mr-2" />
