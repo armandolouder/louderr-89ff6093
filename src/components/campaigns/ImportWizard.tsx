@@ -67,7 +67,7 @@ export function ImportWizard({ onComplete }: ImportWizardProps) {
 
   const handleMappingComplete = useCallback((newMapping: ColumnMapping) => {
     setMapping(newMapping);
-    setCurrentStep(3);
+    setCurrentStep(4);
   }, []);
 
   const handleBack = useCallback(() => {
