@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Send, Pause, Play, Loader2, Clock, CheckCircle2, XCircle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CreateCampaignDialog } from "./CreateCampaignDialog";
+import { CreateCampaignView } from "./CreateCampaignView";
 
 interface Campaign {
   id: string;
@@ -33,7 +33,7 @@ const statusConfig = {
 };
 
 export function CampaignsList() {
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [showCreateView, setShowCreateView] = useState(false);
 
   const { data: campaigns, isLoading } = useQuery({
     queryKey: ["campaigns"],
@@ -47,6 +47,11 @@ export function CampaignsList() {
     },
   });
 
+  // Se estiver na tela de criação, mostrar ela
+  if (showCreateView) {
+    return <CreateCampaignView onBack={() => setShowCreateView(false)} />;
+  }
+
   const hasCampaigns = campaigns && campaigns.length > 0;
 
   return (
@@ -59,13 +64,11 @@ export function CampaignsList() {
             Gerencie suas campanhas de WhatsApp
           </p>
         </div>
-        <Button onClick={() => setCreateDialogOpen(true)}>
+        <Button onClick={() => setShowCreateView(true)}>
           <Plus className="w-4 h-4 mr-2" />
           Nova Campanha
         </Button>
       </div>
-
-      <CreateCampaignDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} />
 
       {/* Empty State */}
       {!hasCampaigns && !isLoading && (
@@ -80,7 +83,7 @@ export function CampaignsList() {
             <p className="text-sm text-muted-foreground text-center max-w-md mb-4">
               Crie sua primeira campanha para começar a enviar mensagens para seus clientes segmentados.
             </p>
-            <Button onClick={() => setCreateDialogOpen(true)}>
+            <Button onClick={() => setShowCreateView(true)}>
               <Plus className="w-4 h-4 mr-2" />
               Criar Campanha
             </Button>
