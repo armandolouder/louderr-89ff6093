@@ -84,19 +84,28 @@ serve(async (req) => {
         body: JSON.stringify(requestBody),
       });
     } else if (mediaUrl) {
-      // For media messages, use /send/media endpoint
-      // UAZAPI /send/media expects: file (URL), mediatype, and caption
+      // Use type-specific endpoints for UAZAPI
+      // /send/image, /send/video, /send/audio, /send/document
+      const endpointMap: Record<string, string> = {
+        image: "image",
+        video: "video",
+        audio: "audio",
+        document: "document",
+      };
+      
+      const endpoint = endpointMap[messageType] || "image";
+      
       requestBody = {
         number: formattedPhone,
-        file: mediaUrl,
-        mediatype: messageType, // image, video, audio, document
+        url: mediaUrl,
         caption: content || "",
       };
 
       console.log(`Sending ${messageType} message to ${formattedPhone}`);
+      console.log(`Endpoint: /send/${endpoint}`);
       console.log("Request body:", JSON.stringify(requestBody));
 
-      uazapiResponse = await fetch(`${UAZAPI_SERVER_URL}/send/media`, {
+      uazapiResponse = await fetch(`${UAZAPI_SERVER_URL}/send/${endpoint}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
