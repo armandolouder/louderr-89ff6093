@@ -123,9 +123,9 @@ Esta documentação descreve a integração do sistema de mensagens WhatsApp uti
 **Body UAZAPI:**
 ```json
 {
-  "Id": "WHATSAPP_MESSAGE_ID",
-  "emoji": "👍",
-  "chatid": "5521999999999@s.whatsapp.net"
+  "number": "5521999999999@s.whatsapp.net",
+  "text": "👍",
+  "id": "WHATSAPP_MESSAGE_ID"
 }
 ```
 
