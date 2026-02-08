@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from "react";
-import { Send, Paperclip, Smile, MoreVertical, Phone, User, Loader2, SpellCheck, MessageSquareText } from "lucide-react";
+import { useState, useRef, useEffect, ClipboardEvent } from "react";
+import { Send, Paperclip, Smile, MoreVertical, Phone, User, Loader2, SpellCheck, MessageSquareText, X, Image as ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -10,7 +10,7 @@ import { MessageActions } from "./MessageActions";
 import { QuickResponsePicker } from "./QuickResponsePicker";
 import { QuickResponseManager } from "./QuickResponseManager";
 import { Conversation } from "@/hooks/useConversations";
-import { useMessages, useSendMessage } from "@/hooks/useMessages";
+import { useMessages, useSendMessage, useSendMediaMessage } from "@/hooks/useMessages";
 import { QuickResponse } from "@/hooks/useQuickResponses";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -28,15 +28,51 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
   const [message, setMessage] = useState("");
   const [isCheckingSpelling, setIsCheckingSpelling] = useState(false);
   const [showQuickResponseManager, setShowQuickResponseManager] = useState(false);
+  const [pastedImage, setPastedImage] = useState<{ file: File; preview: string } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
   
   const { data: messages, isLoading } = useMessages(conversation.id);
   const sendMessage = useSendMessage();
+  const sendMediaMessage = useSendMediaMessage();
 
   const handleQuickResponseSelect = (response: QuickResponse) => {
     setMessage(response.content);
-    // If has media, we could handle it here for sending
+  };
+
+  // Handle paste events to capture images from clipboard
+  const handlePaste = (e: ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    for (const item of items) {
+      if (item.type.startsWith("image/")) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (file) {
+          const preview = URL.createObjectURL(file);
+          setPastedImage({ file, preview });
+          toast.success("Imagem colada! Clique em enviar para compartilhar.");
+        }
+        return;
+      }
+    }
+  };
+
+  // Cleanup preview URL on unmount or when image changes
+  useEffect(() => {
+    return () => {
+      if (pastedImage?.preview) {
+        URL.revokeObjectURL(pastedImage.preview);
+      }
+    };
+  }, [pastedImage]);
+
+  const clearPastedImage = () => {
+    if (pastedImage?.preview) {
+      URL.revokeObjectURL(pastedImage.preview);
+    }
+    setPastedImage(null);
   };
 
   const checkSpelling = async () => {
@@ -97,6 +133,27 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
     .toUpperCase();
 
   const handleSend = () => {
+    // If there's a pasted image, send it as media
+    if (pastedImage) {
+      sendMediaMessage.mutate({
+        conversationId: conversation.id,
+        file: pastedImage.file,
+        caption: message.trim() || undefined,
+        channel: conversation.channel,
+      }, {
+        onSuccess: () => {
+          clearPastedImage();
+          setMessage("");
+        },
+        onError: (error) => {
+          console.error("Error sending media:", error);
+          toast.error("Erro ao enviar imagem");
+        }
+      });
+      return;
+    }
+
+    // Regular text message
     if (message.trim() && !sendMessage.isPending) {
       sendMessage.mutate({
         conversationId: conversation.id,
@@ -106,6 +163,8 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
       setMessage("");
     }
   };
+
+  const isSending = sendMessage.isPending || sendMediaMessage.isPending;
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -295,14 +354,34 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
         "border-t border-border bg-card",
         isMobile ? "p-2 pb-3" : "p-4"
       )}>
+        {/* Image preview */}
+        {pastedImage && (
+          <div className="mb-3 relative inline-block">
+            <img 
+              src={pastedImage.preview} 
+              alt="Preview" 
+              className="max-h-32 rounded-lg border border-border"
+            />
+            <Button
+              variant="destructive"
+              size="icon"
+              className="absolute -top-2 -right-2 h-6 w-6"
+              onClick={clearPastedImage}
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
+        )}
+
         {isMobile ? (
           // Mobile layout: Input com botão enviar, ações embaixo
           <div className="space-y-2">
             <div className="flex items-end gap-2">
               <Textarea
-                placeholder="Digite sua mensagem..."
+                placeholder={pastedImage ? "Adicione uma legenda (opcional)..." : "Digite sua mensagem..."}
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
+                onPaste={handlePaste}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
@@ -318,12 +397,14 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
               />
               <Button 
                 onClick={handleSend} 
-                disabled={sendMessage.isPending || !message.trim()} 
+                disabled={isSending || (!message.trim() && !pastedImage)} 
                 size="icon"
                 className="h-11 w-11 shadow-glow flex-shrink-0"
               >
-                {sendMessage.isPending ? (
+                {isSending ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
+                ) : pastedImage ? (
+                  <ImageIcon className="w-5 h-5" />
                 ) : (
                   <Send className="w-5 h-5" />
                 )}
@@ -415,9 +496,10 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
             />
             
             <Textarea
-              placeholder="Digite sua mensagem..."
+              placeholder={pastedImage ? "Adicione uma legenda (opcional)..." : "Digite sua mensagem..."}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
+              onPaste={handlePaste}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
@@ -433,15 +515,22 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
             />
             <Button 
               onClick={handleSend} 
-              disabled={sendMessage.isPending} 
+              disabled={isSending || (!message.trim() && !pastedImage)} 
               className="shadow-glow"
             >
-              {sendMessage.isPending ? (
+              {isSending ? (
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : pastedImage ? (
+                <>
+                  <ImageIcon className="w-4 h-4 mr-2" />
+                  Enviar Imagem
+                </>
               ) : (
-                <Send className="w-4 h-4 mr-2" />
+                <>
+                  <Send className="w-4 h-4 mr-2" />
+                  Enviar
+                </>
               )}
-              Enviar
             </Button>
           </div>
         )}
