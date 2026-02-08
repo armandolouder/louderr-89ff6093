@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Send, Paperclip, Smile, MoreVertical, Phone, User, Loader2, SpellCheck, MessageSquareText } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ChannelBadge } from "./ChannelBadge";
 import { MediaPreview } from "./MediaPreview";
@@ -300,17 +300,23 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
         {isMobile ? (
           // Mobile layout: Input com botão enviar, ações embaixo
           <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <Input
+            <div className="flex items-end gap-2">
+              <Textarea
                 placeholder="Digite sua mensagem..."
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSend()}
-                className="flex-1 bg-secondary border-border h-11 text-base"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                  }
+                }}
+                className="flex-1 bg-secondary border-border min-h-[44px] max-h-32 text-base resize-none"
                 spellCheck={true}
                 lang="pt-BR"
                 autoComplete="off"
                 autoCorrect="on"
+                rows={1}
               />
               <Button 
                 onClick={handleSend} 
@@ -410,16 +416,22 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
               onManage={() => setShowQuickResponseManager(true)}
             />
             
-            <Input
+            <Textarea
               placeholder="Digite sua mensagem..."
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSend()}
-              className="flex-1 bg-secondary border-border h-10"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSend();
+                }
+              }}
+              className="flex-1 bg-secondary border-border min-h-[40px] max-h-32 resize-none"
               spellCheck={true}
               lang="pt-BR"
               autoComplete="off"
               autoCorrect="on"
+              rows={1}
             />
             <Button 
               onClick={handleSend} 

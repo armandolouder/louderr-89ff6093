@@ -17,7 +17,7 @@ export function MediaPreview({ type, url, content, isAgent }: MediaPreviewProps)
     if (urls.length > 0) {
       return (
         <div className="space-y-2">
-          <p className="text-sm">{content}</p>
+          <p className="text-sm whitespace-pre-wrap break-words">{content}</p>
           {urls.slice(0, 2).map((linkUrl, index) => (
             <LinkPreview key={index} url={linkUrl} isAgent={isAgent} />
           ))}
@@ -25,7 +25,7 @@ export function MediaPreview({ type, url, content, isAgent }: MediaPreviewProps)
       );
     }
     
-    return <p className="text-sm">{content}</p>;
+    return <p className="text-sm whitespace-pre-wrap break-words">{content}</p>;
   }
 
   const handleClick = () => {
@@ -69,7 +69,7 @@ export function MediaPreview({ type, url, content, isAgent }: MediaPreviewProps)
           </div>
         </div>
         {content && content !== "[Imagem]" && (
-          <p className="text-sm">{content}</p>
+          <p className="text-sm whitespace-pre-wrap break-words">{content}</p>
         )}
       </div>
     );
@@ -89,7 +89,7 @@ export function MediaPreview({ type, url, content, isAgent }: MediaPreviewProps)
           <span className="text-sm">Vídeo - Clique para ver</span>
         </div>
         {content && content !== "[Vídeo]" && (
-          <p className="text-sm">{content}</p>
+          <p className="text-sm whitespace-pre-wrap break-words">{content}</p>
         )}
       </div>
     );
@@ -130,5 +130,5 @@ export function MediaPreview({ type, url, content, isAgent }: MediaPreviewProps)
     );
   }
 
-  return <p className="text-sm">{content}</p>;
+  return <p className="text-sm whitespace-pre-wrap break-words">{content}</p>;
 }
