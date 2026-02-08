@@ -1,67 +1,121 @@
 import { useState, useEffect } from "react";
-import { Wifi, WifiOff, Server, Key, RefreshCw, ExternalLink, CheckCircle, Loader2 } from "lucide-react";
+import { User, Phone, Mail, LogOut, Loader2, Save } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 
-interface InstanceStatus {
-  connected: boolean;
-  serverUrl?: string;
-  phoneNumber?: string;
-  name?: string;
-  status?: string;
-  message?: string;
-  error?: string;
+interface Profile {
+  id: string;
+  user_id: string;
+  name: string | null;
+  phone: string | null;
+  avatar_url: string | null;
 }
 
 export default function Settings() {
-  const [instanceStatus, setInstanceStatus] = useState<InstanceStatus | null>(null);
-  const [isCheckingStatus, setIsCheckingStatus] = useState(false);
+  const navigate = useNavigate();
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [name, setName] = useState("");
+  const [userPhone, setUserPhone] = useState("");
+  const [userEmail, setUserEmail] = useState("");
 
-  // Check status on load
   useEffect(() => {
-    checkInstanceStatus();
+    fetchProfile();
   }, []);
 
-  const checkInstanceStatus = async () => {
-    setIsCheckingStatus(true);
+  const fetchProfile = async () => {
     try {
-      // Call edge function to check UAZAPI status
-      const { data, error } = await supabase.functions.invoke("check-uazapi-status");
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        navigate("/auth");
+        return;
+      }
 
-      if (error) {
-        console.error("Error checking status:", error);
-        setInstanceStatus({ connected: false, error: error.message });
-        toast.error("Erro ao verificar status");
-      } else if (data) {
-        setInstanceStatus({
-          connected: data.connected,
-          serverUrl: data.serverUrl,
-          phoneNumber: data.phoneNumber,
-          name: data.name,
-          status: data.status,
-          message: data.message,
-          error: data.error,
-        });
-        
-        if (data.connected) {
-          toast.success("Instância conectada!");
-        } else if (data.error) {
-          toast.error(data.error);
+      setUserEmail(user.email || "");
+      setUserPhone(user.phone || "");
+
+      const { data: profileData, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("user_id", user.id)
+        .single();
+
+      if (error && error.code !== "PGRST116") {
+        console.error("Error fetching profile:", error);
+      }
+
+      if (profileData) {
+        setProfile(profileData);
+        setName(profileData.name || "");
+        if (profileData.phone) {
+          setUserPhone(profileData.phone);
         }
       }
     } catch (error) {
-      console.error("Error checking instance status:", error);
-      setInstanceStatus({ connected: false, error: "Erro de conexão" });
-      toast.error("Erro ao verificar status da instância");
+      console.error("Error:", error);
     } finally {
-      setIsCheckingStatus(false);
       setIsLoading(false);
     }
+  };
+
+  const handleSave = async () => {
+    if (!profile) return;
+
+    setIsSaving(true);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ name })
+        .eq("id", profile.id);
+
+      if (error) {
+        console.error("Error updating profile:", error);
+        toast.error("Erro ao salvar perfil");
+      } else {
+        toast.success("Perfil atualizado!");
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      toast.error("Erro ao salvar perfil");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      toast.success("Logout realizado");
+      navigate("/auth");
+    } catch (error) {
+      console.error("Error logging out:", error);
+      toast.error("Erro ao fazer logout");
+    }
+  };
+
+  const formatPhone = (phone: string) => {
+    if (!phone) return "";
+    const digits = phone.replace(/\D/g, "");
+    if (digits.length >= 12) {
+      return `+${digits.slice(0, 2)} (${digits.slice(2, 4)}) ${digits.slice(4, 9)}-${digits.slice(9)}`;
+    }
+    return phone;
+  };
+
+  const getInitials = () => {
+    if (name) {
+      return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
+    }
+    return "U";
   };
 
   if (isLoading) {
@@ -76,120 +130,105 @@ export default function Settings() {
     <div className="p-6 space-y-6 max-w-4xl mx-auto">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Configurações</h1>
-        <p className="text-muted-foreground">Gerencie as configurações de integração</p>
+        <p className="text-muted-foreground">Gerencie sua conta e preferências</p>
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Server className="w-5 h-5" />
-            Integração WhatsApp (UAZAPI)
+            <User className="w-5 h-5" />
+            Perfil
           </CardTitle>
           <CardDescription>
-            Status da conexão com sua instância UAZAPI para envio e recebimento de mensagens
+            Suas informações pessoais
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Connection Status */}
-          <div className="flex items-center gap-3 p-4 rounded-lg bg-secondary/50">
-            {instanceStatus?.connected ? (
-              <>
-                <Wifi className="w-5 h-5 text-primary" />
-                <div className="flex-1">
-                  <p className="font-medium text-foreground">Instância Conectada</p>
-                  <p className="text-sm text-muted-foreground">
-                    {instanceStatus.name && `${instanceStatus.name}`}
-                    {instanceStatus.phoneNumber && ` • +${instanceStatus.phoneNumber}`}
-                    {instanceStatus.message && ` • ${instanceStatus.message}`}
-                  </p>
+          {/* Avatar */}
+          <div className="flex items-center gap-4">
+            <Avatar className="w-20 h-20">
+              <AvatarImage src={profile?.avatar_url || undefined} />
+              <AvatarFallback className="text-lg">{getInitials()}</AvatarFallback>
+            </Avatar>
+            <div>
+              <p className="font-medium text-foreground">{name || "Usuário"}</p>
+              <p className="text-sm text-muted-foreground">{formatPhone(userPhone)}</p>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Form */}
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Nome</Label>
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  id="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Seu nome"
+                  className="pl-10"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="phone">Telefone</Label>
+              <div className="relative">
+                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  id="phone"
+                  value={formatPhone(userPhone)}
+                  disabled
+                  className="pl-10 bg-secondary/50"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                O telefone não pode ser alterado
+              </p>
+            </div>
+
+            {userEmail && (
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    id="email"
+                    value={userEmail}
+                    disabled
+                    className="pl-10 bg-secondary/50"
+                  />
                 </div>
-                <Badge variant="default">
-                  <CheckCircle className="w-3 h-3 mr-1" />
-                  Online
-                </Badge>
-              </>
-            ) : (
-              <>
-                <WifiOff className="w-5 h-5 text-muted-foreground" />
-                <div className="flex-1">
-                  <p className="font-medium text-foreground">Instância Desconectada</p>
-                  <p className="text-sm text-muted-foreground">
-                    {instanceStatus?.error || "Verifique as configurações no backend"}
-                  </p>
-                </div>
-                <Badge variant="secondary">Offline</Badge>
-              </>
+              </div>
             )}
           </div>
 
-          <Separator />
-
-          {/* Configuration Display */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-3 p-3 rounded-lg border border-border">
-              <Server className="w-5 h-5 text-muted-foreground" />
-              <div className="flex-1">
-                <p className="text-sm font-medium text-foreground">Server URL</p>
-                <p className="text-sm text-muted-foreground font-mono">
-                  {instanceStatus?.serverUrl || "Não configurado"}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 p-3 rounded-lg border border-border">
-              <Key className="w-5 h-5 text-muted-foreground" />
-              <div className="flex-1">
-                <p className="text-sm font-medium text-foreground">Token da Instância</p>
-                <p className="text-sm text-muted-foreground font-mono">
-                  {instanceStatus?.serverUrl ? "••••••••••••••••" : "Não configurado"}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <Separator />
-
-          {/* Actions */}
-          <div className="flex flex-wrap gap-3">
-            <Button
-              variant="outline"
-              onClick={checkInstanceStatus}
-              disabled={isCheckingStatus}
-            >
-              <RefreshCw className={`w-4 h-4 mr-2 ${isCheckingStatus ? "animate-spin" : ""}`} />
-              Verificar Conexão
-            </Button>
-            <Button
-              variant="ghost"
-              asChild
-            >
-              <a href="https://docs.uazapi.com" target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="w-4 h-4 mr-2" />
-                Documentação UAZAPI
-              </a>
+          <div className="flex gap-3">
+            <Button onClick={handleSave} disabled={isSaving}>
+              {isSaving ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              ) : (
+                <Save className="w-4 h-4 mr-2" />
+              )}
+              Salvar
             </Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* Info Card */}
+      {/* Logout */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Informações Importantes</CardTitle>
+          <CardTitle className="text-base">Sessão</CardTitle>
         </CardHeader>
-        <CardContent className="text-sm text-muted-foreground space-y-2">
-          <p>
-            • As credenciais (UAZAPI_SERVER_URL e UAZAPI_INSTANCE_TOKEN) são armazenadas de forma segura nos secrets do backend.
-          </p>
-          <p>
-            • Para alterar as credenciais, acesse o painel de configurações do backend (Cloud View).
-          </p>
-          <p>
-            • O webhook da UAZAPI deve apontar para a Edge Function: <code className="text-xs bg-secondary px-1 py-0.5 rounded">/functions/v1/whatsapp-webhook</code>
-          </p>
-          <p>
-            • Para obter suas credenciais, acesse o painel de administração da UAZAPI.
-          </p>
+        <CardContent>
+          <Button variant="destructive" onClick={handleLogout}>
+            <LogOut className="w-4 h-4 mr-2" />
+            Sair da conta
+          </Button>
         </CardContent>
       </Card>
     </div>

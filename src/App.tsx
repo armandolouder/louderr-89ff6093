@@ -8,6 +8,8 @@ import Landing from "./pages/Landing";
 import Dashboard from "./pages/Dashboard";
 import Inbox from "./pages/Inbox";
 import Settings from "./pages/Settings";
+import Api from "./pages/Api";
+import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -20,12 +22,13 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Landing />} />
+          <Route path="/auth" element={<Auth />} />
           <Route element={<AppLayout />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/inbox" element={<Inbox />} />
             <Route path="/bot" element={<Dashboard />} />
             <Route path="/crm" element={<Dashboard />} />
-            <Route path="/apis" element={<Dashboard />} />
+            <Route path="/apis" element={<Api />} />
             <Route path="/settings" element={<Settings />} />
           </Route>
           <Route path="*" element={<NotFound />} />
