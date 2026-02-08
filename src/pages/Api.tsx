@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Wifi, WifiOff, Server, Key, RefreshCw, ExternalLink, CheckCircle, Loader2 } from "lucide-react";
+import { Wifi, WifiOff, Server, Key, RefreshCw, ExternalLink, CheckCircle, Loader2, Brain, Sparkles } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,13 +17,22 @@ interface InstanceStatus {
   error?: string;
 }
 
+interface GroqStatus {
+  connected: boolean;
+  model?: string;
+  error?: string;
+}
+
 export default function Api() {
   const [instanceStatus, setInstanceStatus] = useState<InstanceStatus | null>(null);
+  const [groqStatus, setGroqStatus] = useState<GroqStatus | null>(null);
   const [isCheckingStatus, setIsCheckingStatus] = useState(false);
+  const [isCheckingGroq, setIsCheckingGroq] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     checkInstanceStatus();
+    checkGroqStatus();
   }, []);
 
   const checkInstanceStatus = async () => {
@@ -62,6 +71,36 @@ export default function Api() {
     }
   };
 
+  const checkGroqStatus = async () => {
+    setIsCheckingGroq(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("groq-chat", {
+        body: {
+          messages: [{ role: "user", content: "ping" }],
+          model: "llama-3.3-70b-versatile",
+          max_tokens: 5,
+        },
+      });
+
+      if (error) {
+        console.error("Error checking Groq status:", error);
+        setGroqStatus({ connected: false, error: error.message });
+      } else if (data?.error) {
+        setGroqStatus({ connected: false, error: data.error });
+      } else if (data?.choices) {
+        setGroqStatus({ connected: true, model: data.model });
+        toast.success("Groq Cloud AI conectado!");
+      } else {
+        setGroqStatus({ connected: false, error: "Resposta inesperada" });
+      }
+    } catch (error) {
+      console.error("Error checking Groq status:", error);
+      setGroqStatus({ connected: false, error: "Erro de conexão" });
+    } finally {
+      setIsCheckingGroq(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="p-6 flex items-center justify-center min-h-[400px]">
@@ -77,6 +116,7 @@ export default function Api() {
         <p className="text-muted-foreground">Gerencie as configurações de integração com APIs externas</p>
       </div>
 
+      {/* WhatsApp UAZAPI Card */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -170,6 +210,98 @@ export default function Api() {
         </CardContent>
       </Card>
 
+      {/* Groq Cloud AI Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Brain className="w-5 h-5" />
+            Groq Cloud AI
+          </CardTitle>
+          <CardDescription>
+            Inteligência artificial para automação de mensagens e atendimento inteligente
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Connection Status */}
+          <div className="flex items-center gap-3 p-4 rounded-lg bg-secondary/50">
+            {groqStatus?.connected ? (
+              <>
+                <Sparkles className="w-5 h-5 text-primary" />
+                <div className="flex-1">
+                  <p className="font-medium text-foreground">API Conectada</p>
+                  <p className="text-sm text-muted-foreground">
+                    Modelo: {groqStatus.model || "llama-3.3-70b-versatile"}
+                  </p>
+                </div>
+                <Badge variant="default">
+                  <CheckCircle className="w-3 h-3 mr-1" />
+                  Online
+                </Badge>
+              </>
+            ) : (
+              <>
+                <WifiOff className="w-5 h-5 text-muted-foreground" />
+                <div className="flex-1">
+                  <p className="font-medium text-foreground">API Desconectada</p>
+                  <p className="text-sm text-muted-foreground">
+                    {groqStatus?.error || "Verifique se a GROQ_API_KEY está configurada"}
+                  </p>
+                </div>
+                <Badge variant="secondary">Offline</Badge>
+              </>
+            )}
+          </div>
+
+          <Separator />
+
+          {/* Models Info */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 p-3 rounded-lg border border-border">
+              <Brain className="w-5 h-5 text-muted-foreground" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-foreground">Modelos Disponíveis</p>
+                <p className="text-sm text-muted-foreground">
+                  Llama 3.3 70B, Llama 3.1 8B, Mixtral 8x7B
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 p-3 rounded-lg border border-border">
+              <Key className="w-5 h-5 text-muted-foreground" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-foreground">API Key</p>
+                <p className="text-sm text-muted-foreground font-mono">
+                  {groqStatus?.connected ? "••••••••••••••••" : "Não configurada"}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Actions */}
+          <div className="flex flex-wrap gap-3">
+            <Button
+              variant="outline"
+              onClick={checkGroqStatus}
+              disabled={isCheckingGroq}
+            >
+              <RefreshCw className={`w-4 h-4 mr-2 ${isCheckingGroq ? "animate-spin" : ""}`} />
+              Verificar Conexão
+            </Button>
+            <Button
+              variant="ghost"
+              asChild
+            >
+              <a href="https://console.groq.com/docs" target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="w-4 h-4 mr-2" />
+                Documentação Groq
+              </a>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Info Card */}
       <Card>
         <CardHeader>
@@ -177,7 +309,7 @@ export default function Api() {
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground space-y-2">
           <p>
-            • As credenciais (UAZAPI_SERVER_URL e UAZAPI_INSTANCE_TOKEN) são armazenadas de forma segura nos secrets do backend.
+            • As credenciais são armazenadas de forma segura nos secrets do backend.
           </p>
           <p>
             • Para alterar as credenciais, acesse o painel de configurações do backend (Cloud View).
@@ -186,7 +318,7 @@ export default function Api() {
             • O webhook da UAZAPI deve apontar para a Edge Function: <code className="text-xs bg-secondary px-1 py-0.5 rounded">/functions/v1/whatsapp-webhook</code>
           </p>
           <p>
-            • Para obter suas credenciais, acesse o painel de administração da UAZAPI.
+            • A integração com Groq permite usar modelos de IA para automação de atendimento.
           </p>
         </CardContent>
       </Card>
