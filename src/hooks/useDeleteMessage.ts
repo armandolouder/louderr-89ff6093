@@ -44,8 +44,12 @@ export function useDeleteMessage() {
       
       return { previousMessages };
     },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["messages", variables.conversationId] });
+    onSuccess: async (_, variables) => {
+      // Force immediate refetch of messages
+      await queryClient.refetchQueries({ 
+        queryKey: ["messages", variables.conversationId],
+        type: 'active'
+      });
       queryClient.invalidateQueries({ queryKey: ["conversations"] });
       toast.success("Mensagem deletada");
     },
