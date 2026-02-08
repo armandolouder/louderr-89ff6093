@@ -18,6 +18,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useDeleteMessage } from "@/hooks/useDeleteMessage";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { cn } from "@/lib/utils";
 
 interface MessageActionsProps {
   messageId: string;
@@ -28,6 +30,7 @@ interface MessageActionsProps {
 export function MessageActions({ messageId, conversationId, isVisible }: MessageActionsProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const deleteMessage = useDeleteMessage();
+  const isMobile = useIsMobile();
 
   const handleDelete = () => {
     deleteMessage.mutate({
@@ -47,7 +50,10 @@ export function MessageActions({ messageId, conversationId, isVisible }: Message
           <Button
             variant="ghost"
             size="icon"
-            className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+            className={cn(
+              "h-6 w-6 transition-opacity",
+              isMobile ? "opacity-70" : "opacity-0 group-hover:opacity-100"
+            )}
           >
             <MoreVertical className="h-4 w-4" />
           </Button>
