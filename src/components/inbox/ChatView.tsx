@@ -104,12 +104,12 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
   }, [messages]);
 
   return (
-    <div className="flex flex-col h-full bg-background">
+    <div className="flex flex-col h-full bg-background overflow-hidden">
       {/* Header - Hidden on mobile since Inbox.tsx provides it */}
       {!isMobile && (
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-card">
-          <div className="flex items-center gap-4">
-            <Avatar className="w-10 h-10">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-card flex-shrink-0">
+          <div className="flex items-center gap-4 min-w-0">
+            <Avatar className="w-10 h-10 flex-shrink-0">
               {conversation.contact.avatar_url && (
                 <AvatarImage src={conversation.contact.avatar_url} alt={conversation.contact.name} />
               )}
@@ -117,17 +117,17 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
                 {initials}
               </AvatarFallback>
             </Avatar>
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h3 className="font-semibold text-foreground">{conversation.contact.name}</h3>
+                <h3 className="font-semibold text-foreground truncate">{conversation.contact.name}</h3>
                 <ChannelBadge channel={conversation.channel} />
               </div>
               {conversation.contact.phone && (
-                <p className="text-sm text-muted-foreground">{conversation.contact.phone}</p>
+                <p className="text-sm text-muted-foreground truncate">{conversation.contact.phone}</p>
               )}
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0">
             <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
               <Phone className="w-5 h-5" />
             </Button>
@@ -142,7 +142,7 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
       )}
 
       {/* Messages */}
-      <div className={cn("flex-1 overflow-auto space-y-4", isMobile ? "p-3" : "p-6")}>
+      <div className={cn("flex-1 overflow-y-auto overflow-x-hidden space-y-4", isMobile ? "p-3" : "p-6")}>
         {isLoading ? (
           <div className="flex items-center justify-center h-full">
             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
