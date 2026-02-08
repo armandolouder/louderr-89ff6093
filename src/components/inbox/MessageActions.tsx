@@ -45,23 +45,23 @@ export function MessageActions({ messageId, conversationId, isVisible }: Message
 
   return (
     <>
-      <DropdownMenu>
+      <DropdownMenu modal={false}>
         <DropdownMenuTrigger asChild>
           <Button
             variant="ghost"
             size="icon"
             className={cn(
-              "h-6 w-6 transition-opacity",
-              isMobile ? "opacity-70" : "opacity-0 group-hover:opacity-100"
+              "h-6 w-6 transition-opacity flex-shrink-0",
+              isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100"
             )}
           >
             <MoreVertical className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
+        <DropdownMenuContent align="end" sideOffset={5}>
           <DropdownMenuItem
-            className="text-destructive focus:text-destructive"
-            onClick={() => setShowDeleteDialog(true)}
+            className="text-destructive focus:text-destructive cursor-pointer"
+            onSelect={() => setShowDeleteDialog(true)}
             disabled={deleteMessage.isPending}
           >
             {deleteMessage.isPending ? (
