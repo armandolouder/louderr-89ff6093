@@ -152,98 +152,129 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
             Nenhuma mensagem ainda
           </div>
         ) : (
-          messages?.map((msg) => {
+          messages?.map((msg, index) => {
             const messageType = (msg.message_type || "text") as "text" | "image" | "audio" | "video" | "document";
             const reactions = (msg.metadata as Record<string, unknown>)?.reactions as { emoji: string; sent_at: string }[] | undefined;
             
+            // Date separator logic
+            const messageDate = new Date(msg.created_at);
+            const prevMessage = index > 0 ? messages[index - 1] : null;
+            const prevDate = prevMessage ? new Date(prevMessage.created_at) : null;
+            const showDateSeparator = !prevDate || 
+              messageDate.toDateString() !== prevDate.toDateString();
+            
+            const formatDateSeparator = (date: Date) => {
+              const today = new Date();
+              const yesterday = new Date(today);
+              yesterday.setDate(yesterday.getDate() - 1);
+              
+              if (date.toDateString() === today.toDateString()) {
+                return "Hoje";
+              } else if (date.toDateString() === yesterday.toDateString()) {
+                return "Ontem";
+              } else {
+                return format(date, "dd/MM/yyyy");
+              }
+            };
+            
             return (
-              <div
-                key={msg.id}
-                className={cn(
-                  "flex group",
-                  msg.sender_type === "agent" ? "justify-end" : "justify-start"
+              <div key={msg.id}>
+                {/* Date separator */}
+                {showDateSeparator && (
+                  <div className="flex items-center justify-center my-4">
+                    <div className="bg-muted text-muted-foreground text-xs px-3 py-1 rounded-full">
+                      {formatDateSeparator(messageDate)}
+                    </div>
+                  </div>
                 )}
-              >
-                <div className="flex items-end gap-1">
-                  {/* Message actions and reaction picker for received messages */}
-                  {msg.sender_type === "contact" && (
-                    <>
-                      <MessageActions
-                        messageId={msg.id}
-                        conversationId={conversation.id}
-                        isVisible={true}
-                      />
-                      <ReactionPicker 
-                        messageId={msg.id} 
-                        conversationId={conversation.id}
-                        existingReactions={reactions}
-                      />
-                    </>
+                
+                <div
+                  className={cn(
+                    "flex group",
+                    msg.sender_type === "agent" ? "justify-end" : "justify-start"
                   )}
-                  
-                  <div
-                    className={cn(
-                      "max-w-[70%] px-4 py-2.5 rounded-2xl relative",
-                      msg.sender_type === "agent"
-                        ? "bg-primary text-primary-foreground rounded-br-md"
-                        : "bg-secondary text-secondary-foreground rounded-bl-md"
+                >
+                  <div className="flex items-end gap-1">
+                    {/* Message actions and reaction picker for received messages */}
+                    {msg.sender_type === "contact" && (
+                      <>
+                        <MessageActions
+                          messageId={msg.id}
+                          conversationId={conversation.id}
+                          isVisible={true}
+                        />
+                        <ReactionPicker 
+                          messageId={msg.id} 
+                          conversationId={conversation.id}
+                          existingReactions={reactions}
+                        />
+                      </>
                     )}
-                  >
-                    <MediaPreview 
-                      type={messageType}
-                      url={msg.media_url}
-                      content={msg.content}
-                      isAgent={msg.sender_type === "agent"}
-                    />
-                    <div className={cn(
-                      "flex items-center gap-2 mt-1",
-                      msg.sender_type === "agent" ? "justify-end" : "justify-start"
-                    )}>
-                      <p
-                        className={cn(
-                          "text-xs",
-                          msg.sender_type === "agent" ? "text-primary-foreground/70" : "text-muted-foreground"
+                    
+                    <div
+                      className={cn(
+                        "max-w-[70%] px-4 py-2.5 rounded-2xl relative",
+                        msg.sender_type === "agent"
+                          ? "bg-primary text-primary-foreground rounded-br-md"
+                          : "bg-secondary text-secondary-foreground rounded-bl-md"
+                      )}
+                    >
+                      <MediaPreview 
+                        type={messageType}
+                        url={msg.media_url}
+                        content={msg.content}
+                        isAgent={msg.sender_type === "agent"}
+                      />
+                      <div className={cn(
+                        "flex items-center gap-2 mt-1",
+                        msg.sender_type === "agent" ? "justify-end" : "justify-start"
+                      )}>
+                        <p
+                          className={cn(
+                            "text-xs",
+                            msg.sender_type === "agent" ? "text-primary-foreground/70" : "text-muted-foreground"
+                          )}
+                        >
+                          {format(new Date(msg.created_at), "HH:mm")}
+                        </p>
+                        {msg.sender_type === "agent" && msg.status && (
+                          <span className={cn(
+                            "text-xs",
+                            msg.status === "read" ? "text-primary-foreground" : "text-primary-foreground/50"
+                          )}>
+                            {msg.status === "sent" && "✓"}
+                            {msg.status === "delivered" && "✓✓"}
+                            {msg.status === "read" && "✓✓"}
+                          </span>
                         )}
-                      >
-                        {format(new Date(msg.created_at), "HH:mm")}
-                      </p>
-                      {msg.sender_type === "agent" && msg.status && (
-                        <span className={cn(
-                          "text-xs",
-                          msg.status === "read" ? "text-primary-foreground" : "text-primary-foreground/50"
-                        )}>
-                          {msg.status === "sent" && "✓"}
-                          {msg.status === "delivered" && "✓✓"}
-                          {msg.status === "read" && "✓✓"}
-                        </span>
+                      </div>
+                      
+                      {/* Display reactions on message */}
+                      {reactions && reactions.length > 0 && (
+                        <div className="absolute -bottom-3 left-2 flex gap-0.5 bg-card rounded-full px-1 py-0.5 shadow-sm border border-border">
+                          {reactions.map((r, idx) => (
+                            <span key={idx} className="text-xs">{r.emoji}</span>
+                          ))}
+                        </div>
                       )}
                     </div>
-                    
-                    {/* Display reactions on message */}
-                    {reactions && reactions.length > 0 && (
-                      <div className="absolute -bottom-3 left-2 flex gap-0.5 bg-card rounded-full px-1 py-0.5 shadow-sm border border-border">
-                        {reactions.map((r, idx) => (
-                          <span key={idx} className="text-xs">{r.emoji}</span>
-                        ))}
-                      </div>
+
+                    {/* Message actions and reaction picker for sent messages */}
+                    {msg.sender_type === "agent" && (
+                      <>
+                        <ReactionPicker 
+                          messageId={msg.id} 
+                          conversationId={conversation.id}
+                          existingReactions={reactions}
+                        />
+                        <MessageActions
+                          messageId={msg.id}
+                          conversationId={conversation.id}
+                          isVisible={true}
+                        />
+                      </>
                     )}
                   </div>
-
-                  {/* Message actions and reaction picker for sent messages */}
-                  {msg.sender_type === "agent" && (
-                    <>
-                      <ReactionPicker 
-                        messageId={msg.id} 
-                        conversationId={conversation.id}
-                        existingReactions={reactions}
-                      />
-                      <MessageActions
-                        messageId={msg.id}
-                        conversationId={conversation.id}
-                        isVisible={true}
-                      />
-                    </>
-                  )}
                 </div>
               </div>
             );
