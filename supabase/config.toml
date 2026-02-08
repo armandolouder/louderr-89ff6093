@@ -8,3 +8,15 @@ verify_jwt = false
 
 [functions.send-reaction]
 verify_jwt = false
+
+[functions.groq-chat]
+verify_jwt = false
+
+[functions.check-uazapi-status]
+verify_jwt = false
+
+[functions.delete-message]
+verify_jwt = false
+
+[functions.fetch-link-preview]
+verify_jwt = false
