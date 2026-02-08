@@ -28,18 +28,18 @@ export function ConversationList({ selectedId, onSelect, filterTabId }: Conversa
 
   return (
     <div className="flex flex-col h-full border-r border-border bg-card">
-      <div className="p-4 border-b border-border space-y-3">
+      <div className="p-4 md:p-4 p-3 border-b border-border space-y-3">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             placeholder="Buscar conversas..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 bg-secondary border-border"
+            className="pl-9 bg-secondary border-border h-10"
           />
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
           <Button
             variant={channelFilter === "all" ? "default" : "outline"}
             size="sm"

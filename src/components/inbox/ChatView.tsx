@@ -14,15 +14,18 @@ import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface ChatViewProps {
   conversation: Conversation;
+  hideHeader?: boolean;
 }
 
-export function ChatView({ conversation }: ChatViewProps) {
+export function ChatView({ conversation, hideHeader }: ChatViewProps) {
   const [message, setMessage] = useState("");
   const [isCheckingSpelling, setIsCheckingSpelling] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const isMobile = useIsMobile();
   
   const { data: messages, isLoading } = useMessages(conversation.id);
   const sendMessage = useSendMessage();
@@ -102,42 +105,44 @@ export function ChatView({ conversation }: ChatViewProps) {
 
   return (
     <div className="flex flex-col h-full bg-background">
-      {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-card">
-        <div className="flex items-center gap-4">
-          <Avatar className="w-10 h-10">
-            {conversation.contact.avatar_url && (
-              <AvatarImage src={conversation.contact.avatar_url} alt={conversation.contact.name} />
-            )}
-            <AvatarFallback className="bg-secondary text-secondary-foreground">
-              {initials}
-            </AvatarFallback>
-          </Avatar>
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="font-semibold text-foreground">{conversation.contact.name}</h3>
-              <ChannelBadge channel={conversation.channel} />
+      {/* Header - Hidden on mobile since Inbox.tsx provides it */}
+      {!isMobile && (
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-card">
+          <div className="flex items-center gap-4">
+            <Avatar className="w-10 h-10">
+              {conversation.contact.avatar_url && (
+                <AvatarImage src={conversation.contact.avatar_url} alt={conversation.contact.name} />
+              )}
+              <AvatarFallback className="bg-secondary text-secondary-foreground">
+                {initials}
+              </AvatarFallback>
+            </Avatar>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-semibold text-foreground">{conversation.contact.name}</h3>
+                <ChannelBadge channel={conversation.channel} />
+              </div>
+              {conversation.contact.phone && (
+                <p className="text-sm text-muted-foreground">{conversation.contact.phone}</p>
+              )}
             </div>
-            {conversation.contact.phone && (
-              <p className="text-sm text-muted-foreground">{conversation.contact.phone}</p>
-            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
+              <Phone className="w-5 h-5" />
+            </Button>
+            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
+              <User className="w-5 h-5" />
+            </Button>
+            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
+              <MoreVertical className="w-5 h-5" />
+            </Button>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
-            <Phone className="w-5 h-5" />
-          </Button>
-          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
-            <User className="w-5 h-5" />
-          </Button>
-          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
-            <MoreVertical className="w-5 h-5" />
-          </Button>
-        </div>
-      </div>
+      )}
 
       {/* Messages */}
-      <div className="flex-1 overflow-auto p-6 space-y-4">
+      <div className={cn("flex-1 overflow-auto space-y-4", isMobile ? "p-3" : "p-6")}>
         {isLoading ? (
           <div className="flex items-center justify-center h-full">
             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
@@ -295,19 +300,24 @@ export function ChatView({ conversation }: ChatViewProps) {
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSend()}
-            className="flex-1 bg-secondary border-border"
+            className="flex-1 bg-secondary border-border h-10"
             spellCheck={true}
             lang="pt-BR"
             autoComplete="off"
             autoCorrect="on"
           />
-          <Button onClick={handleSend} disabled={sendMessage.isPending} className="shadow-glow">
+          <Button 
+            onClick={handleSend} 
+            disabled={sendMessage.isPending} 
+            size={isMobile ? "icon" : "default"}
+            className="shadow-glow"
+          >
             {sendMessage.isPending ? (
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
-              <Send className="w-4 h-4 mr-2" />
+              <Send className="w-4 h-4" />
             )}
-            Enviar
+            {!isMobile && <span className="ml-2">Enviar</span>}
           </Button>
         </div>
       </div>
