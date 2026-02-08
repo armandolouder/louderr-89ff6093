@@ -281,29 +281,42 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Fetch all imported customers
-    const { data: customers, error: fetchError } = await supabase
-      .from("imported_customers")
-      .select("*")
-      .order("created_at", { ascending: false });
+    // Fetch ALL imported customers (bypassing default 1000 limit)
+    let allCustomers: Customer[] = [];
+    let offset = 0;
+    const pageSize = 1000;
+    
+    while (true) {
+      const { data: batch, error: fetchError } = await supabase
+        .from("imported_customers")
+        .select("*")
+        .range(offset, offset + pageSize - 1)
+        .order("created_at", { ascending: false });
 
-    if (fetchError) throw fetchError;
+      if (fetchError) throw fetchError;
+      if (!batch || batch.length === 0) break;
+      
+      allCustomers = allCustomers.concat(batch);
+      offset += pageSize;
+      
+      if (batch.length < pageSize) break;
+    }
 
-    if (!customers || customers.length === 0) {
+    if (allCustomers.length === 0) {
       return new Response(
         JSON.stringify({ success: false, error: "Nenhum cliente importado encontrado" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    console.log(`Analyzing ${customers.length} customers...`);
+    console.log(`Analyzing ${allCustomers.length} customers...`);
 
     // Calculate RFM scores
-    const rfmScores = calculateRFMScores(customers);
+    const rfmScores = calculateRFMScores(allCustomers);
 
     // Calculate average ticket for ticket level classification
-    const totalSpentSum = customers.reduce((sum, c) => sum + (c.total_spent || 0), 0);
-    const avgTicket = totalSpentSum / customers.length || 100;
+    const totalSpentSum = allCustomers.reduce((sum, c) => sum + (c.total_spent || 0), 0);
+    const avgTicket = totalSpentSum / allCustomers.length || 100;
 
     // Clear existing clusters
     await supabase.from("customer_clusters").delete().neq("id", "00000000-0000-0000-0000-000000000000");
@@ -338,7 +351,7 @@ serve(async (req) => {
     const clusterCounts = new Map<string, number>();
     const customerUpdates: { id: string; cluster_id: string; rfm_recency: number; rfm_frequency: number; rfm_monetary: number; rfm_score: string; ticket_level: string }[] = [];
 
-    customers.forEach((customer) => {
+    allCustomers.forEach((customer) => {
       const rfm = rfmScores.get(customer.id);
       if (!rfm) return;
 
@@ -363,37 +376,62 @@ serve(async (req) => {
       }
     });
 
-    // Update customers with cluster assignments in batches
-    const batchSize = 50;
+    console.log(`Assigning ${customerUpdates.length} customers to clusters...`);
+
+    // Update customers in parallel batches (much faster)
+    const batchSize = 100;
+    const batches: Promise<void>[] = [];
+    
     for (let i = 0; i < customerUpdates.length; i += batchSize) {
       const batch = customerUpdates.slice(i, i + batchSize);
       
-      for (const update of batch) {
-        await supabase
-          .from("imported_customers")
-          .update({
-            cluster_id: update.cluster_id,
-            rfm_recency: update.rfm_recency,
-            rfm_frequency: update.rfm_frequency,
-            rfm_monetary: update.rfm_monetary,
-            rfm_score: update.rfm_score,
-            ticket_level: update.ticket_level,
-          })
-          .eq("id", update.id);
+      // Process each batch in parallel
+      const batchPromise = Promise.all(
+        batch.map((update) =>
+          supabase
+            .from("imported_customers")
+            .update({
+              cluster_id: update.cluster_id,
+              rfm_recency: update.rfm_recency,
+              rfm_frequency: update.rfm_frequency,
+              rfm_monetary: update.rfm_monetary,
+              rfm_score: update.rfm_score,
+              ticket_level: update.ticket_level,
+            })
+            .eq("id", update.id)
+        )
+      ).then(() => {});
+      
+      batches.push(batchPromise);
+      
+      // Process 5 batches at a time to avoid overwhelming the DB
+      if (batches.length >= 5) {
+        await Promise.all(batches);
+        batches.length = 0;
       }
+    }
+    
+    // Process remaining batches
+    if (batches.length > 0) {
+      await Promise.all(batches);
     }
 
-    // Update cluster counts
-    for (const [clusterName, count] of clusterCounts.entries()) {
+    console.log(`Updating cluster counts...`);
+
+    // Update cluster counts in parallel
+    const countUpdates = Array.from(clusterCounts.entries()).map(([clusterName, count]) => {
       const clusterId = clusterNameToId.get(clusterName);
       if (clusterId) {
-        const percentage = (count / customers.length) * 100;
-        await supabase
+        const percentage = (count / allCustomers.length) * 100;
+        return supabase
           .from("customer_clusters")
-          .update({ customer_count: count, percentage })
+          .update({ customer_count: count, percentage: Math.round(percentage * 100) / 100 })
           .eq("id", clusterId);
       }
-    }
+      return Promise.resolve();
+    });
+
+    await Promise.all(countUpdates);
 
     // Remove empty clusters
     await supabase
@@ -406,11 +444,12 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        analyzed: customers.length,
+        analyzed: allCustomers.length,
+        assigned: customerUpdates.length,
         clusters: Array.from(clusterCounts.entries()).map(([name, count]) => ({
           name,
           count,
-          percentage: ((count / customers.length) * 100).toFixed(1),
+          percentage: ((count / allCustomers.length) * 100).toFixed(1),
         })),
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
