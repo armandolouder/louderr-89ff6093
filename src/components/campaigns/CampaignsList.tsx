@@ -38,7 +38,7 @@ export function CampaignsList() {
   const [processingCampaignId, setProcessingCampaignId] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
-  const { data: campaigns, isLoading } = useQuery({
+  const { data: campaigns, isLoading, refetch } = useQuery({
     queryKey: ["campaigns"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -48,6 +48,7 @@ export function CampaignsList() {
       if (error) throw error;
       return data as Campaign[];
     },
+    refetchInterval: 5000, // Refetch every 5 seconds
   });
 
   const processQueueMutation = useMutation({
