@@ -132,4 +132,24 @@
   .badge-channel {
     @apply inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium rounded-full;
   }
+
+  /* Safe area for mobile devices */
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Mobile touch optimizations */
+  @media (max-width: 767px) {
+    .conversation-item {
+      @apply py-3 px-3;
+    }
+
+    .conversation-item.active {
+      @apply bg-primary/10 border-l-0;
+    }
+  }
 }
