@@ -78,15 +78,17 @@ export function MediaPreview({ type, url, content, isAgent }: MediaPreviewProps)
   if (type === "video") {
     return (
       <div className="space-y-1">
-        <div 
-          className={cn(
-            "flex items-center gap-2 p-3 rounded-lg cursor-pointer",
-            isAgent ? "bg-primary-foreground/10" : "bg-background/50"
-          )}
-          onClick={handleClick}
-        >
-          <Play className="w-8 h-8" />
-          <span className="text-sm">Vídeo - Clique para ver</span>
+        <div className="relative rounded-lg overflow-hidden max-w-[280px]">
+          <video 
+            src={url} 
+            controls
+            className="w-full h-auto rounded-lg"
+            preload="metadata"
+            controlsList="nodownload"
+            playsInline
+          >
+            Seu navegador não suporta vídeos.
+          </video>
         </div>
         {content && content !== "[Vídeo]" && (
           <p className="text-sm whitespace-pre-wrap break-words">{content}</p>
@@ -99,18 +101,20 @@ export function MediaPreview({ type, url, content, isAgent }: MediaPreviewProps)
     return (
       <div 
         className={cn(
-          "flex items-center gap-2 p-3 rounded-lg cursor-pointer",
+          "flex items-center gap-2 p-3 rounded-lg min-w-[200px] max-w-[280px]",
           isAgent ? "bg-primary-foreground/10" : "bg-background/50"
         )}
-        onClick={handleClick}
       >
-        <Volume2 className="w-6 h-6" />
-        <div className="flex-1">
-          <div className="h-1 bg-current/20 rounded-full">
-            <div className="h-1 w-1/3 bg-current rounded-full" />
-          </div>
-        </div>
-        <span className="text-xs">Áudio</span>
+        <Volume2 className="w-5 h-5 flex-shrink-0" />
+        <audio 
+          src={url} 
+          controls
+          className="flex-1 h-8"
+          preload="metadata"
+          controlsList="nodownload"
+        >
+          Seu navegador não suporta áudios.
+        </audio>
       </div>
     );
   }
