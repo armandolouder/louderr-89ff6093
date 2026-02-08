@@ -166,7 +166,7 @@
 /* Custom Scrollbar Styles */
 ::-webkit-scrollbar {
   width: 6px;
-  height: 6px;
+  height: 0; /* Hide horizontal scrollbar */
 }
 
 ::-webkit-scrollbar-track {
@@ -185,7 +185,7 @@
 }
 
 ::-webkit-scrollbar-corner {
-  background: hsl(var(--secondary));
+  background: transparent;
 }
 
 /* Firefox scrollbar */
@@ -194,10 +194,15 @@
   scrollbar-color: hsl(var(--primary) / 0.5) hsl(var(--secondary));
 }
 
-/* Mobile: hide horizontal scrollbar for filters */
+/* Prevent horizontal overflow globally */
+html, body, #root {
+  overflow-x: hidden;
+}
+
+/* Mobile scrollbar adjustments */
 @media (max-width: 767px) {
   ::-webkit-scrollbar {
     width: 4px;
-    height: 0px;
+    height: 0;
   }
 }
