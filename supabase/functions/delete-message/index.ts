@@ -54,41 +54,104 @@ serve(async (req) => {
     const metadata = message.metadata as Record<string, unknown> | null;
     const whatsappMessageId = metadata?.whatsapp_message_id as string | undefined;
     const chatid = metadata?.chatid as string | undefined;
+    const fromMe = message.sender_type === "agent";
+
+    // Also check for whatsapp_message_id in uazapi_response (for agent messages)
+    const uazapiResponse = metadata?.uazapi_response as Record<string, unknown> | undefined;
+    const altMessageId = uazapiResponse?.messageid as string | undefined;
+    const altChatId = uazapiResponse?.chatid as string | undefined;
+
+    const finalMessageId = whatsappMessageId || altMessageId;
+    const finalChatId = chatid || altChatId;
 
     // If we have whatsapp message id, try to delete on WhatsApp
-    if (whatsappMessageId && chatid) {
-      console.log(`Deleting WhatsApp message: ${whatsappMessageId} in chat: ${chatid}`);
+    if (finalMessageId && finalChatId) {
+      console.log(`Deleting WhatsApp message: ${finalMessageId} in chat: ${finalChatId}, fromMe: ${fromMe}`);
 
-      // UAZAPI v2 endpoint for deleting messages: POST /message/delete
-      // Documentation indicates using "Id" (PascalCase) similar to /message/react
-      const requestBody = {
-        Id: whatsappMessageId,
-        chatid: chatid,
+      // Try different body formats to find the correct one
+      // Format 1: Standard UAZAPI format
+      const requestBodyV1 = {
+        Id: finalMessageId,
+        chatid: finalChatId,
         everyone: deleteForEveryone,
+        fromMe: fromMe,
       };
 
-      console.log("Delete request body:", JSON.stringify(requestBody));
+      console.log("Trying format V1:", JSON.stringify(requestBodyV1));
 
-      const uazapiResponse = await fetch(`${UAZAPI_SERVER_URL}/message/delete`, {
+      let uazapiRes = await fetch(`${UAZAPI_SERVER_URL}/message/delete`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "token": UAZAPI_INSTANCE_TOKEN,
         },
-        body: JSON.stringify(requestBody),
+        body: JSON.stringify(requestBodyV1),
       });
 
-      const responseText = await uazapiResponse.text();
-      console.log("UAZAPI delete response status:", uazapiResponse.status);
-      console.log("UAZAPI delete response:", responseText);
+      let responseText = await uazapiRes.text();
+      console.log("UAZAPI V1 response status:", uazapiRes.status);
+      console.log("UAZAPI V1 response:", responseText);
 
-      if (!uazapiResponse.ok) {
-        console.error("UAZAPI delete error:", responseText);
+      // If V1 failed, try format V2 with remoteJid
+      if (!uazapiRes.ok) {
+        console.log("V1 failed, trying format V2 with remoteJid...");
+        
+        const requestBodyV2 = {
+          id: finalMessageId,
+          remoteJid: finalChatId,
+          fromMe: fromMe,
+        };
+
+        console.log("Trying format V2:", JSON.stringify(requestBodyV2));
+
+        uazapiRes = await fetch(`${UAZAPI_SERVER_URL}/message/delete`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "token": UAZAPI_INSTANCE_TOKEN,
+          },
+          body: JSON.stringify(requestBodyV2),
+        });
+
+        responseText = await uazapiRes.text();
+        console.log("UAZAPI V2 response status:", uazapiRes.status);
+        console.log("UAZAPI V2 response:", responseText);
+      }
+
+      // If still failed, try format V3 with msgId
+      if (!uazapiRes.ok) {
+        console.log("V2 failed, trying format V3 with msgId...");
+        
+        const requestBodyV3 = {
+          msgId: finalMessageId,
+          chatid: finalChatId,
+        };
+
+        console.log("Trying format V3:", JSON.stringify(requestBodyV3));
+
+        uazapiRes = await fetch(`${UAZAPI_SERVER_URL}/message/delete`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "token": UAZAPI_INSTANCE_TOKEN,
+          },
+          body: JSON.stringify(requestBodyV3),
+        });
+
+        responseText = await uazapiRes.text();
+        console.log("UAZAPI V3 response status:", uazapiRes.status);
+        console.log("UAZAPI V3 response:", responseText);
+      }
+
+      if (!uazapiRes.ok) {
+        console.error("All UAZAPI delete attempts failed:", responseText);
         // Continue to delete from database even if UAZAPI fails
-        // The message might have been already deleted or the ID is invalid
+      } else {
+        console.log("Message deleted from WhatsApp successfully");
       }
     } else {
       console.log("No WhatsApp message ID found, deleting only from database");
+      console.log("Metadata:", JSON.stringify(metadata));
     }
 
     // Delete message from database
