@@ -121,3 +121,87 @@ export function useSendMessage() {
     },
   });
 }
+
+export function useSendMediaMessage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ 
+      conversationId, 
+      file,
+      caption = "",
+      channel = "whatsapp"
+    }: { 
+      conversationId: string; 
+      file: File;
+      caption?: string;
+      channel?: "whatsapp" | "instagram";
+    }) => {
+      // Upload file to storage
+      const fileExt = file.name.split('.').pop() || 'png';
+      const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `images/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("whatsapp-media")
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from("whatsapp-media")
+        .getPublicUrl(filePath);
+
+      const mediaUrl = urlData.publicUrl;
+
+      // For WhatsApp, use the edge function to send via UAZAPI
+      if (channel === "whatsapp") {
+        const { data, error } = await supabase.functions.invoke("send-whatsapp", {
+          body: { 
+            conversationId, 
+            content: caption || "📷 Imagem", 
+            messageType: "image",
+            mediaUrl 
+          },
+        });
+
+        if (error) throw error;
+        if (!data.success) throw new Error(data.error || "Failed to send media");
+        
+        return data.message;
+      }
+
+      // For other channels, save directly to database
+      const { data: message, error: messageError } = await supabase
+        .from("messages")
+        .insert({
+          conversation_id: conversationId,
+          content: caption || "📷 Imagem",
+          sender_type: "agent",
+          message_type: "image",
+          media_url: mediaUrl,
+        })
+        .select()
+        .single();
+
+      if (messageError) throw messageError;
+
+      const { error: convError } = await supabase
+        .from("conversations")
+        .update({
+          last_message: "📷 Imagem",
+          last_message_at: new Date().toISOString(),
+        })
+        .eq("id", conversationId);
+
+      if (convError) throw convError;
+
+      return message;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["messages", variables.conversationId] });
+      queryClient.invalidateQueries({ queryKey: ["conversations"] });
+    },
+  });
+}
