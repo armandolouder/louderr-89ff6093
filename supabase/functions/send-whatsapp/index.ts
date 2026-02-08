@@ -85,10 +85,11 @@ serve(async (req) => {
       });
     } else if (mediaUrl) {
       // For media messages, use /send/media endpoint
-      // UAZAPI /send/media expects "file" field for the URL
+      // UAZAPI /send/media expects: file (URL), mediatype, and caption
       requestBody = {
         number: formattedPhone,
         file: mediaUrl,
+        mediatype: messageType, // image, video, audio, document
         caption: content || "",
       };
 
