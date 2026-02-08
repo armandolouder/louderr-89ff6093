@@ -81,8 +81,8 @@ export default function Inbox() {
 
   // Desktop Layout
   return (
-    <div className="flex h-full">
-      <div className="w-96 flex-shrink-0">
+    <div className="flex h-full overflow-hidden">
+      <div className="w-80 xl:w-96 flex-shrink-0 overflow-hidden">
         <ConversationList
           selectedId={selectedConversation?.id}
           onSelect={handleSelectConversation}
@@ -90,7 +90,7 @@ export default function Inbox() {
         />
       </div>
       
-      <div className="flex-1">
+      <div className="flex-1 min-w-0 overflow-hidden">
         {selectedConversation ? (
           <ChatView conversation={selectedConversation} />
         ) : (
