@@ -215,7 +215,6 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
                         <ReactionPicker 
                           messageId={msg.id} 
                           conversationId={conversation.id}
-                          existingReactions={reactions}
                         />
                       </>
                     )}
@@ -274,7 +273,6 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
                         <ReactionPicker 
                           messageId={msg.id} 
                           conversationId={conversation.id}
-                          existingReactions={reactions}
                         />
                         <MessageActions
                           messageId={msg.id}

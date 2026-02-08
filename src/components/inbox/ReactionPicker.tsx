@@ -12,12 +12,11 @@ import { cn } from "@/lib/utils";
 interface ReactionPickerProps {
   messageId: string;
   conversationId: string;
-  existingReactions?: { emoji: string; sent_at: string }[];
 }
 
 const COMMON_EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "🙏", "🔥", "👏"];
 
-export function ReactionPicker({ messageId, conversationId, existingReactions = [] }: ReactionPickerProps) {
+export function ReactionPicker({ messageId, conversationId }: ReactionPickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const sendReaction = useSendReaction();
 
@@ -31,45 +30,33 @@ export function ReactionPicker({ messageId, conversationId, existingReactions = 
   };
 
   return (
-    <div className="flex items-center gap-1">
-      {/* Show existing reactions */}
-      {existingReactions.length > 0 && (
-        <div className="flex gap-0.5">
-          {existingReactions.map((reaction, idx) => (
-            <span key={idx} className="text-sm">{reaction.emoji}</span>
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <PopoverTrigger asChild>
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className={cn(
+            "h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity",
+            sendReaction.isPending && "opacity-50"
+          )}
+          disabled={sendReaction.isPending}
+        >
+          <Smile className="w-4 h-4 text-muted-foreground" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-2" side="top">
+        <div className="flex gap-1">
+          {COMMON_EMOJIS.map((emoji) => (
+            <button
+              key={emoji}
+              onClick={() => handleReaction(emoji)}
+              className="text-xl hover:scale-125 transition-transform p-1"
+            >
+              {emoji}
+            </button>
           ))}
         </div>
-      )}
-
-      {/* Reaction picker */}
-      <Popover open={isOpen} onOpenChange={setIsOpen}>
-        <PopoverTrigger asChild>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className={cn(
-              "h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity",
-              sendReaction.isPending && "opacity-50"
-            )}
-            disabled={sendReaction.isPending}
-          >
-            <Smile className="w-4 h-4 text-muted-foreground" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-2" side="top">
-          <div className="flex gap-1">
-            {COMMON_EMOJIS.map((emoji) => (
-              <button
-                key={emoji}
-                onClick={() => handleReaction(emoji)}
-                className="text-xl hover:scale-125 transition-transform p-1"
-              >
-                {emoji}
-              </button>
-            ))}
-          </div>
-        </PopoverContent>
-      </Popover>
-    </div>
+      </PopoverContent>
+    </Popover>
   );
 }

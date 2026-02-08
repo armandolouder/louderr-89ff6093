@@ -232,12 +232,18 @@ serve(async (req) => {
         console.log(`Reaction: ${emoji} on message ${targetMessageId}`);
         
         if (targetMessageId && emoji) {
-          // Find the message that was reacted to
-          const { data: targetMessage } = await supabase
+          // Find the message that was reacted to using JSONB containment
+          // The @> operator checks if the left JSON contains the right JSON
+          const { data: messages, error: queryError } = await supabase
             .from("messages")
             .select("id, metadata")
-            .or(`metadata->whatsapp_message_id.eq.${targetMessageId},metadata->>whatsapp_message_id.eq.${targetMessageId}`)
-            .single();
+            .filter("metadata", "cs", JSON.stringify({ whatsapp_message_id: targetMessageId }));
+          
+          if (queryError) {
+            console.error("Query error:", queryError);
+          }
+          
+          const targetMessage = messages?.[0];
           
           if (targetMessage) {
             console.log(`Found target message: ${targetMessage.id}`);
@@ -270,7 +276,7 @@ serve(async (req) => {
               console.log("Reaction already exists");
             }
           } else {
-            console.log("Target message not found for reaction");
+            console.log("Target message not found for reaction. Query returned:", messages?.length || 0, "results");
           }
         }
         
