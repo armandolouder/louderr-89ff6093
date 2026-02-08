@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -22,11 +22,15 @@ import {
   Loader2, 
   Sparkles, 
   Calendar as CalendarIcon, 
-  Clock, 
   Users,
   MessageSquare,
   Send,
-  Check
+  Check,
+  ImagePlus,
+  X,
+  Smile,
+  Plus,
+  Trash2
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -44,9 +48,11 @@ interface Cluster {
   color: string;
 }
 
-interface GeneratedMessage {
+interface CampaignMessage {
   content: string;
   variant: string;
+  mediaUrl: string;
+  mediaType: "none" | "image" | "video";
 }
 
 interface CreateCampaignDialogProps {
@@ -54,14 +60,16 @@ interface CreateCampaignDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+const EMOJI_LIST = ["😀", "😊", "🎉", "🔥", "💯", "✨", "❤️", "👍", "🙌", "💪", "🎁", "💰", "⭐", "🚀", "📢", "💬", "📱", "🛒", "💳", "🏷️"];
+
 export function CreateCampaignDialog({ open, onOpenChange }: CreateCampaignDialogProps) {
   const queryClient = useQueryClient();
   const [step, setStep] = useState(1);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [selectedClusters, setSelectedClusters] = useState<string[]>([]);
-  const [messages, setMessages] = useState<GeneratedMessage[]>([]);
-  const [selectedMessages, setSelectedMessages] = useState<number[]>([0]);
+  const [messages, setMessages] = useState<CampaignMessage[]>([]);
+  const [selectedMessages, setSelectedMessages] = useState<number[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [dailyLimit, setDailyLimit] = useState(50);
   const [delayMin, setDelayMin] = useState(180);
@@ -69,6 +77,8 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateCampaignDialo
   const [scheduleType, setScheduleType] = useState<"now" | "scheduled">("now");
   const [scheduledDate, setScheduledDate] = useState<Date>();
   const [scheduledTime, setScheduledTime] = useState("09:00");
+  const [activeEmojiPicker, setActiveEmojiPicker] = useState<number | null>(null);
+  const textareaRefs = useRef<(HTMLTextAreaElement | null)[]>([]);
 
   const { data: clusters } = useQuery({
     queryKey: ["customer-clusters"],
@@ -110,7 +120,14 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateCampaignDialo
       if (error) throw error;
       if (data.error) throw new Error(data.error);
 
-      setMessages(data.messages || []);
+      const generatedMessages: CampaignMessage[] = (data.messages || []).map((msg: any) => ({
+        content: msg.content,
+        variant: msg.variant,
+        mediaUrl: "",
+        mediaType: "none" as const,
+      }));
+      
+      setMessages(generatedMessages);
       setSelectedMessages([0]);
       toast.success("Mensagens geradas com sucesso!");
     } catch (error) {
@@ -119,6 +136,47 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateCampaignDialo
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const addNewMessage = () => {
+    const newVariant = String.fromCharCode(65 + messages.length); // A, B, C...
+    setMessages([...messages, {
+      content: "",
+      variant: newVariant,
+      mediaUrl: "",
+      mediaType: "none",
+    }]);
+  };
+
+  const updateMessage = (idx: number, field: keyof CampaignMessage, value: string) => {
+    setMessages(prev => prev.map((msg, i) => 
+      i === idx ? { ...msg, [field]: value } : msg
+    ));
+  };
+
+  const removeMessage = (idx: number) => {
+    setMessages(prev => prev.filter((_, i) => i !== idx));
+    setSelectedMessages(prev => prev.filter(i => i !== idx).map(i => i > idx ? i - 1 : i));
+  };
+
+  const insertEmoji = (idx: number, emoji: string) => {
+    const textarea = textareaRefs.current[idx];
+    if (textarea) {
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const currentContent = messages[idx].content;
+      const newContent = currentContent.substring(0, start) + emoji + currentContent.substring(end);
+      updateMessage(idx, "content", newContent);
+      
+      // Set cursor position after emoji
+      setTimeout(() => {
+        textarea.focus();
+        textarea.setSelectionRange(start + emoji.length, start + emoji.length);
+      }, 0);
+    } else {
+      updateMessage(idx, "content", messages[idx].content + emoji);
+    }
+    setActiveEmojiPicker(null);
   };
 
   const createCampaignMutation = useMutation({
@@ -159,25 +217,38 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateCampaignDialo
         selectedMsgs.map((msg) => ({
           campaign_id: campaign.id,
           content: msg.content,
-          message_type: "text",
+          message_type: msg.mediaType === "none" ? "text" : msg.mediaType,
+          media_url: msg.mediaUrl || null,
         }))
       );
 
       if (msgError) throw msgError;
 
       // Fetch customers from selected clusters and create queue entries
-      const { data: customers, error: customersError } = await supabase
-        .from("imported_customers")
-        .select("id, name, phone, cluster_id")
-        .in("cluster_id", selectedClusters)
-        .eq("phone_status", "valid")
-        .not("phone", "is", null);
+      let allCustomers: any[] = [];
+      let offset = 0;
+      const pageSize = 1000;
 
-      if (customersError) throw customersError;
+      while (true) {
+        const { data: batch, error: customersError } = await supabase
+          .from("imported_customers")
+          .select("id, name, phone, cluster_id")
+          .in("cluster_id", selectedClusters)
+          .eq("phone_status", "valid")
+          .not("phone", "is", null)
+          .range(offset, offset + pageSize - 1);
+
+        if (customersError) throw customersError;
+        if (!batch || batch.length === 0) break;
+        
+        allCustomers = allCustomers.concat(batch);
+        if (batch.length < pageSize) break;
+        offset += pageSize;
+      }
 
       // Create queue entries with random message assignment
-      if (customers && customers.length > 0) {
-        const queueEntries = customers.map((customer) => {
+      if (allCustomers.length > 0) {
+        const queueEntries = allCustomers.map((customer) => {
           const randomMsgIdx = Math.floor(Math.random() * selectedMsgs.length);
           const message = selectedMsgs[randomMsgIdx];
           const personalizedContent = message.content.replace(/\{\{nome\}\}/gi, customer.name.split(" ")[0]);
@@ -188,6 +259,7 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateCampaignDialo
             phone: customer.phone!,
             content: personalizedContent,
             status: "pending",
+            metadata: message.mediaUrl ? { media_url: message.mediaUrl, media_type: message.mediaType } : {},
           };
         });
 
@@ -226,7 +298,7 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateCampaignDialo
     setDescription("");
     setSelectedClusters([]);
     setMessages([]);
-    setSelectedMessages([0]);
+    setSelectedMessages([]);
     setDailyLimit(50);
     setDelayMin(180);
     setDelayMax(480);
@@ -254,7 +326,8 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateCampaignDialo
       case 1:
         return name.trim().length > 0 && selectedClusters.length > 0;
       case 2:
-        return messages.length > 0 && selectedMessages.length > 0;
+        return messages.length > 0 && selectedMessages.length > 0 && 
+          selectedMessages.every(idx => messages[idx]?.content.trim().length > 0);
       case 3:
         return scheduleType === "now" || (scheduledDate !== undefined);
       default:
@@ -264,18 +337,18 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateCampaignDialo
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
-        <DialogHeader>
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-0">
+        <DialogHeader className="px-6 pt-6 pb-2">
           <DialogTitle>Nova Campanha</DialogTitle>
           <DialogDescription>
             {step === 1 && "Defina o nome e selecione os segmentos de clientes"}
-            {step === 2 && "Gere mensagens com IA e escolha as variações"}
+            {step === 2 && "Gere mensagens com IA e edite as variações"}
             {step === 3 && "Configure o envio e agendamento"}
           </DialogDescription>
         </DialogHeader>
 
         {/* Progress */}
-        <div className="flex items-center gap-2 py-2">
+        <div className="flex items-center gap-2 px-6 py-2">
           {[1, 2, 3].map((s) => (
             <div key={s} className="flex items-center gap-2">
               <div
@@ -300,275 +373,393 @@ export function CreateCampaignDialog({ open, onOpenChange }: CreateCampaignDialo
           ))}
         </div>
 
-        <ScrollArea className="flex-1 pr-4">
-          {/* Step 1: Clusters */}
-          {step === 1 && (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Nome da campanha</Label>
-                <Input
-                  id="name"
-                  placeholder="Ex: Promoção de Verão"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="description">Descrição (opcional)</Label>
-                <Textarea
-                  id="description"
-                  placeholder="Descreva o objetivo da campanha..."
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  rows={2}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Selecione os segmentos</Label>
-                <div className="grid gap-2">
-                  {clusters?.map((cluster) => (
-                    <div
-                      key={cluster.id}
-                      className={cn(
-                        "flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors",
-                        selectedClusters.includes(cluster.id)
-                          ? "border-primary bg-primary/5"
-                          : "hover:border-primary/50"
-                      )}
-                      onClick={() => toggleCluster(cluster.id)}
-                    >
-                      <Checkbox
-                        checked={selectedClusters.includes(cluster.id)}
-                        onCheckedChange={() => toggleCluster(cluster.id)}
-                      />
-                      <span className="text-xl">{cluster.emoji || "📊"}</span>
-                      <div className="flex-1">
-                        <p className="font-medium text-foreground">{cluster.name}</p>
-                        <p className="text-xs text-muted-foreground line-clamp-1">
-                          {cluster.description}
-                        </p>
-                      </div>
-                      <Badge variant="secondary">
-                        <Users className="w-3 h-3 mr-1" />
-                        {cluster.customer_count}
-                      </Badge>
-                    </div>
-                  ))}
+        <ScrollArea className="flex-1 px-6">
+          <div className="pb-4">
+            {/* Step 1: Clusters */}
+            {step === 1 && (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Nome da campanha</Label>
+                  <Input
+                    id="name"
+                    placeholder="Ex: Promoção de Verão"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                  />
                 </div>
 
-                {selectedClusters.length > 0 && (
-                  <p className="text-sm text-muted-foreground">
-                    Total: <span className="font-medium text-foreground">{totalRecipients}</span> destinatários
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Step 2: Messages */}
-          {step === 2 && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label>Mensagens da campanha</Label>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={generateMessages}
-                  disabled={isGenerating}
-                >
-                  {isGenerating ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Gerando...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-4 h-4 mr-2" />
-                      {messages.length > 0 ? "Regenerar" : "Gerar com IA"}
-                    </>
-                  )}
-                </Button>
-              </div>
-
-              {messages.length === 0 && !isGenerating && (
-                <div className="text-center py-8 border rounded-lg bg-muted/50">
-                  <MessageSquare className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
-                  <p className="text-muted-foreground mb-3">
-                    Clique em "Gerar com IA" para criar mensagens personalizadas
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Baseado no perfil: <span className="font-medium">{selectedClusterData?.name}</span>
-                  </p>
+                <div className="space-y-2">
+                  <Label htmlFor="description">Descrição (opcional)</Label>
+                  <Textarea
+                    id="description"
+                    placeholder="Descreva o objetivo da campanha..."
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    rows={2}
+                  />
                 </div>
-              )}
 
-              {messages.length > 0 && (
-                <div className="space-y-3">
-                  <p className="text-xs text-muted-foreground">
-                    Selecione as mensagens que deseja usar (serão enviadas aleatoriamente):
-                  </p>
-                  {messages.map((msg, idx) => (
-                    <div
-                      key={idx}
-                      className={cn(
-                        "p-3 border rounded-lg cursor-pointer transition-colors",
-                        selectedMessages.includes(idx)
-                          ? "border-primary bg-primary/5"
-                          : "hover:border-primary/50"
-                      )}
-                      onClick={() => toggleMessage(idx)}
-                    >
-                      <div className="flex items-start gap-3">
+                <div className="space-y-2">
+                  <Label>Selecione os segmentos</Label>
+                  <div className="grid gap-2 max-h-[300px] overflow-y-auto pr-2">
+                    {clusters?.map((cluster) => (
+                      <div
+                        key={cluster.id}
+                        className={cn(
+                          "flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors",
+                          selectedClusters.includes(cluster.id)
+                            ? "border-primary bg-primary/5"
+                            : "hover:border-primary/50"
+                        )}
+                        onClick={() => toggleCluster(cluster.id)}
+                      >
                         <Checkbox
-                          checked={selectedMessages.includes(idx)}
-                          onCheckedChange={() => toggleMessage(idx)}
+                          checked={selectedClusters.includes(cluster.id)}
+                          onCheckedChange={() => toggleCluster(cluster.id)}
                         />
-                        <div className="flex-1">
-                          <Badge variant="outline" className="mb-2">
-                            Variante {msg.variant}
-                          </Badge>
-                          <p className="text-sm text-foreground whitespace-pre-wrap">
-                            {msg.content}
+                        <span className="text-xl">{cluster.emoji || "📊"}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-foreground">{cluster.name}</p>
+                          <p className="text-xs text-muted-foreground line-clamp-1">
+                            {cluster.description}
                           </p>
                         </div>
+                        <Badge variant="secondary" className="shrink-0">
+                          <Users className="w-3 h-3 mr-1" />
+                          {cluster.customer_count}
+                        </Badge>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+                    ))}
+                  </div>
 
-          {/* Step 3: Settings */}
-          {step === 3 && (
-            <div className="space-y-6">
-              {/* Schedule */}
-              <div className="space-y-3">
-                <Label>Quando enviar</Label>
-                <Tabs value={scheduleType} onValueChange={(v) => setScheduleType(v as "now" | "scheduled")}>
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="now">
-                      <Send className="w-4 h-4 mr-2" />
-                      Enviar agora
-                    </TabsTrigger>
-                    <TabsTrigger value="scheduled">
-                      <CalendarIcon className="w-4 h-4 mr-2" />
-                      Agendar
-                    </TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="scheduled" className="space-y-3 pt-3">
-                    <div className="flex gap-3">
-                      <div className="flex-1">
-                        <Label className="text-xs">Data</Label>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant="outline"
-                              className={cn(
-                                "w-full justify-start text-left font-normal mt-1",
-                                !scheduledDate && "text-muted-foreground"
+                  {selectedClusters.length > 0 && (
+                    <p className="text-sm text-muted-foreground">
+                      Total: <span className="font-medium text-foreground">{totalRecipients}</span> destinatários
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Step 2: Messages */}
+            {step === 2 && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label>Mensagens da campanha</Label>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={addNewMessage}
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      Adicionar
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={generateMessages}
+                      disabled={isGenerating}
+                    >
+                      {isGenerating ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Gerando...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-4 h-4 mr-2" />
+                          Gerar IA
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
+                {messages.length === 0 && !isGenerating && (
+                  <div className="text-center py-8 border rounded-lg bg-muted/50">
+                    <MessageSquare className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
+                    <p className="text-muted-foreground mb-3">
+                      Clique em "Gerar IA" ou "Adicionar" para criar mensagens
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Baseado no perfil: <span className="font-medium">{selectedClusterData?.name}</span>
+                    </p>
+                  </div>
+                )}
+
+                {messages.length > 0 && (
+                  <div className="space-y-4">
+                    <p className="text-xs text-muted-foreground">
+                      Edite as mensagens e selecione as que deseja usar. Use {"{{nome}}"} para personalizar.
+                    </p>
+                    {messages.map((msg, idx) => (
+                      <div
+                        key={idx}
+                        className={cn(
+                          "p-4 border rounded-lg transition-colors",
+                          selectedMessages.includes(idx)
+                            ? "border-primary bg-primary/5"
+                            : "border-border"
+                        )}
+                      >
+                        <div className="flex items-start gap-3 mb-3">
+                          <Checkbox
+                            checked={selectedMessages.includes(idx)}
+                            onCheckedChange={() => toggleMessage(idx)}
+                          />
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between mb-2">
+                              <Badge variant="outline">Variante {msg.variant}</Badge>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                                onClick={() => removeMessage(idx)}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                            
+                            {/* Message textarea with emoji support */}
+                            <div className="relative">
+                              <Textarea
+                                ref={(el) => { textareaRefs.current[idx] = el; }}
+                                value={msg.content}
+                                onChange={(e) => updateMessage(idx, "content", e.target.value)}
+                                placeholder="Digite sua mensagem... Use {{nome}} para o nome do cliente"
+                                rows={4}
+                                className="pr-10 resize-none"
+                              />
+                              <Popover 
+                                open={activeEmojiPicker === idx} 
+                                onOpenChange={(open) => setActiveEmojiPicker(open ? idx : null)}
+                              >
+                                <PopoverTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="absolute top-2 right-2 h-6 w-6 p-0"
+                                  >
+                                    <Smile className="w-4 h-4" />
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-64 p-2" align="end">
+                                  <div className="grid grid-cols-5 gap-1">
+                                    {EMOJI_LIST.map((emoji) => (
+                                      <Button
+                                        key={emoji}
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-8 w-8 p-0 text-lg"
+                                        onClick={() => insertEmoji(idx, emoji)}
+                                      >
+                                        {emoji}
+                                      </Button>
+                                    ))}
+                                  </div>
+                                </PopoverContent>
+                              </Popover>
+                            </div>
+
+                            {/* Media URL input */}
+                            <div className="mt-3 space-y-2">
+                              <Label className="text-xs text-muted-foreground">Imagem/Mídia (opcional)</Label>
+                              <div className="flex gap-2">
+                                <Input
+                                  placeholder="Cole a URL da imagem ou vídeo..."
+                                  value={msg.mediaUrl}
+                                  onChange={(e) => {
+                                    updateMessage(idx, "mediaUrl", e.target.value);
+                                    if (e.target.value) {
+                                      const isVideo = e.target.value.match(/\.(mp4|webm|mov)(\?|$)/i);
+                                      updateMessage(idx, "mediaType", isVideo ? "video" : "image");
+                                    } else {
+                                      updateMessage(idx, "mediaType", "none");
+                                    }
+                                  }}
+                                  className="flex-1"
+                                />
+                                {msg.mediaUrl && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="shrink-0"
+                                    onClick={() => {
+                                      updateMessage(idx, "mediaUrl", "");
+                                      updateMessage(idx, "mediaType", "none");
+                                    }}
+                                  >
+                                    <X className="w-4 h-4" />
+                                  </Button>
+                                )}
+                              </div>
+                              {msg.mediaUrl && (
+                                <div className="relative w-20 h-20 rounded border overflow-hidden">
+                                  {msg.mediaType === "video" ? (
+                                    <video 
+                                      src={msg.mediaUrl} 
+                                      className="w-full h-full object-cover"
+                                    />
+                                  ) : (
+                                    <img 
+                                      src={msg.mediaUrl} 
+                                      alt="Preview" 
+                                      className="w-full h-full object-cover"
+                                      onError={(e) => {
+                                        (e.target as HTMLImageElement).src = "/placeholder.svg";
+                                      }}
+                                    />
+                                  )}
+                                </div>
                               )}
-                            >
-                              <CalendarIcon className="mr-2 h-4 w-4" />
-                              {scheduledDate
-                                ? format(scheduledDate, "PPP", { locale: ptBR })
-                                : "Selecione uma data"}
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0">
-                            <Calendar
-                              mode="single"
-                              selected={scheduledDate}
-                              onSelect={setScheduledDate}
-                              disabled={(date) => date < new Date()}
-                              locale={ptBR}
-                            />
-                          </PopoverContent>
-                        </Popover>
-                      </div>
-                      <div className="w-32">
-                        <Label className="text-xs">Hora</Label>
-                        <Input
-                          type="time"
-                          value={scheduledTime}
-                          onChange={(e) => setScheduledTime(e.target.value)}
-                          className="mt-1"
-                        />
-                      </div>
-                    </div>
-                  </TabsContent>
-                </Tabs>
-              </div>
+                            </div>
 
-              {/* Sending limits */}
-              <div className="space-y-3">
-                <Label>Configurações de envio</Label>
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <Label className="text-xs">Limite diário</Label>
-                    <Input
-                      type="number"
-                      value={dailyLimit}
-                      onChange={(e) => setDailyLimit(Number(e.target.value))}
-                      min={1}
-                      max={500}
-                      className="mt-1"
-                    />
+                            <p className="text-xs text-muted-foreground mt-2">
+                              {msg.content.length}/300 caracteres
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <div>
-                    <Label className="text-xs">Delay mín (seg)</Label>
-                    <Input
-                      type="number"
-                      value={delayMin}
-                      onChange={(e) => setDelayMin(Number(e.target.value))}
-                      min={30}
-                      className="mt-1"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs">Delay máx (seg)</Label>
-                    <Input
-                      type="number"
-                      value={delayMax}
-                      onChange={(e) => setDelayMax(Number(e.target.value))}
-                      min={delayMin}
-                      className="mt-1"
-                    />
-                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Step 3: Settings */}
+            {step === 3 && (
+              <div className="space-y-6">
+                {/* Schedule */}
+                <div className="space-y-3">
+                  <Label>Quando enviar</Label>
+                  <Tabs value={scheduleType} onValueChange={(v) => setScheduleType(v as "now" | "scheduled")}>
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="now">
+                        <Send className="w-4 h-4 mr-2" />
+                        Enviar agora
+                      </TabsTrigger>
+                      <TabsTrigger value="scheduled">
+                        <CalendarIcon className="w-4 h-4 mr-2" />
+                        Agendar
+                      </TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="scheduled" className="space-y-3 pt-3">
+                      <div className="flex gap-3">
+                        <div className="flex-1">
+                          <Label className="text-xs">Data</Label>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                className={cn(
+                                  "w-full justify-start text-left font-normal mt-1",
+                                  !scheduledDate && "text-muted-foreground"
+                                )}
+                              >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {scheduledDate
+                                  ? format(scheduledDate, "PPP", { locale: ptBR })
+                                  : "Selecione uma data"}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0">
+                              <Calendar
+                                mode="single"
+                                selected={scheduledDate}
+                                onSelect={setScheduledDate}
+                                disabled={(date) => date < new Date()}
+                                locale={ptBR}
+                              />
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+                        <div className="w-32">
+                          <Label className="text-xs">Hora</Label>
+                          <Input
+                            type="time"
+                            value={scheduledTime}
+                            onChange={(e) => setScheduledTime(e.target.value)}
+                            className="mt-1"
+                          />
+                        </div>
+                      </div>
+                    </TabsContent>
+                  </Tabs>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Intervalo de {delayMin}s a {delayMax}s entre mensagens, máximo de {dailyLimit} envios por dia
-                </p>
-              </div>
 
-              {/* Summary */}
-              <div className="p-4 bg-muted/50 rounded-lg space-y-2">
-                <h4 className="font-medium text-foreground">Resumo</h4>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <p className="text-muted-foreground">Campanha:</p>
-                  <p className="font-medium">{name}</p>
-                  <p className="text-muted-foreground">Destinatários:</p>
-                  <p className="font-medium">{totalRecipients}</p>
-                  <p className="text-muted-foreground">Variações de mensagem:</p>
-                  <p className="font-medium">{selectedMessages.length}</p>
-                  <p className="text-muted-foreground">Início:</p>
-                  <p className="font-medium">
-                    {scheduleType === "now"
-                      ? "Imediatamente"
-                      : scheduledDate
-                      ? format(scheduledDate, "PPP", { locale: ptBR }) + " às " + scheduledTime
-                      : "-"}
+                {/* Sending limits */}
+                <div className="space-y-3">
+                  <Label>Configurações de envio</Label>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <Label className="text-xs">Limite diário</Label>
+                      <Input
+                        type="number"
+                        value={dailyLimit}
+                        onChange={(e) => setDailyLimit(Number(e.target.value))}
+                        min={1}
+                        max={500}
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Delay mín (seg)</Label>
+                      <Input
+                        type="number"
+                        value={delayMin}
+                        onChange={(e) => setDelayMin(Number(e.target.value))}
+                        min={30}
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Delay máx (seg)</Label>
+                      <Input
+                        type="number"
+                        value={delayMax}
+                        onChange={(e) => setDelayMax(Number(e.target.value))}
+                        min={delayMin}
+                        className="mt-1"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Intervalo de {Math.floor(delayMin / 60)}m{delayMin % 60}s a {Math.floor(delayMax / 60)}m{delayMax % 60}s entre mensagens, máximo de {dailyLimit} envios por dia
                   </p>
                 </div>
+
+                {/* Summary */}
+                <div className="p-4 bg-muted/50 rounded-lg space-y-2">
+                  <h4 className="font-medium text-foreground">Resumo</h4>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <p className="text-muted-foreground">Campanha:</p>
+                    <p className="font-medium">{name}</p>
+                    <p className="text-muted-foreground">Destinatários:</p>
+                    <p className="font-medium">{totalRecipients}</p>
+                    <p className="text-muted-foreground">Variações de mensagem:</p>
+                    <p className="font-medium">{selectedMessages.length}</p>
+                    <p className="text-muted-foreground">Início:</p>
+                    <p className="font-medium">
+                      {scheduleType === "now"
+                        ? "Imediatamente"
+                        : scheduledDate
+                        ? format(scheduledDate, "PPP", { locale: ptBR }) + " às " + scheduledTime
+                        : "-"}
+                    </p>
+                    <p className="text-muted-foreground">Tempo estimado:</p>
+                    <p className="font-medium">
+                      ~{Math.ceil(totalRecipients / dailyLimit)} dias
+                    </p>
+                  </div>
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </ScrollArea>
 
         {/* Footer */}
-        <div className="flex items-center justify-between pt-4 border-t">
+        <div className="flex items-center justify-between px-6 py-4 border-t">
           <Button
             variant="outline"
             onClick={() => (step > 1 ? setStep(step - 1) : onOpenChange(false))}
