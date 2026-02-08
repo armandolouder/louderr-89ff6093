@@ -84,7 +84,7 @@ serve(async (req) => {
         body: JSON.stringify(requestBody),
       });
     } else if (mediaUrl) {
-      // For media messages, use /send/file endpoint
+      // For media messages, use /send/media endpoint
       // UAZAPI expects "file" field with URL or base64, and "mediatype" for the type
       requestBody = {
         number: formattedPhone,
@@ -96,7 +96,7 @@ serve(async (req) => {
       console.log(`Sending ${messageType} message to ${formattedPhone}`);
       console.log("Request body:", JSON.stringify(requestBody));
 
-      uazapiResponse = await fetch(`${UAZAPI_SERVER_URL}/send/file`, {
+      uazapiResponse = await fetch(`${UAZAPI_SERVER_URL}/send/media`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
