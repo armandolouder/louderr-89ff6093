@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Send, Pause, Play, Loader2, Clock, CheckCircle2, XCircle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { CreateCampaignDialog } from "./CreateCampaignDialog";
 
 interface Campaign {
   id: string;
@@ -31,6 +33,8 @@ const statusConfig = {
 };
 
 export function CampaignsList() {
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+
   const { data: campaigns, isLoading } = useQuery({
     queryKey: ["campaigns"],
     queryFn: async () => {
@@ -55,11 +59,13 @@ export function CampaignsList() {
             Gerencie suas campanhas de WhatsApp
           </p>
         </div>
-        <Button>
+        <Button onClick={() => setCreateDialogOpen(true)}>
           <Plus className="w-4 h-4 mr-2" />
           Nova Campanha
         </Button>
       </div>
+
+      <CreateCampaignDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} />
 
       {/* Empty State */}
       {!hasCampaigns && !isLoading && (
@@ -74,7 +80,7 @@ export function CampaignsList() {
             <p className="text-sm text-muted-foreground text-center max-w-md mb-4">
               Crie sua primeira campanha para começar a enviar mensagens para seus clientes segmentados.
             </p>
-            <Button>
+            <Button onClick={() => setCreateDialogOpen(true)}>
               <Plus className="w-4 h-4 mr-2" />
               Criar Campanha
             </Button>
