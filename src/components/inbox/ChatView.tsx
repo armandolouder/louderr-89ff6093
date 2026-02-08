@@ -208,6 +208,10 @@ export function ChatView({ conversation }: ChatViewProps) {
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSend()}
             className="flex-1 bg-secondary border-border"
+            spellCheck={true}
+            lang="pt-BR"
+            autoComplete="off"
+            autoCorrect="on"
           />
           <Button onClick={handleSend} disabled={sendMessage.isPending} className="shadow-glow">
             {sendMessage.isPending ? (
