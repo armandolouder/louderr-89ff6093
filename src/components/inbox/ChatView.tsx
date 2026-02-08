@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Send, Paperclip, Smile, MoreVertical, Phone, User, Loader2, SpellCheck } from "lucide-react";
+import { Send, Paperclip, Smile, MoreVertical, Phone, User, Loader2, SpellCheck, MessageSquareText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -7,8 +7,11 @@ import { ChannelBadge } from "./ChannelBadge";
 import { MediaPreview } from "./MediaPreview";
 import { ReactionPicker } from "./ReactionPicker";
 import { MessageActions } from "./MessageActions";
+import { QuickResponsePicker } from "./QuickResponsePicker";
+import { QuickResponseManager } from "./QuickResponseManager";
 import { Conversation } from "@/hooks/useConversations";
 import { useMessages, useSendMessage } from "@/hooks/useMessages";
+import { QuickResponse } from "@/hooks/useQuickResponses";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,11 +27,17 @@ interface ChatViewProps {
 export function ChatView({ conversation, hideHeader }: ChatViewProps) {
   const [message, setMessage] = useState("");
   const [isCheckingSpelling, setIsCheckingSpelling] = useState(false);
+  const [showQuickResponseManager, setShowQuickResponseManager] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
   
   const { data: messages, isLoading } = useMessages(conversation.id);
   const sendMessage = useSendMessage();
+
+  const handleQuickResponseSelect = (response: QuickResponse) => {
+    setMessage(response.content);
+    // If has media, we could handle it here for sending
+  };
 
   const checkSpelling = async () => {
     if (!message.trim()) {
@@ -342,6 +351,15 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
                 )}
                 <span className="text-xs">Corrigir</span>
               </Button>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                className="text-muted-foreground hover:text-foreground h-8 px-2"
+                onClick={() => setShowQuickResponseManager(true)}
+              >
+                <MessageSquareText className="w-4 h-4 mr-1" />
+                <span className="text-xs">Rápidas</span>
+              </Button>
             </div>
           </div>
         ) : (
@@ -387,6 +405,11 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
               <TooltipContent>Corrigir ortografia</TooltipContent>
             </Tooltip>
             
+            <QuickResponsePicker 
+              onSelect={handleQuickResponseSelect}
+              onManage={() => setShowQuickResponseManager(true)}
+            />
+            
             <Input
               placeholder="Digite sua mensagem..."
               value={message}
@@ -413,6 +436,11 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
           </div>
         )}
       </div>
+
+      <QuickResponseManager 
+        open={showQuickResponseManager} 
+        onOpenChange={setShowQuickResponseManager} 
+      />
     </div>
   );
 }
