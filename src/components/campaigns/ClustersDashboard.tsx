@@ -1,9 +1,36 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, Sparkles, Loader2, ChevronRight } from "lucide-react";
-import { useState } from "react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Users, Sparkles, Loader2, ChevronRight, Plus, MoreVertical, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { ClusterDetailSheet } from "./ClusterDetailSheet";
 import { cn } from "@/lib/utils";
@@ -20,10 +47,37 @@ interface Cluster {
   color: string;
 }
 
+interface ClusterFormData {
+  name: string;
+  emoji: string;
+  description: string;
+  objective: string;
+  recommendation: string;
+  color: string;
+}
+
+const initialFormData: ClusterFormData = {
+  name: "",
+  emoji: "📊",
+  description: "",
+  objective: "",
+  recommendation: "",
+  color: "#6366f1",
+};
+
+const EMOJI_OPTIONS = ["📊", "🎯", "💎", "🔥", "⭐", "🚀", "💰", "👥", "🏆", "❤️", "🛒", "📱", "🎁", "🧪", "✨"];
+const COLOR_OPTIONS = ["#6366f1", "#f59e0b", "#10b981", "#ef4444", "#8b5cf6", "#ec4899", "#06b6d4", "#84cc16"];
+
 export function ClustersDashboard() {
+  const queryClient = useQueryClient();
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [selectedCluster, setSelectedCluster] = useState<Cluster | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [editingCluster, setEditingCluster] = useState<Cluster | null>(null);
+  const [deletingCluster, setDeletingCluster] = useState<Cluster | null>(null);
+  const [formData, setFormData] = useState<ClusterFormData>(initialFormData);
 
   const { data: customersCount } = useQuery({
     queryKey: ["imported-customers-count"],
@@ -45,6 +99,91 @@ export function ClustersDashboard() {
         .order("customer_count", { ascending: false });
       if (error) throw error;
       return data as Cluster[];
+    },
+  });
+
+  const createClusterMutation = useMutation({
+    mutationFn: async (data: ClusterFormData) => {
+      const { data: cluster, error } = await supabase
+        .from("customer_clusters")
+        .insert({
+          name: data.name,
+          emoji: data.emoji || "📊",
+          description: data.description || null,
+          objective: data.objective || null,
+          recommendation: data.recommendation || null,
+          color: data.color,
+          customer_count: 0,
+          percentage: 0,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return cluster;
+    },
+    onSuccess: () => {
+      toast.success("Cluster criado com sucesso!");
+      queryClient.invalidateQueries({ queryKey: ["customer-clusters"] });
+      handleCloseDialog();
+    },
+    onError: (error) => {
+      console.error("Error creating cluster:", error);
+      toast.error("Erro ao criar cluster");
+    },
+  });
+
+  const updateClusterMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: ClusterFormData }) => {
+      const { error } = await supabase
+        .from("customer_clusters")
+        .update({
+          name: data.name,
+          emoji: data.emoji || "📊",
+          description: data.description || null,
+          objective: data.objective || null,
+          recommendation: data.recommendation || null,
+          color: data.color,
+        })
+        .eq("id", id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Cluster atualizado com sucesso!");
+      queryClient.invalidateQueries({ queryKey: ["customer-clusters"] });
+      handleCloseDialog();
+    },
+    onError: (error) => {
+      console.error("Error updating cluster:", error);
+      toast.error("Erro ao atualizar cluster");
+    },
+  });
+
+  const deleteClusterMutation = useMutation({
+    mutationFn: async (id: string) => {
+      // First, remove cluster_id from all customers in this cluster
+      await supabase
+        .from("imported_customers")
+        .update({ cluster_id: null })
+        .eq("cluster_id", id);
+
+      const { error } = await supabase
+        .from("customer_clusters")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Cluster removido com sucesso!");
+      queryClient.invalidateQueries({ queryKey: ["customer-clusters"] });
+      setDeleteDialogOpen(false);
+      setDeletingCluster(null);
+    },
+    onError: (error) => {
+      console.error("Error deleting cluster:", error);
+      toast.error("Erro ao remover cluster");
     },
   });
 
@@ -77,7 +216,53 @@ export function ClustersDashboard() {
     setSheetOpen(true);
   };
 
+  const handleOpenCreate = () => {
+    setEditingCluster(null);
+    setFormData(initialFormData);
+    setDialogOpen(true);
+  };
+
+  const handleOpenEdit = (e: React.MouseEvent, cluster: Cluster) => {
+    e.stopPropagation();
+    setEditingCluster(cluster);
+    setFormData({
+      name: cluster.name,
+      emoji: cluster.emoji || "📊",
+      description: cluster.description || "",
+      objective: cluster.objective || "",
+      recommendation: cluster.recommendation || "",
+      color: cluster.color,
+    });
+    setDialogOpen(true);
+  };
+
+  const handleOpenDelete = (e: React.MouseEvent, cluster: Cluster) => {
+    e.stopPropagation();
+    setDeletingCluster(cluster);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleCloseDialog = () => {
+    setDialogOpen(false);
+    setEditingCluster(null);
+    setFormData(initialFormData);
+  };
+
+  const handleSubmit = () => {
+    if (!formData.name.trim()) {
+      toast.error("Nome é obrigatório");
+      return;
+    }
+
+    if (editingCluster) {
+      updateClusterMutation.mutate({ id: editingCluster.id, data: formData });
+    } else {
+      createClusterMutation.mutate(formData);
+    }
+  };
+
   const hasData = clusters && clusters.length > 0;
+  const isSubmitting = createClusterMutation.isPending || updateClusterMutation.isPending;
 
   // Calculate total stats
   const totalStats = clusters
@@ -100,19 +285,25 @@ export function ClustersDashboard() {
             )}
           </p>
         </div>
-        <Button onClick={handleAnalyze} disabled={isAnalyzing || !customersCount}>
-          {isAnalyzing ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Analisando...
-            </>
-          ) : (
-            <>
-              <Sparkles className="w-4 h-4 mr-2" />
-              Executar Análise IA
-            </>
-          )}
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleOpenCreate}>
+            <Plus className="w-4 h-4 mr-2" />
+            Novo Cluster
+          </Button>
+          <Button onClick={handleAnalyze} disabled={isAnalyzing || !customersCount}>
+            {isAnalyzing ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Analisando...
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-4 h-4 mr-2" />
+                Análise IA
+              </>
+            )}
+          </Button>
+        </div>
       </div>
 
       {/* Empty State */}
@@ -123,13 +314,23 @@ export function ClustersDashboard() {
               <Users className="w-8 h-8 text-muted-foreground" />
             </div>
             <h3 className="text-lg font-medium text-foreground mb-2">
-              Nenhum cluster gerado
+              Nenhum cluster criado
             </h3>
             <p className="text-sm text-muted-foreground text-center max-w-md mb-4">
-              {customersCount && customersCount > 0
-                ? "Clique em 'Executar Análise IA' para segmentar seus clientes automaticamente."
-                : "Importe uma planilha de clientes primeiro para começar."}
+              Crie um cluster manualmente ou use a IA para segmentar automaticamente.
             </p>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={handleOpenCreate}>
+                <Plus className="w-4 h-4 mr-2" />
+                Criar Cluster
+              </Button>
+              {customersCount && customersCount > 0 && (
+                <Button onClick={handleAnalyze} disabled={isAnalyzing}>
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  Análise IA
+                </Button>
+              )}
+            </div>
           </CardContent>
         </Card>
       )}
@@ -153,12 +354,31 @@ export function ClustersDashboard() {
                     <span className="text-2xl">{cluster.emoji || "📊"}</span>
                     <CardTitle className="text-base">{cluster.name}</CardTitle>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
                     <div
                       className="w-3 h-3 rounded-full"
                       style={{ backgroundColor: cluster.color }}
                     />
-                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <MoreVertical className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={(e) => handleOpenEdit(e as any, cluster)}>
+                          <Pencil className="w-4 h-4 mr-2" />
+                          Editar
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={(e) => handleOpenDelete(e as any, cluster)}
+                          className="text-destructive"
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Excluir
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </div>
                 <CardDescription className="line-clamp-2">
@@ -185,7 +405,7 @@ export function ClustersDashboard() {
                     <p className="text-xs font-medium text-muted-foreground mb-1">
                       Objetivo
                     </p>
-                    <p className="text-sm text-foreground">{cluster.objective}</p>
+                    <p className="text-sm text-foreground line-clamp-2">{cluster.objective}</p>
                   </div>
                 )}
               </CardContent>
@@ -207,6 +427,131 @@ export function ClustersDashboard() {
         open={sheetOpen}
         onOpenChange={setSheetOpen}
       />
+
+      {/* Create/Edit Dialog */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              {editingCluster ? "Editar Cluster" : "Novo Cluster"}
+            </DialogTitle>
+            <DialogDescription>
+              {editingCluster 
+                ? "Edite as informações do cluster"
+                : "Crie um novo cluster para segmentar clientes manualmente"}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="flex gap-3">
+              <div className="space-y-2">
+                <Label>Emoji</Label>
+                <div className="flex flex-wrap gap-1 p-2 border rounded-lg w-fit">
+                  {EMOJI_OPTIONS.map((emoji) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      className={cn(
+                        "w-8 h-8 rounded text-lg hover:bg-muted transition-colors",
+                        formData.emoji === emoji && "bg-primary/20 ring-2 ring-primary"
+                      )}
+                      onClick={() => setFormData({ ...formData, emoji })}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Cor</Label>
+                <div className="flex flex-wrap gap-1 p-2 border rounded-lg w-fit">
+                  {COLOR_OPTIONS.map((color) => (
+                    <button
+                      key={color}
+                      type="button"
+                      className={cn(
+                        "w-6 h-6 rounded-full transition-all",
+                        formData.color === color && "ring-2 ring-offset-2 ring-primary"
+                      )}
+                      style={{ backgroundColor: color }}
+                      onClick={() => setFormData({ ...formData, color })}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="name">Nome do Cluster *</Label>
+              <Input
+                id="name"
+                placeholder="Ex: Clientes VIP"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="description">Descrição</Label>
+              <Textarea
+                id="description"
+                placeholder="Descreva o perfil dos clientes neste cluster..."
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                rows={2}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="objective">Objetivo</Label>
+              <Input
+                id="objective"
+                placeholder="Ex: Fidelização e upsell"
+                value={formData.objective}
+                onChange={(e) => setFormData({ ...formData, objective: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="recommendation">Recomendação</Label>
+              <Textarea
+                id="recommendation"
+                placeholder="Dicas de como abordar este segmento..."
+                value={formData.recommendation}
+                onChange={(e) => setFormData({ ...formData, recommendation: e.target.value })}
+                rows={2}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCloseDialog}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSubmit} disabled={isSubmitting}>
+              {isSubmitting && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+              {editingCluster ? "Salvar" : "Criar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir cluster</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir o cluster <strong>{deletingCluster?.name}</strong>?
+              Os clientes serão desvinculados mas não serão excluídos.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deletingCluster && deleteClusterMutation.mutate(deletingCluster.id)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteClusterMutation.isPending && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
