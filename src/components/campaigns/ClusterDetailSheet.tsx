@@ -67,11 +67,49 @@ const ticketLabels: Record<string, string> = {
 };
 
 export function ClusterDetailSheet({ cluster, open, onOpenChange }: ClusterDetailSheetProps) {
+  // Query for aggregated stats of ALL customers in the cluster
+  const { data: clusterStats } = useQuery({
+    queryKey: ["cluster-stats", cluster?.id],
+    queryFn: async () => {
+      if (!cluster?.id) return null;
+
+      // Fetch ALL customers for this cluster to calculate correct stats
+      let allCustomers: Customer[] = [];
+      let offset = 0;
+      const pageSize = 1000;
+
+      while (true) {
+        const { data: batch, error } = await supabase
+          .from("imported_customers")
+          .select("total_spent, order_count, phone_status, email_status")
+          .eq("cluster_id", cluster.id)
+          .range(offset, offset + pageSize - 1);
+
+        if (error) throw error;
+        if (!batch || batch.length === 0) break;
+
+        allCustomers = allCustomers.concat(batch as Customer[]);
+        if (batch.length < pageSize) break;
+        offset += pageSize;
+      }
+
+      const totalRevenue = allCustomers.reduce((sum, c) => sum + (c.total_spent || 0), 0);
+      const totalOrders = allCustomers.reduce((sum, c) => sum + (c.order_count || 0), 0);
+      const avgTicket = allCustomers.length > 0 ? totalRevenue / allCustomers.length : 0;
+      const validPhones = allCustomers.filter((c) => c.phone_status === "valid").length;
+      const validEmails = allCustomers.filter((c) => c.email_status === "valid").length;
+
+      return { totalRevenue, avgTicket, totalOrders, validPhones, validEmails };
+    },
+    enabled: !!cluster?.id && open,
+  });
+
+  // Query for paginated customer list (display only)
   const { data: customers, isLoading } = useQuery({
     queryKey: ["cluster-customers", cluster?.id],
     queryFn: async () => {
       if (!cluster?.id) return [];
-      
+
       const { data, error } = await supabase
         .from("imported_customers")
         .select("*")
@@ -94,7 +132,6 @@ export function ClusterDetailSheet({ cluster, open, onOpenChange }: ClusterDetai
 
   const formatPhone = (phone: string | null) => {
     if (!phone) return "-";
-    // Format as +55 (11) 99999-9999
     const digits = phone.replace(/\D/g, "");
     if (digits.length === 13) {
       return `+${digits.slice(0, 2)} (${digits.slice(2, 4)}) ${digits.slice(4, 9)}-${digits.slice(9)}`;
@@ -104,19 +141,6 @@ export function ClusterDetailSheet({ cluster, open, onOpenChange }: ClusterDetai
     }
     return phone;
   };
-
-  // Calculate summary stats
-  const summaryStats = customers
-    ? {
-        totalRevenue: customers.reduce((sum, c) => sum + (c.total_spent || 0), 0),
-        avgTicket: customers.length > 0
-          ? customers.reduce((sum, c) => sum + (c.total_spent || 0), 0) / customers.length
-          : 0,
-        totalOrders: customers.reduce((sum, c) => sum + (c.order_count || 0), 0),
-        validPhones: customers.filter((c) => c.phone_status === "valid").length,
-        validEmails: customers.filter((c) => c.email_status === "valid").length,
-      }
-    : null;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -133,31 +157,31 @@ export function ClusterDetailSheet({ cluster, open, onOpenChange }: ClusterDetai
         </SheetHeader>
 
         <div className="mt-6 space-y-6">
-          {/* Summary Cards */}
-          {summaryStats && (
+        {/* Summary Cards */}
+          {clusterStats && (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="p-3 bg-muted/50 rounded-lg">
                 <p className="text-xs text-muted-foreground">Receita Total</p>
                 <p className="text-lg font-bold text-primary">
-                  {formatCurrency(summaryStats.totalRevenue)}
+                  {formatCurrency(clusterStats.totalRevenue)}
                 </p>
               </div>
               <div className="p-3 bg-muted/50 rounded-lg">
                 <p className="text-xs text-muted-foreground">Ticket Médio</p>
                 <p className="text-lg font-bold text-foreground">
-                  {formatCurrency(summaryStats.avgTicket)}
+                  {formatCurrency(clusterStats.avgTicket)}
                 </p>
               </div>
               <div className="p-3 bg-muted/50 rounded-lg">
                 <p className="text-xs text-muted-foreground">WhatsApp válidos</p>
                 <p className="text-lg font-bold text-foreground">
-                  {summaryStats.validPhones}
+                  {clusterStats.validPhones}
                 </p>
               </div>
               <div className="p-3 bg-muted/50 rounded-lg">
                 <p className="text-xs text-muted-foreground">Emails válidos</p>
                 <p className="text-lg font-bold text-foreground">
-                  {summaryStats.validEmails}
+                  {clusterStats.validEmails}
                 </p>
               </div>
             </div>
