@@ -23,6 +23,7 @@ export interface Conversation {
   last_message_at: string | null;
   created_at: string;
   updated_at: string;
+  tab_id: string | null;
   contact: Contact;
 }
 

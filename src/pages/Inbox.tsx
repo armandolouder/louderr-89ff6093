@@ -2,10 +2,12 @@ import { useState } from "react";
 import { MessageSquareOff } from "lucide-react";
 import { ConversationList } from "@/components/inbox/ConversationList";
 import { ChatView } from "@/components/inbox/ChatView";
+import { CustomTabsSidebar } from "@/components/inbox/CustomTabsSidebar";
 import { Conversation } from "@/hooks/useConversations";
 
 export default function Inbox() {
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
+  const [selectedTabId, setSelectedTabId] = useState<string | null>(null);
 
   return (
     <div className="flex h-full">
@@ -13,6 +15,7 @@ export default function Inbox() {
         <ConversationList
           selectedId={selectedConversation?.id}
           onSelect={setSelectedConversation}
+          filterTabId={selectedTabId}
         />
       </div>
       
@@ -33,6 +36,11 @@ export default function Inbox() {
           </div>
         )}
       </div>
+
+      <CustomTabsSidebar
+        selectedTabId={selectedTabId}
+        onSelectTab={setSelectedTabId}
+      />
     </div>
   );
 }
