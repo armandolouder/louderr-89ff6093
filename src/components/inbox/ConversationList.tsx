@@ -9,9 +9,10 @@ import { cn } from "@/lib/utils";
 interface ConversationListProps {
   selectedId?: string;
   onSelect: (conversation: Conversation) => void;
+  filterTabId?: string | null;
 }
 
-export function ConversationList({ selectedId, onSelect }: ConversationListProps) {
+export function ConversationList({ selectedId, onSelect, filterTabId }: ConversationListProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [channelFilter, setChannelFilter] = useState<"all" | "whatsapp" | "instagram">("all");
   
@@ -21,7 +22,8 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
     const matchesSearch = conv.contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (conv.last_message?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
     const matchesChannel = channelFilter === "all" || conv.channel === channelFilter;
-    return matchesSearch && matchesChannel;
+    const matchesTab = filterTabId === null || (conv as any).tab_id === filterTabId;
+    return matchesSearch && matchesChannel && matchesTab;
   });
 
   return (

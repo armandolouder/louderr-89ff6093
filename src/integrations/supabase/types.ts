@@ -64,6 +64,7 @@ export type Database = {
           last_message: string | null
           last_message_at: string | null
           status: string
+          tab_id: string | null
           unread_count: number | null
           updated_at: string | null
         }
@@ -77,6 +78,7 @@ export type Database = {
           last_message?: string | null
           last_message_at?: string | null
           status?: string
+          tab_id?: string | null
           unread_count?: number | null
           updated_at?: string | null
         }
@@ -90,6 +92,7 @@ export type Database = {
           last_message?: string | null
           last_message_at?: string | null
           status?: string
+          tab_id?: string | null
           unread_count?: number | null
           updated_at?: string | null
         }
@@ -101,7 +104,44 @@ export type Database = {
             referencedRelation: "contacts"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "conversations_tab_id_fkey"
+            columns: ["tab_id"]
+            isOneToOne: false
+            referencedRelation: "custom_tabs"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      custom_tabs: {
+        Row: {
+          color: string
+          created_at: string
+          icon: string
+          id: string
+          name: string
+          order: number
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          icon?: string
+          id?: string
+          name: string
+          order?: number
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          icon?: string
+          id?: string
+          name?: string
+          order?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       messages: {
         Row: {
