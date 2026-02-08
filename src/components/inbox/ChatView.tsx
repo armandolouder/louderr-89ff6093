@@ -252,74 +252,135 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
-      <div className="p-4 border-t border-border bg-card">
-        <div className="flex items-center gap-3">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
-                <Paperclip className="w-5 h-5" />
+      {/* Input - Mobile optimized */}
+      <div className={cn(
+        "border-t border-border bg-card",
+        isMobile ? "p-2 pb-3" : "p-4"
+      )}>
+        {isMobile ? (
+          // Mobile layout: Input com botão enviar, ações embaixo
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Input
+                placeholder="Digite sua mensagem..."
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSend()}
+                className="flex-1 bg-secondary border-border h-11 text-base"
+                spellCheck={true}
+                lang="pt-BR"
+                autoComplete="off"
+                autoCorrect="on"
+              />
+              <Button 
+                onClick={handleSend} 
+                disabled={sendMessage.isPending || !message.trim()} 
+                size="icon"
+                className="h-11 w-11 shadow-glow flex-shrink-0"
+              >
+                {sendMessage.isPending ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <Send className="w-5 h-5" />
+                )}
               </Button>
-            </TooltipTrigger>
-            <TooltipContent>Anexar arquivo</TooltipContent>
-          </Tooltip>
-          
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
-                <Smile className="w-5 h-5" />
+            </div>
+            <div className="flex items-center gap-1">
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground h-8 px-2">
+                <Paperclip className="w-4 h-4 mr-1" />
+                <span className="text-xs">Anexo</span>
               </Button>
-            </TooltipTrigger>
-            <TooltipContent>Emoji</TooltipContent>
-          </Tooltip>
-          
-          <Tooltip>
-            <TooltipTrigger asChild>
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground h-8 px-2">
+                <Smile className="w-4 h-4 mr-1" />
+                <span className="text-xs">Emoji</span>
+              </Button>
               <Button 
                 variant="ghost" 
-                size="icon" 
+                size="sm"
                 className={cn(
-                  "text-muted-foreground hover:text-foreground",
+                  "text-muted-foreground hover:text-foreground h-8 px-2",
                   isCheckingSpelling && "animate-pulse"
                 )}
                 onClick={checkSpelling}
                 disabled={isCheckingSpelling || !message.trim()}
               >
                 {isCheckingSpelling ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <Loader2 className="w-4 h-4 mr-1 animate-spin" />
                 ) : (
-                  <SpellCheck className="w-5 h-5" />
+                  <SpellCheck className="w-4 h-4 mr-1" />
                 )}
+                <span className="text-xs">Corrigir</span>
               </Button>
-            </TooltipTrigger>
-            <TooltipContent>Corrigir ortografia</TooltipContent>
-          </Tooltip>
-          
-          <Input
-            placeholder="Digite sua mensagem..."
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSend()}
-            className="flex-1 bg-secondary border-border h-10"
-            spellCheck={true}
-            lang="pt-BR"
-            autoComplete="off"
-            autoCorrect="on"
-          />
-          <Button 
-            onClick={handleSend} 
-            disabled={sendMessage.isPending} 
-            size={isMobile ? "icon" : "default"}
-            className="shadow-glow"
-          >
-            {sendMessage.isPending ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Send className="w-4 h-4" />
-            )}
-            {!isMobile && <span className="ml-2">Enviar</span>}
-          </Button>
-        </div>
+            </div>
+          </div>
+        ) : (
+          // Desktop layout
+          <div className="flex items-center gap-3">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
+                  <Paperclip className="w-5 h-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Anexar arquivo</TooltipContent>
+            </Tooltip>
+            
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
+                  <Smile className="w-5 h-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Emoji</TooltipContent>
+            </Tooltip>
+            
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className={cn(
+                    "text-muted-foreground hover:text-foreground",
+                    isCheckingSpelling && "animate-pulse"
+                  )}
+                  onClick={checkSpelling}
+                  disabled={isCheckingSpelling || !message.trim()}
+                >
+                  {isCheckingSpelling ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <SpellCheck className="w-5 h-5" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Corrigir ortografia</TooltipContent>
+            </Tooltip>
+            
+            <Input
+              placeholder="Digite sua mensagem..."
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSend()}
+              className="flex-1 bg-secondary border-border h-10"
+              spellCheck={true}
+              lang="pt-BR"
+              autoComplete="off"
+              autoCorrect="on"
+            />
+            <Button 
+              onClick={handleSend} 
+              disabled={sendMessage.isPending} 
+              className="shadow-glow"
+            >
+              {sendMessage.isPending ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Send className="w-4 h-4 mr-2" />
+              )}
+              Enviar
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );
