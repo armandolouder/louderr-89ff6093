@@ -60,28 +60,62 @@ serve(async (req) => {
 
     console.log(`Sending reaction ${emoji} to message ${whatsappMessageId}`);
 
-    // Send reaction via UAZAPI - endpoint: /message/react
-    // UAZAPI v2 expects "Id" (capital I) for the message ID
-    const requestBody = {
+    // Try different body formats to find the correct one for UAZAPI
+    // Format 1: Standard with emoji lowercase
+    const requestBodyV1 = {
       Id: whatsappMessageId,
       emoji: emoji,
       chatid: chatId,
+      fromMe: false, // reactions are usually on received messages
     };
 
-    console.log("Request body:", JSON.stringify(requestBody));
+    console.log("Trying format V1:", JSON.stringify(requestBodyV1));
 
-    const uazapiResponse = await fetch(`${UAZAPI_SERVER_URL}/message/react`, {
+    let uazapiResponse = await fetch(`${UAZAPI_SERVER_URL}/message/react`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "token": UAZAPI_INSTANCE_TOKEN,
       },
-      body: JSON.stringify(requestBody),
+      body: JSON.stringify(requestBodyV1),
     });
 
-    const responseText = await uazapiResponse.text();
-    console.log("UAZAPI response status:", uazapiResponse.status);
-    console.log("UAZAPI response:", responseText);
+    let responseText = await uazapiResponse.text();
+    console.log("UAZAPI V1 response status:", uazapiResponse.status);
+    console.log("UAZAPI V1 response:", responseText);
+
+    // If V1 returned 200 but text is empty, try format V2 with Emoji (capital E)
+    if (uazapiResponse.ok) {
+      try {
+        const parsed = JSON.parse(responseText);
+        if (parsed?.content?.text === "") {
+          console.log("V1 returned empty text, trying format V2 with Emoji capital...");
+          
+          const requestBodyV2 = {
+            Id: whatsappMessageId,
+            Emoji: emoji,
+            chatid: chatId,
+          };
+
+          console.log("Trying format V2:", JSON.stringify(requestBodyV2));
+
+          uazapiResponse = await fetch(`${UAZAPI_SERVER_URL}/message/react`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "token": UAZAPI_INSTANCE_TOKEN,
+            },
+            body: JSON.stringify(requestBodyV2),
+          });
+
+          responseText = await uazapiResponse.text();
+          console.log("UAZAPI V2 response status:", uazapiResponse.status);
+          console.log("UAZAPI V2 response:", responseText);
+        }
+      } catch (e) {
+        // Ignore parse error, continue with original response
+      }
+    }
 
     if (!uazapiResponse.ok) {
       console.error("UAZAPI error:", responseText);
