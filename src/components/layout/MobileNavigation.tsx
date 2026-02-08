@@ -1,12 +1,12 @@
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, MessageSquare, Bot, Users, Settings } from "lucide-react";
+import { LayoutDashboard, MessageSquare, Bot, Megaphone, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navigation = [
   { name: "Home", href: "/dashboard", icon: LayoutDashboard },
   { name: "Chat", href: "/inbox", icon: MessageSquare },
+  { name: "Campanhas", href: "/campaigns", icon: Megaphone },
   { name: "Bot", href: "/bot", icon: Bot },
-  { name: "CRM", href: "/crm", icon: Users },
   { name: "Config", href: "/settings", icon: Settings },
 ];
 
