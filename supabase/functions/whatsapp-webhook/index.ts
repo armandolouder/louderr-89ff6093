@@ -13,6 +13,12 @@ interface UazapiMediaContent {
   filename?: string;
   caption?: string;
   text?: string;
+  key?: {
+    ID?: string;
+    id?: string;
+    remoteJID?: string;
+    fromMe?: boolean;
+  };
 }
 
 interface UazapiMessage {
@@ -208,6 +214,72 @@ serve(async (req) => {
 
     const payload: UazapiPayload = await req.json();
     console.log("Webhook received:", payload.EventType);
+    console.log("Payload:", JSON.stringify(payload).substring(0, 500));
+
+    // Handle reaction messages
+    if (payload.EventType === "messages" && payload.message) {
+      const msg = payload.message;
+      const msgType = (msg.messageType || "").toLowerCase();
+      
+      if (msgType === "reactionmessage") {
+        console.log("Processing reaction message");
+        
+        // Get the reaction content
+        const reactionContent = typeof msg.content === "object" ? msg.content : null;
+        const emoji = reactionContent?.text || "";
+        const targetMessageId = reactionContent?.key?.ID || reactionContent?.key?.id || "";
+        
+        console.log(`Reaction: ${emoji} on message ${targetMessageId}`);
+        
+        if (targetMessageId && emoji) {
+          // Find the message that was reacted to
+          const { data: targetMessage } = await supabase
+            .from("messages")
+            .select("id, metadata")
+            .or(`metadata->whatsapp_message_id.eq.${targetMessageId},metadata->>whatsapp_message_id.eq.${targetMessageId}`)
+            .single();
+          
+          if (targetMessage) {
+            console.log(`Found target message: ${targetMessage.id}`);
+            
+            // Get existing reactions from metadata
+            const metadata = (targetMessage.metadata as Record<string, unknown>) || {};
+            const existingReactions = (metadata.reactions as Array<{ emoji: string; sent_at: string }>) || [];
+            
+            // Add new reaction (avoid duplicates)
+            const newReaction = { emoji, sent_at: new Date().toISOString() };
+            const hasReaction = existingReactions.some(r => r.emoji === emoji);
+            
+            if (!hasReaction) {
+              existingReactions.push(newReaction);
+              
+              // Update message metadata with reactions
+              const { error: updateError } = await supabase
+                .from("messages")
+                .update({
+                  metadata: { ...metadata, reactions: existingReactions }
+                })
+                .eq("id", targetMessage.id);
+              
+              if (updateError) {
+                console.error("Error updating reactions:", updateError);
+              } else {
+                console.log("Reaction saved successfully");
+              }
+            } else {
+              console.log("Reaction already exists");
+            }
+          } else {
+            console.log("Target message not found for reaction");
+          }
+        }
+        
+        return new Response(
+          JSON.stringify({ success: true, type: "reaction" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
 
     // Handle incoming messages (including messages sent from mobile phone)
     if (payload.EventType === "messages" && payload.message && payload.chat) {
