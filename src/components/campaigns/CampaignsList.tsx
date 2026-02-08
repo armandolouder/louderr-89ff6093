@@ -1,13 +1,14 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Send, Pause, Play, Loader2, Clock, CheckCircle2, XCircle } from "lucide-react";
+import { Plus, Send, Pause, Play, Loader2, Clock, CheckCircle2, XCircle, Zap } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CreateCampaignView } from "./CreateCampaignView";
+import { toast } from "sonner";
 
 interface Campaign {
   id: string;
@@ -34,6 +35,8 @@ const statusConfig = {
 
 export function CampaignsList() {
   const [showCreateView, setShowCreateView] = useState(false);
+  const [processingCampaignId, setProcessingCampaignId] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
   const { data: campaigns, isLoading } = useQuery({
     queryKey: ["campaigns"],
@@ -44,6 +47,29 @@ export function CampaignsList() {
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data as Campaign[];
+    },
+  });
+
+  const processQueueMutation = useMutation({
+    mutationFn: async (campaignId: string) => {
+      setProcessingCampaignId(campaignId);
+      const { data, error } = await supabase.functions.invoke("process-whatsapp-queue", {
+        body: { campaignId, limit: 10 },
+      });
+      if (error) throw error;
+      if (!data.success) throw new Error(data.error || "Erro ao processar fila");
+      return data;
+    },
+    onSuccess: (data) => {
+      toast.success(`Processado: ${data.sent} enviados, ${data.failed} falhas`);
+      queryClient.invalidateQueries({ queryKey: ["campaigns"] });
+    },
+    onError: (error) => {
+      console.error("Error processing queue:", error);
+      toast.error("Erro ao processar fila: " + error.message);
+    },
+    onSettled: () => {
+      setProcessingCampaignId(null);
     },
   });
 
@@ -119,9 +145,24 @@ export function CampaignsList() {
                     </div>
                     <div className="flex gap-2">
                       {campaign.status === "running" && (
-                        <Button size="sm" variant="outline">
-                          <Pause className="w-4 h-4" />
-                        </Button>
+                        <>
+                          <Button 
+                            size="sm" 
+                            variant="default"
+                            onClick={() => processQueueMutation.mutate(campaign.id)}
+                            disabled={processingCampaignId === campaign.id}
+                          >
+                            {processingCampaignId === campaign.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Zap className="w-4 h-4" />
+                            )}
+                            <span className="ml-1">Processar</span>
+                          </Button>
+                          <Button size="sm" variant="outline">
+                            <Pause className="w-4 h-4" />
+                          </Button>
+                        </>
                       )}
                       {campaign.status === "paused" && (
                         <Button size="sm" variant="outline">
