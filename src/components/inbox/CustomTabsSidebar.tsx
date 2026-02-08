@@ -86,7 +86,7 @@ export function CustomTabsSidebar({ selectedTabId, onSelectTab }: CustomTabsSide
   };
 
   return (
-    <div className="w-64 border-l border-border bg-card flex flex-col h-full">
+    <div className="w-56 xl:w-64 border-l border-border bg-card flex flex-col h-full flex-shrink-0 overflow-hidden">
       <div className="p-4 border-b border-border flex items-center justify-between">
         <h3 className="font-semibold text-foreground">Abas</h3>
         <Button variant="ghost" size="icon" onClick={openCreate} className="h-8 w-8">
