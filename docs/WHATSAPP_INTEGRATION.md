@@ -49,7 +49,7 @@ Esta documentação descreve a integração do sistema de mensagens WhatsApp uti
 
 **Endpoint:** `POST /functions/v1/send-whatsapp`
 
-**Payload:**
+**Payload (texto):**
 ```json
 {
   "conversationId": "uuid",
@@ -58,15 +58,39 @@ Esta documentação descreve a integração do sistema de mensagens WhatsApp uti
 }
 ```
 
-**Endpoint UAZAPI:** `POST /send/text`
+**Endpoint UAZAPI (texto):** `POST /send/text`
 
-**Body UAZAPI:**
+**Body UAZAPI (texto):**
 ```json
 {
   "number": "5521999999999",
   "text": "Texto da mensagem"
 }
 ```
+
+**Payload (mídia):**
+```json
+{
+  "conversationId": "uuid",
+  "content": "Legenda opcional",
+  "messageType": "image",
+  "mediaUrl": "https://..."
+}
+```
+
+**Endpoint UAZAPI (mídia):** `POST /send/media`
+
+**Body UAZAPI (mídia):**
+```json
+{
+  "number": "5521999999999",
+  "type": "image",
+  "file": "https://exemplo.com/foto.jpg",
+  "text": "Legenda opcional"
+}
+```
+
+**Tipos de mídia suportados:** `image`, `video`, `audio`, `document`
 
 ---
 
