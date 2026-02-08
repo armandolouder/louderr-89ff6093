@@ -2,9 +2,11 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, Sparkles, Loader2, AlertCircle, RefreshCw } from "lucide-react";
+import { Users, Sparkles, Loader2, ChevronRight } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { ClusterDetailSheet } from "./ClusterDetailSheet";
+import { cn } from "@/lib/utils";
 
 interface Cluster {
   id: string;
@@ -20,6 +22,8 @@ interface Cluster {
 
 export function ClustersDashboard() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [selectedCluster, setSelectedCluster] = useState<Cluster | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   const { data: customersCount } = useQuery({
     queryKey: ["imported-customers-count"],
@@ -52,7 +56,6 @@ export function ClustersDashboard() {
 
     setIsAnalyzing(true);
     try {
-      // Call edge function to analyze and segment
       const { data, error } = await supabase.functions.invoke("analyze-customers", {
         body: {},
       });
@@ -63,13 +66,26 @@ export function ClustersDashboard() {
       refetch();
     } catch (error) {
       console.error("Analysis error:", error);
-      toast.error("Erro ao executar análise. A edge function será implementada em breve.");
+      toast.error("Erro ao executar análise. Tente novamente.");
     } finally {
       setIsAnalyzing(false);
     }
   };
 
+  const handleClusterClick = (cluster: Cluster) => {
+    setSelectedCluster(cluster);
+    setSheetOpen(true);
+  };
+
   const hasData = clusters && clusters.length > 0;
+
+  // Calculate total stats
+  const totalStats = clusters
+    ? {
+        totalCustomers: clusters.reduce((sum, c) => sum + c.customer_count, 0),
+        clustersCount: clusters.length,
+      }
+    : null;
 
   return (
     <div className="space-y-6">
@@ -79,6 +95,9 @@ export function ClustersDashboard() {
           <h2 className="text-xl font-semibold text-foreground">Segmentação de Clientes</h2>
           <p className="text-sm text-muted-foreground">
             {customersCount || 0} clientes importados
+            {totalStats && totalStats.totalCustomers > 0 && (
+              <> • {totalStats.totalCustomers} segmentados em {totalStats.clustersCount} clusters</>
+            )}
           </p>
         </div>
         <Button onClick={handleAnalyze} disabled={isAnalyzing || !customersCount}>
@@ -119,17 +138,28 @@ export function ClustersDashboard() {
       {hasData && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {clusters.map((cluster) => (
-            <Card key={cluster.id} className="hover:border-primary/50 transition-colors">
+            <Card
+              key={cluster.id}
+              className={cn(
+                "cursor-pointer transition-all duration-200",
+                "hover:border-primary/50 hover:shadow-md hover:scale-[1.02]",
+                "active:scale-[0.98]"
+              )}
+              onClick={() => handleClusterClick(cluster)}
+            >
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="text-2xl">{cluster.emoji || "📊"}</span>
                     <CardTitle className="text-base">{cluster.name}</CardTitle>
                   </div>
-                  <div
-                    className="w-3 h-3 rounded-full"
-                    style={{ backgroundColor: cluster.color }}
-                  />
+                  <div className="flex items-center gap-2">
+                    <div
+                      className="w-3 h-3 rounded-full"
+                      style={{ backgroundColor: cluster.color }}
+                    />
+                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                  </div>
                 </div>
                 <CardDescription className="line-clamp-2">
                   {cluster.description || "Sem descrição"}
@@ -170,6 +200,13 @@ export function ClustersDashboard() {
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
         </div>
       )}
+
+      {/* Cluster Detail Sheet */}
+      <ClusterDetailSheet
+        cluster={selectedCluster}
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
+      />
     </div>
   );
 }
