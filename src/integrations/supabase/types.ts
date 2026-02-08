@@ -220,6 +220,48 @@ export type Database = {
         }
         Relationships: []
       }
+      quick_responses: {
+        Row: {
+          category: string | null
+          content: string
+          created_at: string
+          id: string
+          is_active: boolean | null
+          media_type: string | null
+          media_url: string | null
+          shortcut: string | null
+          title: string
+          updated_at: string
+          use_count: number | null
+        }
+        Insert: {
+          category?: string | null
+          content: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          media_type?: string | null
+          media_url?: string | null
+          shortcut?: string | null
+          title: string
+          updated_at?: string
+          use_count?: number | null
+        }
+        Update: {
+          category?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          media_type?: string | null
+          media_url?: string | null
+          shortcut?: string | null
+          title?: string
+          updated_at?: string
+          use_count?: number | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
