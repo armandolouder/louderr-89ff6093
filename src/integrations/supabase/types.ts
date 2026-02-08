@@ -14,6 +14,110 @@ export type Database = {
   }
   public: {
     Tables: {
+      campaign_messages: {
+        Row: {
+          campaign_id: string
+          content: string
+          created_at: string
+          id: string
+          is_active: boolean | null
+          media_url: string | null
+          message_type: string | null
+          use_count: number | null
+        }
+        Insert: {
+          campaign_id: string
+          content: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          media_url?: string | null
+          message_type?: string | null
+          use_count?: number | null
+        }
+        Update: {
+          campaign_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          media_url?: string | null
+          message_type?: string | null
+          use_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_messages_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaigns: {
+        Row: {
+          channel: string | null
+          cluster_ids: string[] | null
+          completed_at: string | null
+          created_at: string
+          daily_limit: number | null
+          delay_max_seconds: number | null
+          delay_min_seconds: number | null
+          description: string | null
+          failed_count: number | null
+          id: string
+          metadata: Json | null
+          name: string
+          scheduled_at: string | null
+          sent_count: number | null
+          started_at: string | null
+          status: string | null
+          total_recipients: number | null
+          updated_at: string
+        }
+        Insert: {
+          channel?: string | null
+          cluster_ids?: string[] | null
+          completed_at?: string | null
+          created_at?: string
+          daily_limit?: number | null
+          delay_max_seconds?: number | null
+          delay_min_seconds?: number | null
+          description?: string | null
+          failed_count?: number | null
+          id?: string
+          metadata?: Json | null
+          name: string
+          scheduled_at?: string | null
+          sent_count?: number | null
+          started_at?: string | null
+          status?: string | null
+          total_recipients?: number | null
+          updated_at?: string
+        }
+        Update: {
+          channel?: string | null
+          cluster_ids?: string[] | null
+          completed_at?: string | null
+          created_at?: string
+          daily_limit?: number | null
+          delay_max_seconds?: number | null
+          delay_min_seconds?: number | null
+          description?: string | null
+          failed_count?: number | null
+          id?: string
+          metadata?: Json | null
+          name?: string
+          scheduled_at?: string | null
+          sent_count?: number | null
+          started_at?: string | null
+          status?: string | null
+          total_recipients?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       contacts: {
         Row: {
           avatar_url: string | null
@@ -143,6 +247,210 @@ export type Database = {
         }
         Relationships: []
       }
+      customer_clusters: {
+        Row: {
+          color: string | null
+          created_at: string
+          criteria: Json | null
+          customer_count: number | null
+          description: string | null
+          emoji: string | null
+          id: string
+          name: string
+          objective: string | null
+          percentage: number | null
+          recommendation: string | null
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          criteria?: Json | null
+          customer_count?: number | null
+          description?: string | null
+          emoji?: string | null
+          id?: string
+          name: string
+          objective?: string | null
+          percentage?: number | null
+          recommendation?: string | null
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          criteria?: Json | null
+          customer_count?: number | null
+          description?: string | null
+          emoji?: string | null
+          id?: string
+          name?: string
+          objective?: string | null
+          percentage?: number | null
+          recommendation?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      import_batches: {
+        Row: {
+          absent_emails: number | null
+          absent_phones: number | null
+          column_mapping: Json | null
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          filename: string
+          id: string
+          invalid_emails: number | null
+          invalid_phones: number | null
+          invalid_rows: number | null
+          status: string | null
+          total_rows: number | null
+          valid_emails: number | null
+          valid_phones: number | null
+          valid_rows: number | null
+        }
+        Insert: {
+          absent_emails?: number | null
+          absent_phones?: number | null
+          column_mapping?: Json | null
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          filename: string
+          id?: string
+          invalid_emails?: number | null
+          invalid_phones?: number | null
+          invalid_rows?: number | null
+          status?: string | null
+          total_rows?: number | null
+          valid_emails?: number | null
+          valid_phones?: number | null
+          valid_rows?: number | null
+        }
+        Update: {
+          absent_emails?: number | null
+          absent_phones?: number | null
+          column_mapping?: Json | null
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          filename?: string
+          id?: string
+          invalid_emails?: number | null
+          invalid_phones?: number | null
+          invalid_rows?: number | null
+          status?: string | null
+          total_rows?: number | null
+          valid_emails?: number | null
+          valid_phones?: number | null
+          valid_rows?: number | null
+        }
+        Relationships: []
+      }
+      imported_customers: {
+        Row: {
+          city: string | null
+          cluster_id: string | null
+          created_at: string
+          email: string | null
+          email_status: string | null
+          favorite_category: string | null
+          favorite_product: string | null
+          first_purchase_at: string | null
+          id: string
+          import_batch_id: string | null
+          last_purchase_at: string | null
+          metadata: Json | null
+          name: string
+          order_count: number | null
+          phone: string | null
+          phone_status: string | null
+          region: string | null
+          rfm_frequency: number | null
+          rfm_monetary: number | null
+          rfm_recency: number | null
+          rfm_score: string | null
+          source: string | null
+          state: string | null
+          ticket_level: string | null
+          total_spent: number | null
+          updated_at: string
+        }
+        Insert: {
+          city?: string | null
+          cluster_id?: string | null
+          created_at?: string
+          email?: string | null
+          email_status?: string | null
+          favorite_category?: string | null
+          favorite_product?: string | null
+          first_purchase_at?: string | null
+          id?: string
+          import_batch_id?: string | null
+          last_purchase_at?: string | null
+          metadata?: Json | null
+          name: string
+          order_count?: number | null
+          phone?: string | null
+          phone_status?: string | null
+          region?: string | null
+          rfm_frequency?: number | null
+          rfm_monetary?: number | null
+          rfm_recency?: number | null
+          rfm_score?: string | null
+          source?: string | null
+          state?: string | null
+          ticket_level?: string | null
+          total_spent?: number | null
+          updated_at?: string
+        }
+        Update: {
+          city?: string | null
+          cluster_id?: string | null
+          created_at?: string
+          email?: string | null
+          email_status?: string | null
+          favorite_category?: string | null
+          favorite_product?: string | null
+          first_purchase_at?: string | null
+          id?: string
+          import_batch_id?: string | null
+          last_purchase_at?: string | null
+          metadata?: Json | null
+          name?: string
+          order_count?: number | null
+          phone?: string | null
+          phone_status?: string | null
+          region?: string | null
+          rfm_frequency?: number | null
+          rfm_monetary?: number | null
+          rfm_recency?: number | null
+          rfm_score?: string | null
+          source?: string | null
+          state?: string | null
+          ticket_level?: string | null
+          total_spent?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "imported_customers_cluster_id_fkey"
+            columns: ["cluster_id"]
+            isOneToOne: false
+            referencedRelation: "customer_clusters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "imported_customers_import_batch_id_fkey"
+            columns: ["import_batch_id"]
+            isOneToOne: false
+            referencedRelation: "import_batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           content: string
@@ -261,6 +569,146 @@ export type Database = {
           use_count?: number | null
         }
         Relationships: []
+      }
+      send_logs: {
+        Row: {
+          campaign_id: string | null
+          channel: string
+          cluster_name: string | null
+          content: string | null
+          customer_id: string | null
+          email: string | null
+          error_message: string | null
+          id: string
+          phone: string | null
+          queue_id: string | null
+          response_data: Json | null
+          sent_at: string
+          status: string
+        }
+        Insert: {
+          campaign_id?: string | null
+          channel: string
+          cluster_name?: string | null
+          content?: string | null
+          customer_id?: string | null
+          email?: string | null
+          error_message?: string | null
+          id?: string
+          phone?: string | null
+          queue_id?: string | null
+          response_data?: Json | null
+          sent_at?: string
+          status: string
+        }
+        Update: {
+          campaign_id?: string | null
+          channel?: string
+          cluster_name?: string | null
+          content?: string | null
+          customer_id?: string | null
+          email?: string | null
+          error_message?: string | null
+          id?: string
+          phone?: string | null
+          queue_id?: string | null
+          response_data?: Json | null
+          sent_at?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "send_logs_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "send_logs_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "imported_customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "send_logs_queue_id_fkey"
+            columns: ["queue_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_queue"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_queue: {
+        Row: {
+          attempts: number | null
+          campaign_id: string
+          content: string
+          created_at: string
+          customer_id: string
+          error_message: string | null
+          id: string
+          message_id: string | null
+          metadata: Json | null
+          phone: string
+          scheduled_at: string | null
+          sent_at: string | null
+          status: string | null
+        }
+        Insert: {
+          attempts?: number | null
+          campaign_id: string
+          content: string
+          created_at?: string
+          customer_id: string
+          error_message?: string | null
+          id?: string
+          message_id?: string | null
+          metadata?: Json | null
+          phone: string
+          scheduled_at?: string | null
+          sent_at?: string | null
+          status?: string | null
+        }
+        Update: {
+          attempts?: number | null
+          campaign_id?: string
+          content?: string
+          created_at?: string
+          customer_id?: string
+          error_message?: string | null
+          id?: string
+          message_id?: string | null
+          metadata?: Json | null
+          phone?: string
+          scheduled_at?: string | null
+          sent_at?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_queue_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_queue_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "imported_customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_queue_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_messages"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
