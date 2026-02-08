@@ -232,51 +232,91 @@ serve(async (req) => {
         console.log(`Reaction: ${emoji} on message ${targetMessageId}`);
         
         if (targetMessageId && emoji) {
-          // Find the message that was reacted to using JSONB containment
-          // The @> operator checks if the left JSON contains the right JSON
+          console.log(`Searching for message with whatsapp_message_id: ${targetMessageId}`);
+          
+          // Find the message that was reacted to
+          // Use textSearch on the metadata JSON column
           const { data: messages, error: queryError } = await supabase
             .from("messages")
             .select("id, metadata")
-            .filter("metadata", "cs", JSON.stringify({ whatsapp_message_id: targetMessageId }));
+            .textSearch("metadata", targetMessageId, { type: "plain" });
           
           if (queryError) {
-            console.error("Query error:", queryError);
-          }
-          
-          const targetMessage = messages?.[0];
-          
-          if (targetMessage) {
-            console.log(`Found target message: ${targetMessage.id}`);
+            console.error("textSearch error:", queryError.message);
             
-            // Get existing reactions from metadata
-            const metadata = (targetMessage.metadata as Record<string, unknown>) || {};
-            const existingReactions = (metadata.reactions as Array<{ emoji: string; sent_at: string }>) || [];
+            // Fallback: get recent messages and filter manually
+            const { data: recentMessages } = await supabase
+              .from("messages")
+              .select("id, metadata")
+              .order("created_at", { ascending: false })
+              .limit(100);
             
-            // Add new reaction (avoid duplicates)
-            const newReaction = { emoji, sent_at: new Date().toISOString() };
-            const hasReaction = existingReactions.some(r => r.emoji === emoji);
+            const foundMessage = recentMessages?.find(m => {
+              const meta = m.metadata as Record<string, unknown>;
+              return meta?.whatsapp_message_id === targetMessageId;
+            });
             
-            if (!hasReaction) {
-              existingReactions.push(newReaction);
+            if (foundMessage) {
+              console.log(`Found message via fallback: ${foundMessage.id}`);
               
-              // Update message metadata with reactions
-              const { error: updateError } = await supabase
-                .from("messages")
-                .update({
-                  metadata: { ...metadata, reactions: existingReactions }
-                })
-                .eq("id", targetMessage.id);
+              const metadata = (foundMessage.metadata as Record<string, unknown>) || {};
+              const existingReactions = (metadata.reactions as Array<{ emoji: string; sent_at: string }>) || [];
               
-              if (updateError) {
-                console.error("Error updating reactions:", updateError);
-              } else {
-                console.log("Reaction saved successfully");
+              const newReaction = { emoji, sent_at: new Date().toISOString() };
+              const hasReaction = existingReactions.some(r => r.emoji === emoji);
+              
+              if (!hasReaction) {
+                existingReactions.push(newReaction);
+                
+                const { error: updateError } = await supabase
+                  .from("messages")
+                  .update({
+                    metadata: { ...metadata, reactions: existingReactions }
+                  })
+                  .eq("id", foundMessage.id);
+                
+                if (updateError) {
+                  console.error("Error updating reactions:", updateError);
+                } else {
+                  console.log("Reaction saved successfully via fallback");
+                }
               }
             } else {
-              console.log("Reaction already exists");
+              console.log("Message not found via fallback either");
             }
           } else {
-            console.log("Target message not found for reaction. Query returned:", messages?.length || 0, "results");
+            const targetMessage = messages?.[0];
+            
+            if (targetMessage) {
+              console.log(`Found target message: ${targetMessage.id}`);
+              
+              const metadata = (targetMessage.metadata as Record<string, unknown>) || {};
+              const existingReactions = (metadata.reactions as Array<{ emoji: string; sent_at: string }>) || [];
+              
+              const newReaction = { emoji, sent_at: new Date().toISOString() };
+              const hasReaction = existingReactions.some(r => r.emoji === emoji);
+              
+              if (!hasReaction) {
+                existingReactions.push(newReaction);
+                
+                const { error: updateError } = await supabase
+                  .from("messages")
+                  .update({
+                    metadata: { ...metadata, reactions: existingReactions }
+                  })
+                  .eq("id", targetMessage.id);
+                
+                if (updateError) {
+                  console.error("Error updating reactions:", updateError);
+                } else {
+                  console.log("Reaction saved successfully");
+                }
+              } else {
+                console.log("Reaction already exists");
+              }
+            } else {
+              console.log("Target message not found. Query returned:", messages?.length || 0, "results");
+            }
           }
         }
         
