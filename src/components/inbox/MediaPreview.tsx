@@ -1,5 +1,6 @@
 import { Image, FileText, Play, Volume2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { LinkPreview, extractUrls } from "./LinkPreview";
 
 interface MediaPreviewProps {
   type: "image" | "audio" | "video" | "document" | "text";
@@ -9,7 +10,21 @@ interface MediaPreviewProps {
 }
 
 export function MediaPreview({ type, url, content, isAgent }: MediaPreviewProps) {
+  // For text messages, check if there are URLs to preview
   if (type === "text" || !url) {
+    const urls = extractUrls(content);
+    
+    if (urls.length > 0) {
+      return (
+        <div className="space-y-2">
+          <p className="text-sm">{content}</p>
+          {urls.slice(0, 2).map((linkUrl, index) => (
+            <LinkPreview key={index} url={linkUrl} isAgent={isAgent} />
+          ))}
+        </div>
+      );
+    }
+    
     return <p className="text-sm">{content}</p>;
   }
 
