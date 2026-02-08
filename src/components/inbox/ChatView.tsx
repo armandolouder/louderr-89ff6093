@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Send, Paperclip, Smile, MoreVertical, Phone, User, Loader2 } from "lucide-react";
+import { Send, Paperclip, Smile, MoreVertical, Phone, User, Loader2, SpellCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -11,6 +11,9 @@ import { Conversation } from "@/hooks/useConversations";
 import { useMessages, useSendMessage } from "@/hooks/useMessages";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface ChatViewProps {
   conversation: Conversation;
@@ -18,10 +21,61 @@ interface ChatViewProps {
 
 export function ChatView({ conversation }: ChatViewProps) {
   const [message, setMessage] = useState("");
+  const [isCheckingSpelling, setIsCheckingSpelling] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   const { data: messages, isLoading } = useMessages(conversation.id);
   const sendMessage = useSendMessage();
+
+  const checkSpelling = async () => {
+    if (!message.trim()) {
+      toast.error("Digite uma mensagem para verificar");
+      return;
+    }
+    
+    setIsCheckingSpelling(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("groq-chat", {
+        body: {
+          messages: [
+            {
+              role: "system",
+              content: "Você é um corretor ortográfico. Corrija apenas erros de ortografia e acentuação do texto em português. Retorne APENAS o texto corrigido, sem explicações ou comentários adicionais. Se o texto já estiver correto, retorne-o exatamente como está."
+            },
+            {
+              role: "user",
+              content: message
+            }
+          ],
+          model: "llama-3.3-70b-versatile",
+          max_tokens: 500,
+          temperature: 0.1,
+        },
+      });
+
+      if (error) {
+        toast.error("Erro ao verificar ortografia");
+        console.error(error);
+        return;
+      }
+
+      const correctedText = data?.choices?.[0]?.message?.content?.trim();
+      
+      if (correctedText) {
+        if (correctedText === message.trim()) {
+          toast.success("Texto já está correto!");
+        } else {
+          setMessage(correctedText);
+          toast.success("Ortografia corrigida!");
+        }
+      }
+    } catch (error) {
+      console.error("Spell check error:", error);
+      toast.error("Erro ao verificar ortografia");
+    } finally {
+      setIsCheckingSpelling(false);
+    }
+  };
 
   const initials = conversation.contact.name
     .split(" ")
@@ -196,12 +250,46 @@ export function ChatView({ conversation }: ChatViewProps) {
       {/* Input */}
       <div className="p-4 border-t border-border bg-card">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
-            <Paperclip className="w-5 h-5" />
-          </Button>
-          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
-            <Smile className="w-5 h-5" />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
+                <Paperclip className="w-5 h-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Anexar arquivo</TooltipContent>
+          </Tooltip>
+          
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
+                <Smile className="w-5 h-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Emoji</TooltipContent>
+          </Tooltip>
+          
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className={cn(
+                  "text-muted-foreground hover:text-foreground",
+                  isCheckingSpelling && "animate-pulse"
+                )}
+                onClick={checkSpelling}
+                disabled={isCheckingSpelling || !message.trim()}
+              >
+                {isCheckingSpelling ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <SpellCheck className="w-5 h-5" />
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Corrigir ortografia</TooltipContent>
+          </Tooltip>
+          
           <Input
             placeholder="Digite sua mensagem..."
             value={message}
