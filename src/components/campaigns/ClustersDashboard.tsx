@@ -187,6 +187,42 @@ export function ClustersDashboard() {
     },
   });
 
+  const pollJobStatus = async (jobId: string): Promise<boolean> => {
+    const maxAttempts = 60; // 2 minutes max
+    let attempts = 0;
+
+    while (attempts < maxAttempts) {
+      await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2s between polls
+      
+      try {
+        const { data, error } = await supabase.functions.invoke("analyze-customers", {
+          body: {},
+          headers: { "Content-Type": "application/json" },
+        });
+
+        // Check job status from import_batches table directly
+        const { data: job } = await supabase
+          .from("import_batches")
+          .select("status, error_message")
+          .eq("id", jobId)
+          .single();
+
+        if (job?.status === "completed") {
+          return true;
+        }
+        if (job?.status === "failed") {
+          throw new Error(job.error_message || "Análise falhou");
+        }
+      } catch (err) {
+        console.error("Poll error:", err);
+      }
+
+      attempts++;
+    }
+
+    throw new Error("Timeout aguardando análise");
+  };
+
   const handleAnalyze = async () => {
     if (!customersCount || customersCount === 0) {
       toast.error("Importe clientes antes de executar a análise");
@@ -194,18 +230,31 @@ export function ClustersDashboard() {
     }
 
     setIsAnalyzing(true);
+    toast.info("Iniciando análise de clientes... Isso pode levar alguns minutos.");
+    
     try {
+      // Start the analysis job
       const { data, error } = await supabase.functions.invoke("analyze-customers", {
         body: {},
       });
 
       if (error) throw error;
 
-      toast.success("Análise concluída! Clusters gerados.");
-      refetch();
+      if (data?.job_id) {
+        // Poll for completion
+        const success = await pollJobStatus(data.job_id);
+        if (success) {
+          toast.success("Análise concluída! Clusters gerados.");
+          refetch();
+        }
+      } else if (data?.success) {
+        // Direct success (shouldn't happen with new implementation but handle it)
+        toast.success("Análise concluída! Clusters gerados.");
+        refetch();
+      }
     } catch (error) {
       console.error("Analysis error:", error);
-      toast.error("Erro ao executar análise. Tente novamente.");
+      toast.error(error instanceof Error ? error.message : "Erro ao executar análise. Tente novamente.");
     } finally {
       setIsAnalyzing(false);
     }

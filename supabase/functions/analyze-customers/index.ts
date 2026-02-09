@@ -154,7 +154,6 @@ function calculateRFMScores(customers: Customer[]): Map<string, { r: number; f: 
   const now = new Date();
   const rfmMap = new Map<string, { r: number; f: number; m: number; score: string }>();
 
-  // Calculate recency in days for each customer
   const recencyValues: { id: string; days: number }[] = [];
   const frequencyValues: { id: string; count: number }[] = [];
   const monetaryValues: { id: string; value: number }[] = [];
@@ -170,7 +169,6 @@ function calculateRFMScores(customers: Customer[]): Map<string, { r: number; f: 
     monetaryValues.push({ id: customer.id, value: customer.total_spent || 0 });
   });
 
-  // Sort and assign quintiles (1-5)
   const assignQuintile = (values: { id: string; value: number }[], ascending = true) => {
     const sorted = [...values].sort((a, b) => ascending ? a.value - b.value : b.value - a.value);
     const quintileSize = Math.ceil(sorted.length / 5);
@@ -184,19 +182,16 @@ function calculateRFMScores(customers: Customer[]): Map<string, { r: number; f: 
     return result;
   };
 
-  // Recency: lower days = higher score (5), so ascending=false for the score
   const recencyScores = assignQuintile(
     recencyValues.map((r) => ({ id: r.id, value: r.days })),
-    false // Lower days = higher quintile (5)
+    false
   );
 
-  // Frequency: higher count = higher score (5)
   const frequencyScores = assignQuintile(
     frequencyValues.map((f) => ({ id: f.id, value: f.count })),
     true
   );
 
-  // Monetary: higher value = higher score (5)
   const monetaryScores = assignQuintile(
     monetaryValues.map((m) => ({ id: m.id, value: m.value })),
     true
@@ -207,12 +202,7 @@ function calculateRFMScores(customers: Customer[]): Map<string, { r: number; f: 
     const f = frequencyScores.get(customer.id) || 1;
     const m = monetaryScores.get(customer.id) || 1;
     
-    rfmMap.set(customer.id, {
-      r,
-      f,
-      m,
-      score: `${r}${f}${m}`,
-    });
+    rfmMap.set(customer.id, { r, f, m, score: `${r}${f}${m}` });
   });
 
   return rfmMap;
@@ -230,25 +220,20 @@ function assignCustomerToCluster(
   ticketLevel: string,
   clusters: ClusterDefinition[]
 ): ClusterDefinition | null {
-  // Try to match by RFM score first
   for (const cluster of clusters) {
     const criteria = cluster.criteria;
 
-    // Check RFM score match
     if (criteria.rfm_scores?.includes(rfm.score)) {
-      // Also check ticket level if specified
       if (!criteria.ticket_level || criteria.ticket_level.includes(ticketLevel)) {
         return cluster;
       }
     }
 
-    // Check region match
     if (criteria.regions && customer.region && criteria.regions.includes(customer.region)) {
       return cluster;
     }
   }
 
-  // Default: assign based on RFM pattern
   if (rfm.r >= 4 && rfm.f >= 4 && rfm.m >= 4) {
     return clusters.find((c) => c.name === "VIP Ativo") || null;
   }
@@ -262,26 +247,13 @@ function assignCustomerToCluster(
     return clusters.find((c) => c.name === "Infrequente") || null;
   }
 
-  // Fallback to "Ocasional"
   return clusters.find((c) => c.name === "Ocasional") || clusters[0];
 }
 
-serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
-
+// Background processing function
+async function processAnalysis(supabase: any, jobId: string) {
   try {
-    const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
-    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-
-    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-      throw new Error("Supabase credentials not configured");
-    }
-
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-
-    // Fetch ALL imported customers (bypassing default 1000 limit)
+    // Fetch ALL imported customers
     let allCustomers: Customer[] = [];
     let offset = 0;
     const pageSize = 1000;
@@ -303,25 +275,26 @@ serve(async (req) => {
     }
 
     if (allCustomers.length === 0) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Nenhum cliente importado encontrado" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      await supabase
+        .from("import_batches")
+        .update({ status: "failed", error_message: "Nenhum cliente encontrado" })
+        .eq("id", jobId);
+      return;
     }
 
-    console.log(`Analyzing ${allCustomers.length} customers...`);
+    console.log(`Processing ${allCustomers.length} customers in background...`);
 
-    // Calculate RFM scores
+    // Calculate RFM scores (CPU-intensive but quick)
     const rfmScores = calculateRFMScores(allCustomers);
 
-    // Calculate average ticket for ticket level classification
+    // Calculate average ticket
     const totalSpentSum = allCustomers.reduce((sum, c) => sum + (c.total_spent || 0), 0);
     const avgTicket = totalSpentSum / allCustomers.length || 100;
 
     // Clear existing clusters
     await supabase.from("customer_clusters").delete().neq("id", "00000000-0000-0000-0000-000000000000");
 
-    // Create clusters in database
+    // Create clusters
     const clusterInserts = CLUSTER_DEFINITIONS.map((cluster) => ({
       name: cluster.name,
       emoji: cluster.emoji,
@@ -341,15 +314,14 @@ serve(async (req) => {
 
     if (clusterError) throw clusterError;
 
-    // Map cluster names to IDs
     const clusterNameToId = new Map<string, string>();
-    insertedClusters?.forEach((cluster) => {
+    insertedClusters?.forEach((cluster: any) => {
       clusterNameToId.set(cluster.name, cluster.id);
     });
 
-    // Assign customers to clusters
+    // Prepare customer assignments
     const clusterCounts = new Map<string, number>();
-    const customerUpdates: { id: string; cluster_id: string; rfm_recency: number; rfm_frequency: number; rfm_monetary: number; rfm_score: string; ticket_level: string }[] = [];
+    const customersByCluster = new Map<string, { id: string; rfm_recency: number; rfm_frequency: number; rfm_monetary: number; rfm_score: string; ticket_level: string }[]>();
 
     allCustomers.forEach((customer) => {
       const rfm = rfmScores.get(customer.id);
@@ -361,64 +333,64 @@ serve(async (req) => {
       if (cluster) {
         const clusterId = clusterNameToId.get(cluster.name);
         if (clusterId) {
-          customerUpdates.push({
+          if (!customersByCluster.has(clusterId)) {
+            customersByCluster.set(clusterId, []);
+          }
+          customersByCluster.get(clusterId)!.push({
             id: customer.id,
-            cluster_id: clusterId,
             rfm_recency: rfm.r,
             rfm_frequency: rfm.f,
             rfm_monetary: rfm.m,
             rfm_score: rfm.score,
             ticket_level: ticketLevel,
           });
-
           clusterCounts.set(cluster.name, (clusterCounts.get(cluster.name) || 0) + 1);
         }
       }
     });
 
-    console.log(`Assigning ${customerUpdates.length} customers to clusters...`);
+    console.log(`Updating customers by cluster (${customersByCluster.size} clusters)...`);
 
-    // Update customers in parallel batches (much faster)
-    const batchSize = 100;
-    const batches: Promise<void>[] = [];
-    
-    for (let i = 0; i < customerUpdates.length; i += batchSize) {
-      const batch = customerUpdates.slice(i, i + batchSize);
-      
-      // Process each batch in parallel
-      const batchPromise = Promise.all(
-        batch.map((update) =>
+    // Update customers grouped by cluster - much more efficient using batched updates
+    for (const [clusterId, customers] of customersByCluster) {
+      // Process in chunks of 500 to avoid overwhelming the DB
+      const chunkSize = 500;
+      for (let i = 0; i < customers.length; i += chunkSize) {
+        const chunk = customers.slice(i, i + chunkSize);
+        const customerIds = chunk.map(c => c.id);
+        
+        // Get the first customer's RFM data (they'll have different values, but we batch by cluster)
+        // Actually, we need individual updates for RFM data since each customer has different scores
+        // Let's use a more efficient approach - update all at once using raw SQL via RPC or individual updates
+        
+        // Since each customer has unique RFM values, we need individual updates
+        // But we can do them in parallel with controlled concurrency
+        const updatePromises = chunk.map(customer =>
           supabase
             .from("imported_customers")
             .update({
-              cluster_id: update.cluster_id,
-              rfm_recency: update.rfm_recency,
-              rfm_frequency: update.rfm_frequency,
-              rfm_monetary: update.rfm_monetary,
-              rfm_score: update.rfm_score,
-              ticket_level: update.ticket_level,
+              cluster_id: clusterId,
+              rfm_recency: customer.rfm_recency,
+              rfm_frequency: customer.rfm_frequency,
+              rfm_monetary: customer.rfm_monetary,
+              rfm_score: customer.rfm_score,
+              ticket_level: customer.ticket_level,
             })
-            .eq("id", update.id)
-        )
-      ).then(() => {});
-      
-      batches.push(batchPromise);
-      
-      // Process 5 batches at a time to avoid overwhelming the DB
-      if (batches.length >= 5) {
-        await Promise.all(batches);
-        batches.length = 0;
+            .eq("id", customer.id)
+        );
+
+        // Execute in smaller parallel batches to avoid overwhelming
+        const parallelBatchSize = 50;
+        for (let j = 0; j < updatePromises.length; j += parallelBatchSize) {
+          const batch = updatePromises.slice(j, j + parallelBatchSize);
+          await Promise.all(batch);
+        }
       }
-    }
-    
-    // Process remaining batches
-    if (batches.length > 0) {
-      await Promise.all(batches);
     }
 
     console.log(`Updating cluster counts...`);
 
-    // Update cluster counts in parallel
+    // Update cluster counts
     const countUpdates = Array.from(clusterCounts.entries()).map(([clusterName, count]) => {
       const clusterId = clusterNameToId.get(clusterName);
       if (clusterId) {
@@ -439,23 +411,109 @@ serve(async (req) => {
       .delete()
       .eq("customer_count", 0);
 
-    console.log(`Analysis complete. Assigned ${customerUpdates.length} customers to clusters.`);
+    // Mark job as complete
+    await supabase
+      .from("import_batches")
+      .update({ 
+        status: "completed", 
+        completed_at: new Date().toISOString(),
+        total_rows: allCustomers.length,
+        valid_rows: allCustomers.length
+      })
+      .eq("id", jobId);
 
+    console.log(`Analysis complete. Processed ${allCustomers.length} customers.`);
+
+  } catch (error) {
+    console.error("Background processing error:", error);
+    await supabase
+      .from("import_batches")
+      .update({ status: "failed", error_message: error.message })
+      .eq("id", jobId);
+  }
+}
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+      throw new Error("Supabase credentials not configured");
+    }
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    // Check if this is a status check request
+    const url = new URL(req.url);
+    const jobId = url.searchParams.get("job_id");
+    
+    if (jobId) {
+      // Return job status
+      const { data: job, error } = await supabase
+        .from("import_batches")
+        .select("status, error_message, total_rows, valid_rows, completed_at")
+        .eq("id", jobId)
+        .single();
+      
+      if (error) throw error;
+      
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          job_id: jobId,
+          status: job?.status || "unknown",
+          error: job?.error_message,
+          total_rows: job?.total_rows,
+          completed_at: job?.completed_at
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Create a job record to track progress
+    const { data: job, error: jobError } = await supabase
+      .from("import_batches")
+      .insert({
+        filename: "analysis_job",
+        status: "processing",
+        total_rows: 0,
+      })
+      .select()
+      .single();
+
+    if (jobError) throw jobError;
+
+    console.log(`Created analysis job: ${job.id}`);
+
+    // Start background processing using EdgeRuntime.waitUntil
+    // @ts-ignore - EdgeRuntime is available in Supabase Edge Functions
+    if (typeof EdgeRuntime !== "undefined" && EdgeRuntime.waitUntil) {
+      // @ts-ignore
+      EdgeRuntime.waitUntil(processAnalysis(supabase, job.id));
+    } else {
+      // Fallback for environments without EdgeRuntime.waitUntil
+      // Process synchronously but with a quick response first
+      processAnalysis(supabase, job.id).catch(console.error);
+    }
+
+    // Return immediately with job ID
     return new Response(
       JSON.stringify({
         success: true,
-        analyzed: allCustomers.length,
-        assigned: customerUpdates.length,
-        clusters: Array.from(clusterCounts.entries()).map(([name, count]) => ({
-          name,
-          count,
-          percentage: ((count / allCustomers.length) * 100).toFixed(1),
-        })),
+        job_id: job.id,
+        message: "Análise iniciada em segundo plano. Aguarde...",
+        status: "processing"
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
+
   } catch (error) {
-    console.error("Error analyzing customers:", error);
+    console.error("Error starting analysis:", error);
     return new Response(
       JSON.stringify({ success: false, error: error.message }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
