@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Plus,
   Trash2,
@@ -18,6 +20,7 @@ import {
   GalleryHorizontalEnd,
   ChevronLeft,
   ChevronRight,
+  Users,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -36,6 +39,14 @@ interface CarouselCard {
   buttons: CarouselButton[];
 }
 
+interface Cluster {
+  id: string;
+  name: string;
+  emoji: string | null;
+  customer_count: number;
+  color: string;
+}
+
 const emptyCard = (): CarouselCard => ({
   header: "",
   body: "",
@@ -44,13 +55,41 @@ const emptyCard = (): CarouselCard => ({
   buttons: [{ type: "url", title: "", url: "" }],
 });
 
+type SendMode = "manual" | "clusters";
+
 export function CarouselBuilder() {
+  const [sendMode, setSendMode] = useState<SendMode>("manual");
   const [phone, setPhone] = useState("");
+  const [selectedClusters, setSelectedClusters] = useState<string[]>([]);
   const [messageText, setMessageText] = useState("");
   const [cards, setCards] = useState<CarouselCard[]>([emptyCard()]);
   const [activeCardIdx, setActiveCardIdx] = useState(0);
   const [isSending, setIsSending] = useState(false);
   const [previewCardIdx, setPreviewCardIdx] = useState(0);
+  const [sendProgress, setSendProgress] = useState({ sent: 0, failed: 0, total: 0 });
+
+  const { data: clusters } = useQuery({
+    queryKey: ["customer-clusters"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("customer_clusters")
+        .select("*")
+        .gt("customer_count", 0)
+        .order("customer_count", { ascending: false });
+      if (error) throw error;
+      return data as Cluster[];
+    },
+  });
+
+  const totalRecipients = clusters
+    ?.filter((c) => selectedClusters.includes(c.id))
+    .reduce((sum, c) => sum + c.customer_count, 0) || 0;
+
+  const toggleCluster = (id: string) => {
+    setSelectedClusters((prev) =>
+      prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]
+    );
+  };
 
   const activeCard = cards[activeCardIdx];
 
@@ -117,8 +156,12 @@ export function CarouselBuilder() {
   };
 
   const sendCarousel = async () => {
-    if (!phone.trim()) {
+    if (sendMode === "manual" && !phone.trim()) {
       toast.error("Digite o número de WhatsApp");
+      return;
+    }
+    if (sendMode === "clusters" && selectedClusters.length === 0) {
+      toast.error("Selecione pelo menos um cluster");
       return;
     }
     if (cards.some((c) => !c.body.trim())) {
@@ -127,30 +170,74 @@ export function CarouselBuilder() {
     }
 
     setIsSending(true);
+    setSendProgress({ sent: 0, failed: 0, total: 0 });
+
+    const carouselPayload = cards.map((c) => ({
+      header: c.header,
+      body: c.body,
+      footer: c.footer,
+      image: c.image,
+      buttons: c.buttons.filter((b) => b.title.trim()),
+    }));
+
     try {
-      const { data, error } = await supabase.functions.invoke("send-carousel", {
-        body: {
-          number: phone.trim(),
-          text: messageText,
-          carousel: cards.map((c) => ({
-            header: c.header,
-            body: c.body,
-            footer: c.footer,
-            image: c.image,
-            buttons: c.buttons.filter((b) => b.title.trim()),
-          })),
-        },
-      });
+      if (sendMode === "manual") {
+        const { data, error } = await supabase.functions.invoke("send-carousel", {
+          body: { number: phone.trim(), text: messageText, carousel: carouselPayload },
+        });
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+        toast.success("Carrossel enviado com sucesso!");
+      } else {
+        // Fetch phones from selected clusters
+        const { data: customers, error: fetchErr } = await supabase
+          .from("imported_customers")
+          .select("phone")
+          .in("cluster_id", selectedClusters)
+          .not("phone", "is", null);
 
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+        if (fetchErr) throw fetchErr;
 
-      toast.success("Carrossel enviado com sucesso!");
+        const phones = customers
+          ?.map((c) => c.phone?.replace(/\D/g, ""))
+          .filter((p): p is string => !!p && p.length >= 10);
+
+        if (!phones || phones.length === 0) {
+          toast.error("Nenhum cliente com telefone válido nos clusters selecionados");
+          return;
+        }
+
+        setSendProgress({ sent: 0, failed: 0, total: phones.length });
+
+        let sent = 0;
+        let failed = 0;
+
+        for (const p of phones) {
+          try {
+            const { data, error } = await supabase.functions.invoke("send-carousel", {
+              body: { number: p, text: messageText, carousel: carouselPayload },
+            });
+            if (error || data?.error) {
+              failed++;
+            } else {
+              sent++;
+            }
+          } catch {
+            failed++;
+          }
+          setSendProgress({ sent, failed, total: phones.length });
+          // Small delay between sends
+          await new Promise((r) => setTimeout(r, 2000));
+        }
+
+        toast.success(`Carrossel enviado! ${sent} sucesso, ${failed} falhas de ${phones.length}`);
+      }
     } catch (error: any) {
       console.error("Error sending carousel:", error);
       toast.error("Erro ao enviar: " + (error.message || "Tente novamente"));
     } finally {
       setIsSending(false);
+      setSendProgress({ sent: 0, failed: 0, total: 0 });
     }
   };
 
@@ -158,20 +245,78 @@ export function CarouselBuilder() {
     <div className="flex flex-col lg:flex-row gap-6 h-full">
       {/* Editor */}
       <div className="flex-1 space-y-4">
-        {/* Phone + Message */}
+        {/* Recipient Selection */}
         <Card>
           <CardContent className="pt-4 space-y-3">
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <Phone className="w-4 h-4" />
-                Número de WhatsApp
-              </Label>
-              <Input
-                placeholder="5511999999999"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-              />
+            {/* Mode Toggle */}
+            <div className="flex gap-2">
+              <Button
+                variant={sendMode === "manual" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setSendMode("manual")}
+              >
+                <Phone className="w-4 h-4 mr-1" />
+                Número manual
+              </Button>
+              <Button
+                variant={sendMode === "clusters" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setSendMode("clusters")}
+              >
+                <Users className="w-4 h-4 mr-1" />
+                Clusters
+              </Button>
             </div>
+
+            {sendMode === "manual" ? (
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Phone className="w-4 h-4" />
+                  Número de WhatsApp
+                </Label>
+                <Input
+                  placeholder="5511999999999"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                />
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Users className="w-4 h-4" />
+                  Selecione os clusters
+                </Label>
+                {clusters && clusters.length > 0 ? (
+                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                    {clusters.map((cluster) => (
+                      <label
+                        key={cluster.id}
+                        className="flex items-center gap-2 p-2 rounded-md border border-border hover:bg-muted/50 cursor-pointer"
+                      >
+                        <Checkbox
+                          checked={selectedClusters.includes(cluster.id)}
+                          onCheckedChange={() => toggleCluster(cluster.id)}
+                        />
+                        <span className="text-sm">
+                          {cluster.emoji} {cluster.name}
+                        </span>
+                        <Badge variant="secondary" className="ml-auto text-xs">
+                          {cluster.customer_count}
+                        </Badge>
+                      </label>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Nenhum cluster com clientes encontrado</p>
+                )}
+                {selectedClusters.length > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Total: {totalRecipients} destinatários
+                  </p>
+                )}
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label>Texto da mensagem (opcional)</Label>
               <Textarea
@@ -313,9 +458,15 @@ export function CarouselBuilder() {
         )}
 
         {/* Send */}
+        {isSending && sendProgress.total > 0 && (
+          <div className="text-xs text-muted-foreground text-center">
+            Enviando: {sendProgress.sent + sendProgress.failed}/{sendProgress.total} 
+            ({sendProgress.sent} ✓ {sendProgress.failed > 0 ? `${sendProgress.failed} ✗` : ""})
+          </div>
+        )}
         <Button
           onClick={sendCarousel}
-          disabled={isSending || !phone.trim()}
+          disabled={isSending || (sendMode === "manual" ? !phone.trim() : selectedClusters.length === 0)}
           className="w-full"
         >
           {isSending ? (
@@ -323,7 +474,9 @@ export function CarouselBuilder() {
           ) : (
             <Send className="w-4 h-4 mr-2" />
           )}
-          Enviar Carrossel
+          {sendMode === "clusters" && totalRecipients > 0
+            ? `Enviar para ${totalRecipients} clientes`
+            : "Enviar Carrossel"}
         </Button>
       </div>
 
