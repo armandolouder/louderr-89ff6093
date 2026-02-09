@@ -154,21 +154,33 @@ export function ClusterDetailSheet({ cluster, open, onOpenChange }: ClusterDetai
     enabled: !!cluster?.id && open,
   });
 
-  // Query for paginated customer list (display only)
+  // Query for ALL customers in the cluster (with pagination to bypass 1000-row limit)
   const { data: customers, isLoading, refetch } = useQuery({
     queryKey: ["cluster-customers", cluster?.id],
     queryFn: async () => {
       if (!cluster?.id) return [];
 
-      const { data, error } = await supabase
-        .from("imported_customers")
-        .select("*")
-        .eq("cluster_id", cluster.id)
-        .order("name", { ascending: true })
-        .limit(100);
+      let allCustomers: Customer[] = [];
+      let offset = 0;
+      const pageSize = 1000;
 
-      if (error) throw error;
-      return data as Customer[];
+      while (true) {
+        const { data: batch, error } = await supabase
+          .from("imported_customers")
+          .select("*")
+          .eq("cluster_id", cluster.id)
+          .order("name", { ascending: true })
+          .range(offset, offset + pageSize - 1);
+
+        if (error) throw error;
+        if (!batch || batch.length === 0) break;
+
+        allCustomers = allCustomers.concat(batch as Customer[]);
+        if (batch.length < pageSize) break;
+        offset += pageSize;
+      }
+
+      return allCustomers;
     },
     enabled: !!cluster?.id && open,
   });
