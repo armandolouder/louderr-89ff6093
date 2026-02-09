@@ -46,28 +46,43 @@ serve(async (req) => {
 
     const formattedPhone = number.replace(/\D/g, "");
 
-    // Build UAZAPI carousel payload
+    // Build choices array for UAZAPI /send/menu carousel format
+    // Format: each card is built with [Title\nBody], {imageUrl}, and button entries
+    const choices: string[] = [];
+
+    for (const card of carousel) {
+      // Card text: [Header\nBody\nFooter]
+      let cardText = card.header || "";
+      if (card.body) cardText += `\n${card.body}`;
+      if (card.footer) cardText += `\n${card.footer}`;
+      choices.push(`[${cardText}]`);
+
+      // Card image
+      if (card.image) {
+        choices.push(`{${card.image}}`);
+      }
+
+      // Buttons: "Title|url" or "Title" for reply
+      for (const btn of card.buttons) {
+        if (btn.type === "url" && btn.url) {
+          choices.push(`${btn.title}|${btn.url}`);
+        } else {
+          choices.push(btn.title);
+        }
+      }
+    }
+
     const requestBody = {
       number: formattedPhone,
+      type: "carousel",
       text: text || "",
-      carousel: carousel.map((card) => ({
-        header: card.header || "",
-        body: card.body || "",
-        footer: card.footer || "",
-        image: card.image || "",
-        buttons: card.buttons.map((btn) => {
-          if (btn.type === "url") {
-            return { type: "url", title: btn.title, url: btn.url || "" };
-          }
-          return { type: "reply", title: btn.title, id: btn.id || btn.title };
-        }),
-      })),
+      choices,
     };
 
-    console.log("Sending carousel to:", formattedPhone);
+    console.log("Sending carousel via /send/menu to:", formattedPhone);
     console.log("Payload:", JSON.stringify(requestBody));
 
-    const uazapiResponse = await fetch(`${UAZAPI_SERVER_URL}/send/carousel`, {
+    const uazapiResponse = await fetch(`${UAZAPI_SERVER_URL}/send/menu`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
