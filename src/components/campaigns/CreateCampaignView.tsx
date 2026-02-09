@@ -26,7 +26,8 @@ import {
   ImagePlus,
   ChevronLeft,
   ChevronRight,
-  ArrowLeft
+  ArrowLeft,
+  Phone
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -170,6 +171,8 @@ export function CreateCampaignView({ onBack }: CreateCampaignViewProps) {
   const [scheduledTime, setScheduledTime] = useState("09:00");
   const [activeEmojiPicker, setActiveEmojiPicker] = useState<number | null>(null);
   const textareaRefs = useRef<(HTMLTextAreaElement | null)[]>([]);
+  const [testPhone, setTestPhone] = useState("");
+  const [isSendingTest, setIsSendingTest] = useState(false);
 
   const { data: clusters } = useQuery({
     queryKey: ["customer-clusters"],
@@ -395,6 +398,49 @@ export function CreateCampaignView({ onBack }: CreateCampaignViewProps) {
     setSelectedMessages((prev) =>
       prev.includes(idx) ? prev.filter((i) => i !== idx) : [...prev, idx]
     );
+  };
+
+  const sendTestMessage = async () => {
+    if (!testPhone.trim()) {
+      toast.error("Digite um número de WhatsApp para teste");
+      return;
+    }
+    if (selectedMessages.length === 0) {
+      toast.error("Selecione pelo menos uma mensagem");
+      return;
+    }
+
+    setIsSendingTest(true);
+    try {
+      const msg = messages[selectedMessages[0]];
+      const personalizedContent = msg.content.replace(/\{\{nome\}\}/gi, "Teste");
+
+      const payload: any = {
+        number: testPhone.trim(),
+        text: personalizedContent,
+      };
+
+      if (msg.mediaUrl) {
+        const { data, error } = await supabase.functions.invoke("send-whatsapp", {
+          body: { ...payload, mediaUrl: msg.mediaUrl, mediaType: msg.mediaType },
+        });
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+      } else {
+        const { data, error } = await supabase.functions.invoke("send-whatsapp", {
+          body: payload,
+        });
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+      }
+
+      toast.success("Mensagem de teste enviada!");
+    } catch (error: any) {
+      console.error("Error sending test:", error);
+      toast.error("Erro ao enviar teste: " + (error.message || "Tente novamente"));
+    } finally {
+      setIsSendingTest(false);
+    }
   };
 
   const canProceed = () => {
@@ -709,6 +755,39 @@ export function CreateCampaignView({ onBack }: CreateCampaignViewProps) {
         {step === 3 && (
           <ScrollArea className="h-full">
             <div className="p-6 space-y-6 max-w-2xl mx-auto">
+              {/* Test Phone */}
+              <div className="space-y-3">
+                <Label className="flex items-center gap-2">
+                  <Phone className="w-4 h-4" />
+                  Enviar teste
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Envie a primeira mensagem selecionada para um número de teste antes de iniciar a campanha
+                </p>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="5511999999999"
+                    value={testPhone}
+                    onChange={(e) => setTestPhone(e.target.value)}
+                    className="flex-1"
+                  />
+                  <Button
+                    variant="outline"
+                    onClick={sendTestMessage}
+                    disabled={isSendingTest || !testPhone.trim() || selectedMessages.length === 0}
+                  >
+                    {isSendingTest ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <>
+                        <Send className="w-4 h-4 mr-1" />
+                        Testar
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+
               {/* Schedule */}
               <div className="space-y-3">
                 <Label>Quando enviar</Label>

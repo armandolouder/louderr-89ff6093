@@ -8,6 +8,7 @@ import Landing from "./pages/Landing";
 import Dashboard from "./pages/Dashboard";
 import Inbox from "./pages/Inbox";
 import Campaigns from "./pages/Campaigns";
+import Customers from "./pages/Customers";
 import Settings from "./pages/Settings";
 import Api from "./pages/Api";
 import Auth from "./pages/Auth";
@@ -30,6 +31,7 @@ const App = () => (
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/inbox" element={<Inbox />} />
             <Route path="/campaigns" element={<Campaigns />} />
+            <Route path="/customers" element={<Customers />} />
             <Route path="/bot" element={<Dashboard />} />
             <Route path="/crm" element={<Dashboard />} />
             <Route path="/apis" element={<Api />} />

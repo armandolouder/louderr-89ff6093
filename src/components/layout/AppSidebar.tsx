@@ -18,9 +18,9 @@ import { useState } from "react";
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Atendimentos", href: "/inbox", icon: MessageSquare },
+  { name: "Clientes", href: "/customers", icon: Users },
   { name: "Campanhas", href: "/campaigns", icon: Megaphone },
   { name: "Bot", href: "/bot", icon: Bot },
-  { name: "CRM", href: "/crm", icon: Users },
   { name: "APIs", href: "/apis", icon: Zap },
   { name: "Configurações", href: "/settings", icon: Settings },
 ];
