@@ -34,35 +34,36 @@ export function useConversations() {
   const query = useQuery({
     queryKey: ["conversations"],
     queryFn: async () => {
-      // Buscar conversas com contato
+      // Buscar conversas com contato e última mensagem
       const { data: conversations, error } = await supabase
         .from("conversations")
         .select(`
           *,
-          contact:contacts(*)
+          contact:contacts(*),
+          messages(sender_type, created_at)
         `)
         .order("last_message_at", { ascending: false, nullsFirst: false });
 
       if (error) throw error;
       if (!conversations) return [];
 
-      // Para cada conversa, buscar a última mensagem para saber o sender_type
-      const conversationsWithLastSender = await Promise.all(
-        conversations.map(async (conv) => {
-          const { data: lastMessage } = await supabase
-            .from("messages")
-            .select("sender_type")
-            .eq("conversation_id", conv.id)
-            .order("created_at", { ascending: false })
-            .limit(1)
-            .single();
+      // Processar para extrair o sender_type da última mensagem
+      const conversationsWithLastSender = conversations.map((conv) => {
+        const messages = conv.messages || [];
+        // Ordenar mensagens por data e pegar a mais recente
+        const sortedMessages = [...messages].sort(
+          (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+        const lastMessage = sortedMessages[0];
 
-          return {
-            ...conv,
-            last_message_sender_type: lastMessage?.sender_type as "contact" | "agent" | null,
-          };
-        })
-      );
+        // Remover o array de messages do objeto final
+        const { messages: _, ...convWithoutMessages } = conv;
+
+        return {
+          ...convWithoutMessages,
+          last_message_sender_type: lastMessage?.sender_type as "contact" | "agent" | null,
+        };
+      });
 
       return conversationsWithLastSender as Conversation[];
     },
