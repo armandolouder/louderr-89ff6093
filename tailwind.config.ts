@@ -120,6 +120,16 @@ export default {
           from: { opacity: "0" },
           to: { opacity: "1" },
         },
+        "pulse-border": {
+          "0%, 100%": { 
+            borderColor: "hsl(var(--primary))",
+            boxShadow: "0 0 0 0 hsl(var(--primary) / 0.4)"
+          },
+          "50%": { 
+            borderColor: "hsl(var(--primary) / 0.6)",
+            boxShadow: "0 0 0 4px hsl(var(--primary) / 0)"
+          },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -127,6 +137,7 @@ export default {
         "pulse-glow": "pulse-glow 2s ease-in-out infinite",
         "slide-in": "slide-in 0.3s ease-out",
         "fade-in": "fade-in 0.3s ease-out",
+        "pulse-border": "pulse-border 2s ease-in-out infinite",
       },
     },
   },

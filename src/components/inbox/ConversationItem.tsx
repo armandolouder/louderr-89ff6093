@@ -16,8 +16,9 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { useCustomTabs, useMoveToTab, CustomTab } from "@/hooks/useCustomTabs";
+import { useCustomTabs, useMoveToTab } from "@/hooks/useCustomTabs";
 import { toast } from "sonner";
+import { useIsConversationNew } from "@/hooks/useNewMessageAlerts";
 
 interface ConversationItemProps {
   conversation: Conversation;
@@ -35,6 +36,7 @@ const statusColors = {
 export function ConversationItem({ conversation, isActive, onClick }: ConversationItemProps) {
   const { data: tabs = [] } = useCustomTabs();
   const moveToTab = useMoveToTab();
+  const isNewMessage = useIsConversationNew(conversation.id);
 
   const initials = conversation.contact.name
     .split(" ")
@@ -60,7 +62,11 @@ export function ConversationItem({ conversation, isActive, onClick }: Conversati
 
   return (
     <div
-      className={cn("conversation-item group", isActive && "active")}
+      className={cn(
+        "conversation-item group",
+        isActive && "active",
+        isNewMessage && "border-l-4 border-l-primary animate-pulse-border bg-primary/5"
+      )}
       onClick={onClick}
     >
       <div className="relative">
