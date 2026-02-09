@@ -85,17 +85,13 @@ export function ConversationItem({ conversation, isActive, onClick }: Conversati
             {initials}
           </AvatarFallback>
         </Avatar>
-        {/* Status indicator */}
+        {/* Status indicator - fica verde quando há mensagens não respondidas */}
         <div
           className={cn(
             "absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border-2 border-background",
-            statusColors[conversation.status]
+            hasUnread ? "bg-success" : statusColors[conversation.status]
           )}
         />
-        {/* Unread indicator - ponto vermelho pulsante */}
-        {hasUnread && !isNewMessage && (
-          <div className="absolute -top-1 -left-1 w-3 h-3 bg-destructive rounded-full animate-pulse" />
-        )}
       </div>
       
       <div className="flex-1 min-w-0">
