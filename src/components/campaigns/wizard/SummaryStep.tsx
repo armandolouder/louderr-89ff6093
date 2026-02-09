@@ -39,12 +39,37 @@ function validateEmail(email: string): boolean {
 
 function parseNumber(value: string): number {
   if (!value) return 0;
-  // Handle Brazilian format (1.234,56)
-  const normalized = value
-    .replace(/\s/g, "")
-    .replace(/\./g, "")
-    .replace(",", ".");
-  return parseFloat(normalized) || 0;
+  
+  const cleaned = value.replace(/\s/g, "").replace(/[R$]/gi, "").trim();
+  
+  // Check if it's already a plain number (no formatting)
+  if (/^\d+(\.\d+)?$/.test(cleaned)) {
+    return parseFloat(cleaned) || 0;
+  }
+  
+  // Check for Brazilian format: 1.234,56 (dot as thousand separator, comma as decimal)
+  // Pattern: has dot(s) followed by comma, or just comma as decimal
+  if (/^\d{1,3}(\.\d{3})*,\d{2}$/.test(cleaned)) {
+    // Format: 1.234,56 or 123,45
+    const normalized = cleaned.replace(/\./g, "").replace(",", ".");
+    return parseFloat(normalized) || 0;
+  }
+  
+  // Check for format with just comma as decimal: 158,80
+  if (/^\d+,\d{2}$/.test(cleaned)) {
+    const normalized = cleaned.replace(",", ".");
+    return parseFloat(normalized) || 0;
+  }
+  
+  // Check for US format: 1,234.56 (comma as thousand separator, dot as decimal)
+  if (/^\d{1,3}(,\d{3})*\.\d{2}$/.test(cleaned)) {
+    const normalized = cleaned.replace(/,/g, "");
+    return parseFloat(normalized) || 0;
+  }
+  
+  // Fallback: try to parse as-is
+  const fallback = cleaned.replace(/,/g, ".");
+  return parseFloat(fallback) || 0;
 }
 
 function parseDate(value: string): string | null {
