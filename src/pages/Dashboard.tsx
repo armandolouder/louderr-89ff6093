@@ -1,111 +1,163 @@
+import { useState } from "react";
 import { 
   MessageSquare, 
   Users, 
   Clock, 
-  CheckCircle, 
-  AlertTriangle,
-  TrendingUp 
+  CheckCircle,
+  Inbox,
+  TrendingUp,
+  RefreshCw
 } from "lucide-react";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { ChannelChart } from "@/components/dashboard/ChannelChart";
 import { PerformanceChart } from "@/components/dashboard/PerformanceChart";
+import { CampaignStats } from "@/components/dashboard/CampaignStats";
+import { PeriodFilter } from "@/components/dashboard/PeriodFilter";
+import { AlertsCard } from "@/components/dashboard/AlertsCard";
+import { CustomerStats } from "@/components/dashboard/CustomerStats";
+import { 
+  useDashboardStats, 
+  useHourlyActivity, 
+  type PeriodFilter as PeriodFilterType 
+} from "@/hooks/useDashboardStats";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function Dashboard() {
+  const [period, setPeriod] = useState<PeriodFilterType>("today");
+  const queryClient = useQueryClient();
+
+  const { data: stats, isLoading: statsLoading } = useDashboardStats(period);
+  const { data: hourlyData, isLoading: hourlyLoading } = useHourlyActivity(period);
+
+  const handleRefresh = () => {
+    queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+    queryClient.invalidateQueries({ queryKey: ["dashboard-hourly"] });
+    queryClient.invalidateQueries({ queryKey: ["dashboard-campaigns"] });
+    queryClient.invalidateQueries({ queryKey: ["dashboard-alerts"] });
+  };
+
+  const periodLabel = {
+    today: "Hoje",
+    week: "Esta semana",
+    month: "Este mês"
+  }[period];
+
   return (
     <div className="p-6 lg:p-8 space-y-8">
       {/* Header */}
-      <div className="space-y-1">
-        <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
-        <p className="text-muted-foreground">Visão geral da operação em tempo real</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="space-y-1">
+          <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
+          <p className="text-muted-foreground">Visão geral da operação • {periodLabel}</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <PeriodFilter value={period} onChange={setPeriod} />
+          <Button 
+            variant="outline" 
+            size="icon"
+            onClick={handleRefresh}
+            className="shrink-0"
+          >
+            <RefreshCw className="w-4 h-4" />
+          </Button>
+        </div>
       </div>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          title="Atendimentos Ativos"
-          value={47}
-          change={{ value: 12, type: "increase" }}
-          icon={MessageSquare}
-          variant="accent"
-        />
-        <StatCard
-          title="Clientes Atendidos Hoje"
-          value={128}
-          change={{ value: 8, type: "increase" }}
-          icon={Users}
-        />
-        <StatCard
-          title="Tempo Médio de Resposta"
-          value="2m 34s"
-          change={{ value: 15, type: "decrease" }}
-          icon={Clock}
-          variant="accent"
-        />
-        <StatCard
-          title="Taxa de Resolução"
-          value="94%"
-          change={{ value: 3, type: "increase" }}
-          icon={CheckCircle}
-        />
+        {statsLoading ? (
+          <>
+            {[1, 2, 3, 4].map(i => (
+              <Skeleton key={i} className="h-32" />
+            ))}
+          </>
+        ) : (
+          <>
+            <StatCard
+              title="Conversas Ativas"
+              value={stats?.activeConversations ?? 0}
+              icon={MessageSquare}
+              variant="accent"
+            />
+            <StatCard
+              title="Novas Conversas"
+              value={stats?.newConversations ?? 0}
+              icon={Inbox}
+            />
+            <StatCard
+              title="Total de Mensagens"
+              value={stats?.totalMessages ?? 0}
+              icon={TrendingUp}
+              variant="accent"
+            />
+            <StatCard
+              title="Finalizadas"
+              value={stats?.finishedConversations ?? 0}
+              icon={CheckCircle}
+            />
+          </>
+        )}
       </div>
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <PerformanceChart />
+          <PerformanceChart 
+            data={hourlyData} 
+            isLoading={hourlyLoading}
+            title={`Mensagens por Hora • ${periodLabel}`}
+          />
         </div>
-        <ChannelChart />
+        <ChannelChart 
+          whatsappCount={stats?.whatsappCount ?? 0}
+          instagramCount={stats?.instagramCount ?? 0}
+          isLoading={statsLoading}
+        />
       </div>
 
-      {/* Alerts & Recent Activity */}
+      {/* Campaigns & Customers */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Alerts */}
-        <div className="stat-card rounded-lg">
-          <div className="flex items-center gap-2 mb-4">
-            <AlertTriangle className="w-5 h-5 text-warning" />
-            <h3 className="text-lg font-semibold text-foreground">Alertas</h3>
-          </div>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between p-3 bg-warning/10 border border-warning/20 rounded-lg">
-              <div className="flex items-center gap-3">
-                <div className="w-2 h-2 bg-warning rounded-full animate-pulse" />
-                <span className="text-sm text-foreground">5 atendimentos aguardando há mais de 10 min</span>
-              </div>
-              <span className="text-xs text-muted-foreground">Agora</span>
-            </div>
-            <div className="flex items-center justify-between p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-              <div className="flex items-center gap-3">
-                <div className="w-2 h-2 bg-destructive rounded-full" />
-                <span className="text-sm text-foreground">SLA estourado em 2 conversas</span>
-              </div>
-              <span className="text-xs text-muted-foreground">5 min atrás</span>
-            </div>
-          </div>
-        </div>
+        <CampaignStats
+          sentMessages={stats?.sentMessages ?? 0}
+          failedMessages={stats?.failedMessages ?? 0}
+          successRate={stats?.successRate ?? 0}
+          activeCampaigns={stats?.activeCampaigns ?? 0}
+        />
+        <CustomerStats
+          totalCustomers={stats?.totalCustomers ?? 0}
+          customersWithPhone={stats?.customersWithPhone ?? 0}
+          totalClusters={stats?.totalClusters ?? 0}
+        />
+      </div>
 
-        {/* Top Agents */}
+      {/* Alerts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <AlertsCard />
+        
+        {/* Status Overview */}
         <div className="stat-card rounded-lg">
           <div className="flex items-center gap-2 mb-4">
-            <TrendingUp className="w-5 h-5 text-accent" />
-            <h3 className="text-lg font-semibold text-foreground">Top Atendentes</h3>
+            <Clock className="w-5 h-5 text-primary" />
+            <h3 className="text-lg font-semibold text-foreground">Status das Conversas</h3>
           </div>
-          <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
             {[
-              { name: "Carlos Oliveira", atendimentos: 45, rating: 4.9 },
-              { name: "Fernanda Costa", atendimentos: 38, rating: 4.8 },
-              { name: "Rafael Santos", atendimentos: 32, rating: 4.7 },
-            ].map((agent, index) => (
-              <div key={agent.name} className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <span className="w-6 h-6 flex items-center justify-center bg-primary text-primary-foreground text-xs font-bold rounded-full">
-                    {index + 1}
-                  </span>
-                  <span className="text-sm font-medium text-foreground">{agent.name}</span>
+              { label: "Novos", value: stats?.statusNovo ?? 0, color: "bg-blue-500" },
+              { label: "Em Atendimento", value: stats?.statusEmAtendimento ?? 0, color: "bg-success" },
+              { label: "Aguardando", value: stats?.statusAguardando ?? 0, color: "bg-warning" },
+              { label: "Finalizados", value: stats?.statusFinalizado ?? 0, color: "bg-muted-foreground" },
+            ].map((status) => (
+              <div 
+                key={status.label}
+                className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg"
+              >
+                <div className="flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full ${status.color}`} />
+                  <span className="text-sm text-muted-foreground">{status.label}</span>
                 </div>
-                <div className="flex items-center gap-4">
-                  <span className="text-sm text-muted-foreground">{agent.atendimentos} atend.</span>
-                  <span className="text-sm text-accent">★ {agent.rating}</span>
-                </div>
+                <span className="text-lg font-bold text-foreground">{status.value}</span>
               </div>
             ))}
           </div>
