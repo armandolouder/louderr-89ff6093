@@ -67,6 +67,9 @@ export function CarouselBuilder() {
   const [isSending, setIsSending] = useState(false);
   const [previewCardIdx, setPreviewCardIdx] = useState(0);
   const [sendProgress, setSendProgress] = useState({ sent: 0, failed: 0, total: 0 });
+  const [dailyLimit, setDailyLimit] = useState(50);
+  const [delayMin, setDelayMin] = useState(180);
+  const [delayMax, setDelayMax] = useState(480);
 
   const { data: clusters } = useQuery({
     queryKey: ["customer-clusters"],
@@ -211,8 +214,14 @@ export function CarouselBuilder() {
 
         let sent = 0;
         let failed = 0;
+        let sentToday = 0;
 
         for (const p of phones) {
+          if (sentToday >= dailyLimit) {
+            toast.info(`Limite diário de ${dailyLimit} atingido. Restantes: ${phones.length - sent - failed}`);
+            break;
+          }
+
           try {
             const { data, error } = await supabase.functions.invoke("send-carousel", {
               body: { number: p, text: messageText, carousel: carouselPayload },
@@ -221,13 +230,16 @@ export function CarouselBuilder() {
               failed++;
             } else {
               sent++;
+              sentToday++;
             }
           } catch {
             failed++;
           }
           setSendProgress({ sent, failed, total: phones.length });
-          // Small delay between sends
-          await new Promise((r) => setTimeout(r, 2000));
+
+          // Random delay between delayMin and delayMax (in seconds)
+          const delay = (delayMin + Math.random() * (delayMax - delayMin)) * 1000;
+          await new Promise((r) => setTimeout(r, delay));
         }
 
         toast.success(`Carrossel enviado! ${sent} sucesso, ${failed} falhas de ${phones.length}`);
@@ -326,6 +338,48 @@ export function CarouselBuilder() {
                 rows={2}
               />
             </div>
+            {sendMode === "clusters" && (
+              <div className="space-y-3 pt-2 border-t border-border">
+                <Label className="text-xs font-medium">Controle de envio</Label>
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Limite diário</Label>
+                    <Input
+                      type="number"
+                      value={dailyLimit}
+                      onChange={(e) => setDailyLimit(Number(e.target.value))}
+                      min={1}
+                      max={500}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Delay mín (s)</Label>
+                    <Input
+                      type="number"
+                      value={delayMin}
+                      onChange={(e) => setDelayMin(Number(e.target.value))}
+                      min={30}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Delay máx (s)</Label>
+                    <Input
+                      type="number"
+                      value={delayMax}
+                      onChange={(e) => setDelayMax(Number(e.target.value))}
+                      min={delayMin}
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Intervalo de {Math.floor(delayMin / 60)}m{delayMin % 60}s a {Math.floor(delayMax / 60)}m{delayMax % 60}s entre mensagens
+                  {totalRecipients > 0 && ` · ~${Math.ceil(totalRecipients / dailyLimit)} dias`}
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
