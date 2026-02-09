@@ -21,6 +21,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Users,
+  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -43,6 +44,7 @@ interface Cluster {
   id: string;
   name: string;
   emoji: string | null;
+  description: string | null;
   customer_count: number;
   color: string;
 }
@@ -70,6 +72,7 @@ export function CarouselBuilder() {
   const [dailyLimit, setDailyLimit] = useState(50);
   const [delayMin, setDelayMin] = useState(180);
   const [delayMax, setDelayMax] = useState(480);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const { data: clusters } = useQuery({
     queryKey: ["customer-clusters"],
@@ -83,6 +86,36 @@ export function CarouselBuilder() {
       return data as Cluster[];
     },
   });
+
+  const selectedClusterData = clusters?.filter((c) => selectedClusters.includes(c.id));
+
+  const generateMessageText = async () => {
+    const clusterInfo = selectedClusterData?.[0];
+    setIsGenerating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-campaign-messages", {
+        body: {
+          clusterName: clusterInfo?.name || "Clientes gerais",
+          clusterDescription: clusterInfo?.description || "",
+          objective: "Apresentar produtos/serviços via carrossel interativo",
+          recommendation: "Criar texto curto e atrativo que acompanhe o carrossel",
+          messageCount: 1,
+        },
+      });
+      if (error) throw error;
+      if (data?.messages?.[0]?.content) {
+        setMessageText(data.messages[0].content);
+        toast.success("Texto gerado com sucesso!");
+      } else {
+        throw new Error("Resposta inválida da IA");
+      }
+    } catch (error: any) {
+      console.error("Error generating text:", error);
+      toast.error("Erro ao gerar texto: " + (error.message || "Tente novamente"));
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   const totalRecipients = clusters
     ?.filter((c) => selectedClusters.includes(c.id))
@@ -345,9 +378,25 @@ export function CarouselBuilder() {
             )}
 
             <div className="space-y-2">
-              <Label>Texto da mensagem (opcional)</Label>
+              <div className="flex items-center justify-between">
+                <Label>Texto da mensagem (opcional)</Label>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={generateMessageText}
+                  disabled={isGenerating}
+                  className="h-6 text-xs"
+                >
+                  {isGenerating ? (
+                    <Loader2 className="w-3 h-3 animate-spin mr-1" />
+                  ) : (
+                    <Sparkles className="w-3 h-3 mr-1" />
+                  )}
+                  Gerar com IA
+                </Button>
+              </div>
               <Textarea
-                placeholder="Texto que acompanha o carrossel..."
+                placeholder="Texto que acompanha o carrossel... Use {{nome}} para personalizar"
                 value={messageText}
                 onChange={(e) => setMessageText(e.target.value)}
                 rows={2}
