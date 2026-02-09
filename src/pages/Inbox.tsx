@@ -8,11 +8,15 @@ import { Conversation } from "@/hooks/useConversations";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useNewMessageAlerts } from "@/hooks/useNewMessageAlerts";
 
 export default function Inbox() {
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [selectedTabId, setSelectedTabId] = useState<string | null>(null);
   const isMobile = useIsMobile();
+  
+  // Ativa notificações de novas mensagens (som + toast + animação)
+  useNewMessageAlerts();
 
   const handleSelectConversation = (conversation: Conversation) => {
     setSelectedConversation(conversation);
