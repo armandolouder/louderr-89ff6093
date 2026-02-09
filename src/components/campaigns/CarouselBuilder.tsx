@@ -192,39 +192,54 @@ export function CarouselBuilder() {
         if (data?.error) throw new Error(data.error);
         toast.success("Carrossel enviado com sucesso!");
       } else {
-        // Fetch phones from selected clusters
+        // Fetch phones and names from selected clusters
         const { data: customers, error: fetchErr } = await supabase
           .from("imported_customers")
-          .select("phone")
+          .select("phone, name")
           .in("cluster_id", selectedClusters)
           .not("phone", "is", null);
 
         if (fetchErr) throw fetchErr;
 
-        const phones = customers
-          ?.map((c) => c.phone?.replace(/\D/g, ""))
-          .filter((p): p is string => !!p && p.length >= 10);
+        const validCustomers = customers
+          ?.filter((c) => {
+            const clean = c.phone?.replace(/\D/g, "");
+            return clean && clean.length >= 10;
+          })
+          .map((c) => ({
+            phone: c.phone!.replace(/\D/g, ""),
+            name: c.name || "",
+          })) || [];
 
-        if (!phones || phones.length === 0) {
+        if (validCustomers.length === 0) {
           toast.error("Nenhum cliente com telefone válido nos clusters selecionados");
           return;
         }
 
-        setSendProgress({ sent: 0, failed: 0, total: phones.length });
+        setSendProgress({ sent: 0, failed: 0, total: validCustomers.length });
 
         let sent = 0;
         let failed = 0;
         let sentToday = 0;
 
-        for (const p of phones) {
+        for (const customer of validCustomers) {
           if (sentToday >= dailyLimit) {
-            toast.info(`Limite diário de ${dailyLimit} atingido. Restantes: ${phones.length - sent - failed}`);
+            toast.info(`Limite diário de ${dailyLimit} atingido. Restantes: ${validCustomers.length - sent - failed}`);
             break;
           }
 
+          // Replace {{nome}} variable in text and card fields
+          const personalizedText = messageText.replace(/\{\{nome\}\}/gi, customer.name);
+          const personalizedCarousel = carouselPayload.map((c) => ({
+            ...c,
+            header: c.header.replace(/\{\{nome\}\}/gi, customer.name),
+            body: c.body.replace(/\{\{nome\}\}/gi, customer.name),
+            footer: c.footer.replace(/\{\{nome\}\}/gi, customer.name),
+          }));
+
           try {
             const { data, error } = await supabase.functions.invoke("send-carousel", {
-              body: { number: p, text: messageText, carousel: carouselPayload },
+              body: { number: customer.phone, text: personalizedText, carousel: personalizedCarousel },
             });
             if (error || data?.error) {
               failed++;
@@ -235,14 +250,14 @@ export function CarouselBuilder() {
           } catch {
             failed++;
           }
-          setSendProgress({ sent, failed, total: phones.length });
+          setSendProgress({ sent, failed, total: validCustomers.length });
 
           // Random delay between delayMin and delayMax (in seconds)
           const delay = (delayMin + Math.random() * (delayMax - delayMin)) * 1000;
           await new Promise((r) => setTimeout(r, delay));
         }
 
-        toast.success(`Carrossel enviado! ${sent} sucesso, ${failed} falhas de ${phones.length}`);
+        toast.success(`Carrossel enviado! ${sent} sucesso, ${failed} falhas de ${validCustomers.length}`);
       }
     } catch (error: any) {
       console.error("Error sending carousel:", error);
