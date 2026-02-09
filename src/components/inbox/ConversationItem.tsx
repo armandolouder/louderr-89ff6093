@@ -65,7 +65,7 @@ export function ConversationItem({ conversation, isActive, onClick }: Conversati
       className={cn(
         "conversation-item group",
         isActive && "active",
-        isNewMessage && "border-l-4 border-l-primary animate-pulse-border bg-primary/5"
+        isNewMessage && "border-2 border-primary rounded-lg animate-pulse-border bg-primary/5"
       )}
       onClick={onClick}
     >
