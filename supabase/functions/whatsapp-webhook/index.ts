@@ -471,6 +471,21 @@ serve(async (req) => {
           throw contactError;
         }
         contact = newContact;
+      } else {
+        // Update avatar_url if we have a new one (WhatsApp avatar URLs expire)
+        if (chat.imagePreview && chat.imagePreview !== contact.avatar_url) {
+          console.log("Updating contact avatar:", contactName);
+          const { error: updateError } = await supabase
+            .from("contacts")
+            .update({ avatar_url: chat.imagePreview })
+            .eq("id", contact.id);
+          
+          if (updateError) {
+            console.error("Error updating contact avatar:", updateError);
+          } else {
+            contact.avatar_url = chat.imagePreview;
+          }
+        }
       }
 
       // Find open conversation or create new one
