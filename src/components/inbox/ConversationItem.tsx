@@ -68,9 +68,7 @@ export function ConversationItem({ conversation, isActive, onClick }: Conversati
         "conversation-item group",
         isActive && "active",
         // Animação pulsante para mensagens recém-chegadas (10 segundos)
-        isNewMessage && "border-2 border-primary rounded-lg animate-pulse-border bg-primary/5",
-        // Indicador permanente para mensagens não respondidas
-        !isNewMessage && hasUnread && "border-l-4 border-l-warning bg-warning/5"
+        isNewMessage && "border-2 border-primary rounded-lg animate-pulse-border bg-primary/5"
       )}
       onClick={onClick}
     >
@@ -87,12 +85,17 @@ export function ConversationItem({ conversation, isActive, onClick }: Conversati
             {initials}
           </AvatarFallback>
         </Avatar>
+        {/* Status indicator */}
         <div
           className={cn(
             "absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border-2 border-background",
             statusColors[conversation.status]
           )}
         />
+        {/* Unread indicator - ponto vermelho pulsante */}
+        {hasUnread && !isNewMessage && (
+          <div className="absolute -top-1 -left-1 w-3 h-3 bg-destructive rounded-full animate-pulse" />
+        )}
       </div>
       
       <div className="flex-1 min-w-0">
