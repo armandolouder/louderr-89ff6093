@@ -60,7 +60,8 @@ export function ConversationItem({ conversation, isActive, onClick }: Conversati
     }
   };
 
-  const hasUnread = conversation.unread_count > 0;
+  // Precisa de resposta: última mensagem foi do contato
+  const needsResponse = conversation.last_message_sender_type === "contact";
 
   return (
     <div
@@ -85,11 +86,11 @@ export function ConversationItem({ conversation, isActive, onClick }: Conversati
             {initials}
           </AvatarFallback>
         </Avatar>
-        {/* Status indicator - fica verde quando há mensagens não respondidas */}
+        {/* Status indicator - fica verde quando precisa de resposta (última msg foi do contato) */}
         <div
           className={cn(
             "absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border-2 border-background",
-            hasUnread ? "bg-success" : statusColors[conversation.status]
+            needsResponse ? "bg-success" : statusColors[conversation.status]
           )}
         />
       </div>

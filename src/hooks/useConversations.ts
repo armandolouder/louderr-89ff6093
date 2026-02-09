@@ -21,6 +21,7 @@ export interface Conversation {
   unread_count: number;
   last_message: string | null;
   last_message_at: string | null;
+  last_message_sender_type: "contact" | "agent" | null;
   created_at: string;
   updated_at: string;
   tab_id: string | null;
@@ -33,7 +34,8 @@ export function useConversations() {
   const query = useQuery({
     queryKey: ["conversations"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Buscar conversas com contato
+      const { data: conversations, error } = await supabase
         .from("conversations")
         .select(`
           *,
@@ -42,7 +44,27 @@ export function useConversations() {
         .order("last_message_at", { ascending: false, nullsFirst: false });
 
       if (error) throw error;
-      return data as Conversation[];
+      if (!conversations) return [];
+
+      // Para cada conversa, buscar a última mensagem para saber o sender_type
+      const conversationsWithLastSender = await Promise.all(
+        conversations.map(async (conv) => {
+          const { data: lastMessage } = await supabase
+            .from("messages")
+            .select("sender_type")
+            .eq("conversation_id", conv.id)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .single();
+
+          return {
+            ...conv,
+            last_message_sender_type: lastMessage?.sender_type as "contact" | "agent" | null,
+          };
+        })
+      );
+
+      return conversationsWithLastSender as Conversation[];
     },
   });
 
