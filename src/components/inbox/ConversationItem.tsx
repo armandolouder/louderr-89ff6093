@@ -60,12 +60,17 @@ export function ConversationItem({ conversation, isActive, onClick }: Conversati
     }
   };
 
+  const hasUnread = conversation.unread_count > 0;
+
   return (
     <div
       className={cn(
         "conversation-item group",
         isActive && "active",
-        isNewMessage && "border-2 border-primary rounded-lg animate-pulse-border bg-primary/5"
+        // Animação pulsante para mensagens recém-chegadas (10 segundos)
+        isNewMessage && "border-2 border-primary rounded-lg animate-pulse-border bg-primary/5",
+        // Indicador permanente para mensagens não respondidas
+        !isNewMessage && hasUnread && "border-l-4 border-l-warning bg-warning/5"
       )}
       onClick={onClick}
     >
