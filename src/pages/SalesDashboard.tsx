@@ -87,11 +87,12 @@ export default function SalesDashboard() {
   }, [orders, statusFilter]);
 
   const metrics = useMemo(() => {
-    const list = filteredOrders;
-    const totalRevenue = list.reduce((sum, o) => sum + (o.total || 0), 0);
-    const totalOrders = list.length;
+    // Exclude cancelled orders from financial metrics and counts
+    const billable = filteredOrders.filter(o => o.status !== "cancelled");
+    const totalRevenue = billable.reduce((sum, o) => sum + (o.total || 0), 0);
+    const totalOrders = billable.length;
     const avgTicket = totalOrders > 0 ? totalRevenue / totalOrders : 0;
-    const totalItems = list.reduce((sum, o) => {
+    const totalItems = billable.reduce((sum, o) => {
       const products = o.products as any[];
       return sum + (Array.isArray(products) ? products.reduce((s, p) => s + (p.quantity || 1), 0) : 0);
     }, 0);
