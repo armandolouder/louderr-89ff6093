@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
     const createdAtMax = url.searchParams.get("created_at_max");
 
     const apiBaseUrl = "https://api.tiendanube.com/v1";
-    let apiUrl = `${apiBaseUrl}/${storeId}/abandoned_checkouts?page=${page}&per_page=${perPage}`;
+    let apiUrl = `${apiBaseUrl}/${storeId}/checkouts?page=${page}&per_page=${perPage}`;
     if (createdAtMin) apiUrl += `&created_at_min=${encodeURIComponent(createdAtMin)}`;
     if (createdAtMax) apiUrl += `&created_at_max=${encodeURIComponent(createdAtMax)}`;
 
