@@ -498,6 +498,72 @@ export type Database = {
           },
         ]
       }
+      nuvemshop_abandoned_checkouts: {
+        Row: {
+          checkout_id: number
+          contact_channel: string | null
+          contacted_at: string | null
+          created_at: string
+          created_at_nuvemshop: string | null
+          currency: string | null
+          customer_email: string | null
+          customer_name: string | null
+          customer_phone: string | null
+          id: string
+          products: Json | null
+          raw_data: Json | null
+          recovered: boolean | null
+          recovery_url: string | null
+          status: string | null
+          store_id: number
+          total: number | null
+          updated_at: string
+          updated_at_nuvemshop: string | null
+        }
+        Insert: {
+          checkout_id: number
+          contact_channel?: string | null
+          contacted_at?: string | null
+          created_at?: string
+          created_at_nuvemshop?: string | null
+          currency?: string | null
+          customer_email?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          id?: string
+          products?: Json | null
+          raw_data?: Json | null
+          recovered?: boolean | null
+          recovery_url?: string | null
+          status?: string | null
+          store_id: number
+          total?: number | null
+          updated_at?: string
+          updated_at_nuvemshop?: string | null
+        }
+        Update: {
+          checkout_id?: number
+          contact_channel?: string | null
+          contacted_at?: string | null
+          created_at?: string
+          created_at_nuvemshop?: string | null
+          currency?: string | null
+          customer_email?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          id?: string
+          products?: Json | null
+          raw_data?: Json | null
+          recovered?: boolean | null
+          recovery_url?: string | null
+          status?: string | null
+          store_id?: number
+          total?: number | null
+          updated_at?: string
+          updated_at_nuvemshop?: string | null
+        }
+        Relationships: []
+      }
       nuvemshop_orders: {
         Row: {
           created_at: string
