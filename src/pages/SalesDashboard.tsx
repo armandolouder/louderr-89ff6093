@@ -316,7 +316,7 @@ export default function SalesDashboard() {
                         {(() => {
                           const shipping = order.shipping_status || "";
                           const isPaid = order.payment_status === "paid";
-                          if (shipping === "shipped") return <Badge className="text-xs px-2 py-0.5 bg-emerald-500/20 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/30">Enviado</Badge>;
+                          if (shipping === "shipped") return <Badge className="text-xs px-2 py-0.5 bg-orange-500/20 text-orange-400 border-orange-500/30 hover:bg-orange-500/30">Enviado</Badge>;
                           if (shipping === "delivered") return <Badge className="text-xs px-2 py-0.5 bg-emerald-500/20 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/30">Entregue</Badge>;
                           if (shipping === "unpacked" && isPaid) return <Badge className="text-xs px-2 py-0.5 bg-emerald-500/20 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/30">Pago</Badge>;
                           if (isPaid) return <Badge className="text-xs px-2 py-0.5 bg-blue-500/20 text-blue-400 border-blue-500/30 hover:bg-blue-500/30">Embalado</Badge>;
