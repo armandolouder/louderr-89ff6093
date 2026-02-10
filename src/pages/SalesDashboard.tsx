@@ -98,13 +98,18 @@ export default function SalesDashboard() {
       let page = 1;
       let hasMore = true;
 
+      const syncStart = new Date(year, month, 1).toISOString();
+      const syncEnd = new Date(year, month + 1, 0, 23, 59, 59).toISOString();
+
       while (hasMore) {
-        const res = await supabase.functions.invoke(`nuvemshop-sync?page=${page}&per_page=50`);
+        const res = await supabase.functions.invoke(
+          `nuvemshop-sync?page=${page}&per_page=50&created_at_min=${encodeURIComponent(syncStart)}&created_at_max=${encodeURIComponent(syncEnd)}`
+        );
         if (res.error) throw res.error;
         totalSynced += res.data?.synced || 0;
         hasMore = res.data?.has_more || false;
         page++;
-        if (page > 50) break; // safety limit
+        if (page > 50) break;
       }
 
       toast.success(`Sincronização concluída: ${totalSynced} pedidos sincronizados`);

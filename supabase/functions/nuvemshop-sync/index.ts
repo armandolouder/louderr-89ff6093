@@ -33,10 +33,19 @@ Deno.serve(async (req) => {
     const perPage = parseInt(url.searchParams.get("per_page") || "50");
     const sinceId = url.searchParams.get("since_id");
 
+    const createdAtMin = url.searchParams.get("created_at_min");
+    const createdAtMax = url.searchParams.get("created_at_max");
+
     const apiBaseUrl = "https://api.tiendanube.com/v1";
     let apiUrl = `${apiBaseUrl}/${storeId}/orders?page=${page}&per_page=${perPage}`;
     if (sinceId) {
       apiUrl += `&since_id=${sinceId}`;
+    }
+    if (createdAtMin) {
+      apiUrl += `&created_at_min=${encodeURIComponent(createdAtMin)}`;
+    }
+    if (createdAtMax) {
+      apiUrl += `&created_at_max=${encodeURIComponent(createdAtMax)}`;
     }
 
     const trimmedToken = accessToken.trim();
