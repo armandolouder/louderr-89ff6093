@@ -103,23 +103,27 @@ Deno.serve(async (req) => {
 
           // Register message in inbox (find or create conversation)
           try {
+            console.log(`[INBOX] Starting inbox registration for ${phone}, customer: ${customerName}`);
+            
             // Find existing contact by phone
             const phoneVariants = [phone, `+${phone}`, `+55${phone}`];
             let contactId: string | null = null;
             let conversationId: string | null = null;
 
             // Search for contact
-            const { data: contacts } = await supabase
+            const { data: contacts, error: contactErr } = await supabase
               .from("contacts")
               .select("id, phone")
               .or(phoneVariants.map(p => `phone.eq.${p}`).join(","))
               .limit(1);
 
+            console.log(`[INBOX] Contact search result: ${JSON.stringify(contacts)}, error: ${JSON.stringify(contactErr)}`);
+
             if (contacts && contacts.length > 0) {
               contactId = contacts[0].id;
             } else {
               // Create contact
-              const { data: newContact } = await supabase
+              const { data: newContact, error: createErr } = await supabase
                 .from("contacts")
                 .insert({
                   name: customerName,
@@ -128,25 +132,31 @@ Deno.serve(async (req) => {
                 .select("id")
                 .single();
               
+              console.log(`[INBOX] Contact created: ${JSON.stringify(newContact)}, error: ${JSON.stringify(createErr)}`);
+              
               if (newContact) {
                 contactId = newContact.id;
               }
             }
 
+            console.log(`[INBOX] contactId: ${contactId}`);
+
             if (contactId) {
               // Find existing conversation
-              const { data: convs } = await supabase
+              const { data: convs, error: convErr } = await supabase
                 .from("conversations")
                 .select("id")
                 .eq("contact_id", contactId)
                 .eq("channel", "whatsapp")
                 .limit(1);
 
+              console.log(`[INBOX] Conversation search: ${JSON.stringify(convs)}, error: ${JSON.stringify(convErr)}`);
+
               if (convs && convs.length > 0) {
                 conversationId = convs[0].id;
               } else {
                 // Create conversation
-                const { data: newConv } = await supabase
+                const { data: newConv, error: newConvErr } = await supabase
                   .from("conversations")
                   .insert({
                     contact_id: contactId,
@@ -158,14 +168,18 @@ Deno.serve(async (req) => {
                   .select("id")
                   .single();
 
+                console.log(`[INBOX] Conversation created: ${JSON.stringify(newConv)}, error: ${JSON.stringify(newConvErr)}`);
+
                 if (newConv) {
                   conversationId = newConv.id;
                 }
               }
 
+              console.log(`[INBOX] conversationId: ${conversationId}`);
+
               if (conversationId) {
                 // Insert message
-                await supabase.from("messages").insert({
+                const { error: msgErr } = await supabase.from("messages").insert({
                   conversation_id: conversationId,
                   content: messageContent,
                   sender_type: "agent",
@@ -179,6 +193,8 @@ Deno.serve(async (req) => {
                   },
                 });
 
+                console.log(`[INBOX] Message insert error: ${JSON.stringify(msgErr)}`);
+
                 // Update conversation last message
                 await supabase
                   .from("conversations")
@@ -188,11 +204,11 @@ Deno.serve(async (req) => {
                   })
                   .eq("id", conversationId);
 
-                console.log(`Message registered in inbox for conversation ${conversationId}`);
+                console.log(`[INBOX] Message registered in inbox for conversation ${conversationId}`);
               }
             }
           } catch (inboxErr: any) {
-            console.error("Error registering in inbox:", inboxErr.message);
+            console.error("[INBOX] Error registering in inbox:", inboxErr.message, inboxErr.stack);
             // Don't fail the execution just because inbox registration failed
           }
 
