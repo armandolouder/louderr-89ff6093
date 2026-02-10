@@ -65,9 +65,14 @@ Deno.serve(async (req) => {
 
     for (const checkout of checkouts) {
       const customerName =
+        checkout.contact_name ||
         checkout.customer?.name ||
         `${checkout.customer?.first_name || ""} ${checkout.customer?.last_name || ""}`.trim() ||
+        checkout.billing_name ||
         null;
+
+      const customerEmail = checkout.contact_email || checkout.customer?.email || null;
+      const customerPhone = checkout.contact_phone || checkout.customer?.phone || checkout.billing_phone || null;
 
       const products = (checkout.products || []).map((p: any) => ({
         id: p.product_id,
@@ -84,8 +89,8 @@ Deno.serve(async (req) => {
           checkout_id: checkout.id,
           store_id: parseInt(storeId),
           customer_name: customerName,
-          customer_email: checkout.customer?.email || null,
-          customer_phone: checkout.customer?.phone || null,
+          customer_email: customerEmail,
+          customer_phone: customerPhone,
           recovery_url: checkout.checkout_url || checkout.recovery_url || null,
           total,
           currency: checkout.currency || "BRL",
