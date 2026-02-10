@@ -508,6 +508,7 @@ export type Database = {
           event: string
           id: string
           nuvemshop_order_id: number
+          order_date: string | null
           payment_status: string | null
           products: Json | null
           raw_data: Json | null
@@ -526,6 +527,7 @@ export type Database = {
           event: string
           id?: string
           nuvemshop_order_id: number
+          order_date?: string | null
           payment_status?: string | null
           products?: Json | null
           raw_data?: Json | null
@@ -544,6 +546,7 @@ export type Database = {
           event?: string
           id?: string
           nuvemshop_order_id?: number
+          order_date?: string | null
           payment_status?: string | null
           products?: Json | null
           raw_data?: Json | null

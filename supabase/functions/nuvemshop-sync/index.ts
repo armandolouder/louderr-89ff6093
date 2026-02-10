@@ -81,6 +81,8 @@ Deno.serve(async (req) => {
 
       const total = order.total ? parseFloat(order.total) : 0;
 
+      const orderDate = order.created_at || null;
+
       const { error } = await supabase.from("nuvemshop_orders").upsert(
         {
           nuvemshop_order_id: order.id || order.number,
@@ -96,6 +98,7 @@ Deno.serve(async (req) => {
           currency: order.currency || "BRL",
           products,
           raw_data: order,
+          order_date: orderDate,
         },
         { onConflict: "nuvemshop_order_id" }
       );
