@@ -341,10 +341,19 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
                       className={cn(
                         "max-w-[70%] px-4 py-2.5 rounded-2xl relative backdrop-blur-md border",
                         msg.sender_type === "agent"
-                          ? "bg-primary/85 text-primary-foreground rounded-br-md border-primary/30"
-                          : "bg-secondary/70 text-secondary-foreground rounded-bl-md border-border/30"
+                          ? "bg-primary/85 text-primary-foreground rounded-br-none border-primary/30"
+                          : "bg-secondary/70 text-secondary-foreground rounded-bl-none border-border/30"
                       )}
                     >
+                      {/* Bubble tail */}
+                      <div
+                        className={cn(
+                          "absolute bottom-0 w-3 h-3",
+                          msg.sender_type === "agent"
+                            ? "-right-[6px] [clip-path:polygon(0_0,0_100%,100%_100%)] bg-primary/85"
+                            : "-left-[6px] [clip-path:polygon(100%_0,0_100%,100%_100%)] bg-secondary/70"
+                        )}
+                      />
                       <MediaPreview 
                         type={messageType}
                         url={msg.media_url}
