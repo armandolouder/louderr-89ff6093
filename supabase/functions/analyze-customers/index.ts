@@ -229,20 +229,18 @@ function assignCustomerToCluster(
   ticketLevel: string,
   clusters: ClusterDefinition[]
 ): ClusterDefinition | null {
+  // 1. Check RFM-based clusters first (high-value clusters take priority)
   for (const cluster of clusters) {
     const criteria = cluster.criteria;
-
-    if (criteria.rfm_scores?.includes(rfm.score)) {
+    if (!criteria.rfm_scores) continue; // skip region-only clusters
+    if (criteria.rfm_scores.includes(rfm.score)) {
       if (!criteria.ticket_level || criteria.ticket_level.includes(ticketLevel)) {
         return cluster;
       }
     }
-
-    if (criteria.regions && customer.region && criteria.regions.includes(customer.region)) {
-      return cluster;
-    }
   }
 
+  // 2. Fallback RFM heuristics
   if (rfm.r >= 4 && rfm.f >= 4 && rfm.m >= 4) {
     return clusters.find((c) => c.name === "VIP Ativo") || null;
   }
@@ -252,6 +250,16 @@ function assignCustomerToCluster(
   if (rfm.r >= 4 && rfm.f === 1) {
     return clusters.find((c) => c.name === "Novo/Experimental") || null;
   }
+
+  // 3. For low-engagement customers, assign regional cluster if available
+  if (customer.region) {
+    const regionalCluster = clusters.find(
+      (c) => c.criteria.regions && c.criteria.regions.includes(customer.region!)
+    );
+    if (regionalCluster) return regionalCluster;
+  }
+
+  // 4. Final fallbacks
   if (rfm.r <= 2 && rfm.f <= 2 && rfm.m <= 2) {
     return clusters.find((c) => c.name === "Infrequente") || null;
   }
