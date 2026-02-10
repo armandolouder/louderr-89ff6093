@@ -118,6 +118,47 @@ Deno.serve(async (req) => {
         errors++;
       } else {
         synced++;
+
+        // ── Upsert customer into imported_customers for segmentation ──
+        if (customerPhone || customerEmail) {
+          try {
+            let existingCustomer = null;
+            if (customerPhone) {
+              const cleanPhone = customerPhone.replace(/\D/g, "");
+              const { data } = await supabase
+                .from("imported_customers")
+                .select("id")
+                .eq("phone", cleanPhone)
+                .limit(1);
+              if (data?.length) existingCustomer = data[0];
+            }
+            if (!existingCustomer && customerEmail) {
+              const { data } = await supabase
+                .from("imported_customers")
+                .select("id")
+                .eq("email", customerEmail)
+                .limit(1);
+              if (data?.length) existingCustomer = data[0];
+            }
+
+            if (!existingCustomer) {
+              const insertData: Record<string, any> = {
+                name: customerName || "Cliente",
+                source: "nuvemshop",
+                total_spent: 0,
+                order_count: 0,
+              };
+              if (customerPhone) insertData.phone = customerPhone.replace(/\D/g, "");
+              if (customerEmail) insertData.email = customerEmail;
+
+              await supabase.from("imported_customers").insert(insertData);
+              console.log(`New customer from abandoned checkout: ${customerName}`);
+            }
+          } catch (syncErr) {
+            console.error("Error syncing checkout customer:", syncErr);
+          }
+        }
+
         // Track new checkouts with phone for automation
         if (isNew && customerPhone) {
           newCheckoutIds.push(checkout.id);
