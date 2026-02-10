@@ -156,7 +156,7 @@ export default function SalesDashboard() {
   const years = Array.from({ length: 5 }, (_, i) => now.getFullYear() - 2 + i);
 
   return (
-    <div className="p-6 lg:p-8 space-y-6">
+    <div className="p-6 lg:p-8 space-y-6 overflow-y-auto h-full">
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -238,12 +238,12 @@ export default function SalesDashboard() {
       )}
 
       {/* Orders Table */}
-      <div className="rounded-lg border bg-card flex flex-col min-h-0 max-h-[calc(100vh-380px)]">
-        <div className="p-4 border-b shrink-0">
+      <div className="rounded-lg border bg-card">
+        <div className="p-4 border-b">
           <h2 className="text-lg font-semibold text-foreground">Pedidos Detalhados</h2>
           <p className="text-sm text-muted-foreground">{filteredOrders.length} pedidos no período</p>
         </div>
-        <div className="overflow-auto flex-1 min-h-0">
+        <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
