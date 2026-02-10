@@ -16,13 +16,43 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    const NUVEMSHOP_ACCESS_TOKEN = Deno.env.get("NUVEMSHOP_ACCESS_TOKEN");
+    const NUVEMSHOP_STORE_ID = Deno.env.get("NUVEMSHOP_STORE_ID");
+
     const body = await req.json();
     console.log("Nuvemshop webhook received:", JSON.stringify(body));
 
     const event = body.event as string;
-    const storeId = body.store_id;
-    const order = body;
-    const orderId = order.id || order.order_id;
+    const storeId = body.store_id || parseInt(NUVEMSHOP_STORE_ID || "0");
+    const orderId = body.id || body.order_id;
+
+    // The webhook payload from Nuvemshop is minimal (only store_id, id, event)
+    // We need to fetch the full order details from the API
+    let order = body;
+    if (NUVEMSHOP_ACCESS_TOKEN && NUVEMSHOP_STORE_ID && orderId) {
+      try {
+        console.log(`Fetching full order details for order ${orderId}`);
+        const orderRes = await fetch(
+          `https://api.tiendanube.com/v1/${NUVEMSHOP_STORE_ID}/orders/${orderId}`,
+          {
+            headers: {
+              "Authentication": `bearer ${NUVEMSHOP_ACCESS_TOKEN}`,
+              "User-Agent": "LOUDER.ink (contato@louder.ink)",
+              "Content-Type": "application/json",
+            },
+          }
+        );
+        if (orderRes.ok) {
+          order = await orderRes.json();
+          console.log("Full order fetched successfully");
+        } else {
+          console.error(`Failed to fetch order: ${orderRes.status}`);
+        }
+      } catch (fetchErr) {
+        console.error("Error fetching order details:", fetchErr);
+      }
+    }
+
     const customerName =
       order.customer?.name ||
       `${order.customer?.first_name || ""} ${order.customer?.last_name || ""}`.trim() ||
@@ -43,25 +73,28 @@ Deno.serve(async (req) => {
       sku: p.sku,
     }));
 
-    // Save order
-    const { error } = await supabase.from("nuvemshop_orders").insert({
-      nuvemshop_order_id: orderId,
-      store_id: storeId || parseInt(Deno.env.get("NUVEMSHOP_STORE_ID") || "0"),
-      event,
-      status,
-      payment_status: paymentStatus,
-      shipping_status: shippingStatus,
-      customer_name: customerName,
-      customer_email: customerEmail,
-      customer_phone: customerPhone,
-      total,
-      currency,
-      products,
-      raw_data: body,
-    });
+    // Upsert order (avoid duplicate key errors)
+    const { error } = await supabase.from("nuvemshop_orders").upsert(
+      {
+        nuvemshop_order_id: orderId,
+        store_id: storeId,
+        event,
+        status,
+        payment_status: paymentStatus,
+        shipping_status: shippingStatus,
+        customer_name: customerName,
+        customer_email: customerEmail,
+        customer_phone: customerPhone,
+        total,
+        currency,
+        products,
+        raw_data: order,
+      },
+      { onConflict: "nuvemshop_order_id" }
+    );
 
     if (error) {
-      console.error("Error inserting order:", error);
+      console.error("Error upserting order:", error);
     }
 
     // ── Trigger matching automation flows ──
@@ -83,6 +116,8 @@ Deno.serve(async (req) => {
 
       if (flows && flows.length > 0) {
         const phone = customerPhone.replace(/\D/g, "");
+        console.log(`Found ${flows.length} active flows for event ${triggerEvent}, phone: ${phone}`);
+        
         for (const flow of flows) {
           // Calculate scheduled time based on delay
           const now = new Date();
@@ -107,7 +142,7 @@ Deno.serve(async (req) => {
             .replace(/\[lista_produtos\]/g, productsList)
             .replace(/\[codigo_rastreio\]/g, trackingCode);
 
-          await supabase.from("automation_executions").insert({
+          const { error: execError } = await supabase.from("automation_executions").insert({
             flow_id: flow.id,
             trigger_data: {
               order_id: orderId,
@@ -124,7 +159,11 @@ Deno.serve(async (req) => {
             status: "pending",
           });
 
-          console.log(`Automation scheduled: ${flow.name} for ${phone} at ${scheduledAt.toISOString()}`);
+          if (execError) {
+            console.error(`Error scheduling automation ${flow.name}:`, execError);
+          } else {
+            console.log(`Automation scheduled: ${flow.name} for ${phone} at ${scheduledAt.toISOString()}`);
+          }
         }
 
         // Also schedule post-sale follow-ups if event is order/fulfilled
@@ -140,7 +179,6 @@ Deno.serve(async (req) => {
               .eq("status", "active");
 
             if (postFlows && postFlows.length > 0) {
-              const phone = customerPhone.replace(/\D/g, "");
               for (const flow of postFlows) {
                 const scheduledAt = new Date(Date.now() + postSaleDays[i] * 86400 * 1000);
                 const messageContent = flow.message_content
@@ -169,14 +207,18 @@ Deno.serve(async (req) => {
             }
           }
         }
+      } else {
+        console.log(`No active flows found for event ${triggerEvent}`);
       }
+    } else {
+      console.log(`Skipping automation: triggerEvent=${triggerEvent}, customerPhone=${customerPhone}`);
     }
 
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Webhook error:", error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
