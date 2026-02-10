@@ -10,6 +10,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Megaphone,
+  TrendingUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,7 @@ const navigation = [
   { name: "Atendimentos", href: "/inbox", icon: MessageSquare },
   { name: "Clientes", href: "/customers", icon: Users },
   { name: "Campanhas", href: "/campaigns", icon: Megaphone },
+  { name: "Painel de Vendas", href: "/sales", icon: TrendingUp },
   { name: "Bot", href: "/bot", icon: Bot },
   { name: "APIs", href: "/apis", icon: Zap },
   { name: "Configurações", href: "/settings", icon: Settings },

@@ -11,6 +11,7 @@ import Campaigns from "./pages/Campaigns";
 import Customers from "./pages/Customers";
 import Settings from "./pages/Settings";
 import Api from "./pages/Api";
+import SalesDashboard from "./pages/SalesDashboard";
 import Auth from "./pages/Auth";
 import Install from "./pages/Install";
 import NotFound from "./pages/NotFound";
@@ -35,6 +36,7 @@ const App = () => (
             <Route path="/bot" element={<Dashboard />} />
             <Route path="/crm" element={<Dashboard />} />
             <Route path="/apis" element={<Api />} />
+            <Route path="/sales" element={<SalesDashboard />} />
             <Route path="/settings" element={<Settings />} />
           </Route>
           <Route path="*" element={<NotFound />} />
