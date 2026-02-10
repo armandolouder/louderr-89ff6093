@@ -53,19 +53,29 @@ export default function SalesDashboard() {
   const { data: orders, isLoading } = useQuery({
     queryKey: ["sales-dashboard", month, year],
     queryFn: async () => {
-      // Fetch all orders, then filter by order_date client-side
-      // since order_date may be null for some records
-      const { data, error } = await supabase
+      // Fetch orders filtering by order_date server-side
+      // Use two queries: one for orders with order_date, one fallback for orders without
+      const { data: dated, error: e1 } = await supabase
         .from("nuvemshop_orders")
         .select("*")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      
-      // Filter by actual order date (from Nuvemshop), falling back to created_at
-      return (data || []).filter(order => {
-        const orderDate = order.order_date || order.created_at;
-        return orderDate >= startDate && orderDate <= endDate;
-      });
+        .gte("order_date", startDate)
+        .lte("order_date", endDate)
+        .order("order_date", { ascending: false })
+        .limit(1000);
+      if (e1) throw e1;
+
+      // Also fetch orders without order_date that were created in the period (legacy)
+      const { data: legacy, error: e2 } = await supabase
+        .from("nuvemshop_orders")
+        .select("*")
+        .is("order_date", null)
+        .gte("created_at", startDate)
+        .lte("created_at", endDate)
+        .order("created_at", { ascending: false })
+        .limit(1000);
+      if (e2) throw e2;
+
+      return [...(dated || []), ...(legacy || [])];
     },
   });
 
