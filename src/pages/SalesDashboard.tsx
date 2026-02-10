@@ -238,12 +238,12 @@ export default function SalesDashboard() {
       )}
 
       {/* Orders Table */}
-      <div className="rounded-lg border bg-card">
-        <div className="p-4 border-b">
+      <div className="rounded-lg border bg-card flex flex-col min-h-0 max-h-[calc(100vh-380px)]">
+        <div className="p-4 border-b shrink-0">
           <h2 className="text-lg font-semibold text-foreground">Pedidos Detalhados</h2>
           <p className="text-sm text-muted-foreground">{filteredOrders.length} pedidos no período</p>
         </div>
-        <div className="overflow-x-auto">
+        <div className="overflow-auto flex-1 min-h-0">
           <Table>
             <TableHeader>
               <TableRow>
