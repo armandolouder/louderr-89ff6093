@@ -53,14 +53,19 @@ export default function SalesDashboard() {
   const { data: orders, isLoading } = useQuery({
     queryKey: ["sales-dashboard", month, year],
     queryFn: async () => {
+      // Fetch all orders, then filter by order_date client-side
+      // since order_date may be null for some records
       const { data, error } = await supabase
         .from("nuvemshop_orders")
         .select("*")
-        .gte("created_at", startDate)
-        .lte("created_at", endDate)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data || [];
+      
+      // Filter by actual order date (from Nuvemshop), falling back to created_at
+      return (data || []).filter(order => {
+        const orderDate = order.order_date || order.created_at;
+        return orderDate >= startDate && orderDate <= endDate;
+      });
     },
   });
 
@@ -240,7 +245,7 @@ export default function SalesDashboard() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-muted-foreground text-xs">
-                        {new Date(order.created_at).toLocaleDateString("pt-BR")}
+                        {new Date(order.order_date || order.created_at).toLocaleDateString("pt-BR")}
                       </TableCell>
                     </TableRow>
                   );
