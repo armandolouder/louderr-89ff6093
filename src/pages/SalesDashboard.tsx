@@ -229,10 +229,14 @@ export default function SalesDashboard() {
           <MetricCard label="Custos Produtos (CPV)" value={formatCurrency(0)} color="text-primary" />
           <MetricCard label="Outras Despesas" value={formatCurrency(0)} color="text-destructive" hasAction />
           <MetricCard
-            label="Pedidos / Itens"
+            label="Pedidos"
             value={`${metrics.totalOrders}`}
-            suffix={`/ ${metrics.totalItems}`}
             icon={<ShoppingCart className="w-4 h-4 text-muted-foreground" />}
+          />
+          <MetricCard
+            label="Itens Vendidos"
+            value={`${metrics.totalItems}`}
+            icon={<Receipt className="w-4 h-4 text-muted-foreground" />}
           />
         </div>
       )}
