@@ -337,15 +337,27 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
                       </>
                     )}
                     
-                    <div
-                      className={cn(
-                        "max-w-[70%] px-4 py-2.5 rounded-2xl relative backdrop-blur-md border",
-                        "after:absolute after:bottom-0 after:w-0 after:h-0 after:border-solid after:border-[6px]",
-                        msg.sender_type === "agent"
-                          ? "bg-primary/85 text-primary-foreground rounded-br-none border-primary/30 after:right-[-12px] after:border-t-transparent after:border-r-transparent after:border-b-primary/85 after:border-l-primary/85"
-                          : "bg-secondary/70 text-secondary-foreground rounded-bl-none border-border/30 after:left-[-12px] after:border-t-transparent after:border-l-transparent after:border-b-secondary/70 after:border-r-secondary/70"
-                      )}
-                    >
+                    <div className={cn("max-w-[70%] relative", msg.sender_type === "agent" ? "pr-2" : "pl-2")}>
+                      {/* Bubble tail SVG */}
+                      <svg
+                        width="8"
+                        height="13"
+                        viewBox="0 0 8 13"
+                        className={cn(
+                          "absolute bottom-0",
+                          msg.sender_type === "agent" ? "right-0 text-primary" : "left-0 text-secondary -scale-x-100"
+                        )}
+                      >
+                        <path d="M1 0 L1 11 Q1 13 3 13 L8 13 Q2 11 1 0Z" fill="currentColor" />
+                      </svg>
+                      <div
+                        className={cn(
+                          "px-4 py-2.5 rounded-2xl",
+                          msg.sender_type === "agent"
+                            ? "bg-primary text-primary-foreground rounded-br-none"
+                            : "bg-secondary text-secondary-foreground rounded-bl-none"
+                        )}
+                      >
                       <MediaPreview 
                         type={messageType}
                         url={msg.media_url}
@@ -361,6 +373,7 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
                           ))}
                         </div>
                       )}
+                    </div>
                     </div>
 
                     {/* Message actions and reaction picker for sent messages */}
