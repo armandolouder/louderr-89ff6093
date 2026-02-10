@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, ClipboardEvent } from "react";
+import { useState, useRef, useEffect, ClipboardEvent, ChangeEvent } from "react";
 import { Send, Paperclip, Smile, MoreVertical, Phone, User, Loader2, SpellCheck, MessageSquareText, X, Image as ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,6 +17,7 @@ import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 interface ChatViewProps {
@@ -29,8 +30,26 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
   const [isCheckingSpelling, setIsCheckingSpelling] = useState(false);
   const [showQuickResponseManager, setShowQuickResponseManager] = useState(false);
   const [pastedImage, setPastedImage] = useState<{ file: File; preview: string } | null>(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const isMobile = useIsMobile();
+
+  const EMOJI_LIST = ["😀", "😂", "🥰", "😍", "🤩", "😎", "🤔", "😅", "👍", "👏", "🔥", "❤️", "💯", "🎉", "✅", "⭐"];
+
+  const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const preview = URL.createObjectURL(file);
+    setPastedImage({ file, preview });
+    toast.success("Arquivo selecionado! Clique em enviar.");
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const insertEmoji = (emoji: string) => {
+    setMessage((prev) => prev + emoji);
+    setShowEmojiPicker(false);
+  };
   
   const { data: messages, isLoading } = useMessages(conversation.id);
   const sendMessage = useSendMessage();
@@ -376,6 +395,7 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
         {isMobile ? (
           // Mobile layout: Input com botão enviar, ações embaixo
           <div className="space-y-2">
+            <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx" />
             <div className="flex items-end gap-2">
               <Textarea
                 placeholder={pastedImage ? "Adicione uma legenda (opcional)..." : "Digite sua mensagem..."}
@@ -411,14 +431,25 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
               </Button>
             </div>
             <div className="flex items-center gap-1">
-              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground h-8 px-2">
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground h-8 px-2" onClick={() => fileInputRef.current?.click()}>
                 <Paperclip className="w-4 h-4 mr-1" />
                 <span className="text-xs">Anexo</span>
               </Button>
-              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground h-8 px-2">
-                <Smile className="w-4 h-4 mr-1" />
-                <span className="text-xs">Emoji</span>
-              </Button>
+              <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground h-8 px-2">
+                    <Smile className="w-4 h-4 mr-1" />
+                    <span className="text-xs">Emoji</span>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-2" side="top">
+                  <div className="grid grid-cols-8 gap-1">
+                    {EMOJI_LIST.map((emoji) => (
+                      <button key={emoji} onClick={() => insertEmoji(emoji)} className="text-xl hover:scale-125 transition-transform p-1">{emoji}</button>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
               <Button 
                 variant="ghost" 
                 size="sm"
@@ -450,23 +481,30 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
         ) : (
           // Desktop layout
           <div className="flex items-center gap-3">
+            <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx" />
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
+                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground" onClick={() => fileInputRef.current?.click()}>
                   <Paperclip className="w-5 h-5" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>Anexar arquivo</TooltipContent>
             </Tooltip>
             
-            <Tooltip>
-              <TooltipTrigger asChild>
+            <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
+              <PopoverTrigger asChild>
                 <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
                   <Smile className="w-5 h-5" />
                 </Button>
-              </TooltipTrigger>
-              <TooltipContent>Emoji</TooltipContent>
-            </Tooltip>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-2" side="top">
+                <div className="grid grid-cols-8 gap-1">
+                  {EMOJI_LIST.map((emoji) => (
+                    <button key={emoji} onClick={() => insertEmoji(emoji)} className="text-xl hover:scale-125 transition-transform p-1">{emoji}</button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
             
             <Tooltip>
               <TooltipTrigger asChild>

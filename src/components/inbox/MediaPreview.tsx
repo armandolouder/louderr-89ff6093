@@ -68,7 +68,7 @@ export function MediaPreview({ type, url, content, isAgent }: MediaPreviewProps)
             <span className="text-sm">📷 Imagem</span>
           </div>
         </div>
-        {content && content !== "[Imagem]" && (
+    {content && content !== "[Imagem]" && content !== "📷 Imagem" && content !== "Imagem" && (
           <p className="text-sm whitespace-pre-wrap break-words">{content}</p>
         )}
       </div>
