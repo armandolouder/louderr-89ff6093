@@ -337,22 +337,22 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
                       </>
                     )}
                     
-                    <div className={cn("max-w-[70%] relative", msg.sender_type === "agent" ? "pr-2" : "pl-2")}>
+                    <div className="max-w-[70%] relative">
                       {/* Bubble tail SVG */}
                       <svg
                         width="8"
                         height="13"
                         viewBox="0 0 8 13"
                         className={cn(
-                          "absolute bottom-0",
-                          msg.sender_type === "agent" ? "right-0 text-primary" : "left-0 text-secondary -scale-x-100"
+                          "absolute bottom-0 z-0",
+                          msg.sender_type === "agent" ? "-right-[7px] text-primary" : "-left-[7px] text-secondary -scale-x-100"
                         )}
                       >
-                        <path d="M1 0 L1 11 Q1 13 3 13 L8 13 Q2 11 1 0Z" fill="currentColor" />
+                        <path d="M0 0 L0 11 Q0 13 2 13 L8 13 Q2 11 0 0Z" fill="currentColor" />
                       </svg>
                       <div
                         className={cn(
-                          "px-4 py-2.5 rounded-2xl",
+                          "px-4 py-2.5 rounded-2xl relative z-[1]",
                           msg.sender_type === "agent"
                             ? "bg-primary text-primary-foreground rounded-br-none"
                             : "bg-secondary text-secondary-foreground rounded-bl-none"
