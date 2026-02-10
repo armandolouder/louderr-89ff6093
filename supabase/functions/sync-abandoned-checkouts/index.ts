@@ -62,6 +62,7 @@ Deno.serve(async (req) => {
 
     let synced = 0;
     let errors = 0;
+    const newCheckoutIds: number[] = [];
 
     for (const checkout of checkouts) {
       const customerName =
@@ -83,6 +84,15 @@ Deno.serve(async (req) => {
       }));
 
       const total = checkout.total ? parseFloat(checkout.total) : 0;
+
+      // Check if this checkout already exists
+      const { data: existing } = await supabase
+        .from("nuvemshop_abandoned_checkouts")
+        .select("id, contacted_at")
+        .eq("checkout_id", checkout.id)
+        .limit(1);
+
+      const isNew = !existing || existing.length === 0;
 
       const { error } = await supabase.from("nuvemshop_abandoned_checkouts").upsert(
         {
@@ -108,6 +118,70 @@ Deno.serve(async (req) => {
         errors++;
       } else {
         synced++;
+        // Track new checkouts with phone for automation
+        if (isNew && customerPhone) {
+          newCheckoutIds.push(checkout.id);
+
+          // Trigger abandoned checkout automations
+          const { data: flows } = await supabase
+            .from("automation_flows")
+            .select("*")
+            .eq("trigger_event", "abandoned_checkout")
+            .eq("status", "active");
+
+          if (flows && flows.length > 0) {
+            const phone = customerPhone.replace(/\D/g, "");
+            const firstName = (customerName || "Cliente").split(" ")[0];
+            const productsList = products.map((p: any) => `${p.quantity}x ${p.name}`).join("\n");
+            const recoveryUrl = checkout.checkout_url || checkout.recovery_url || "";
+
+            for (const flow of flows) {
+              const now = new Date();
+              let delayMs = 0;
+              if (flow.delay_unit === "minutes") delayMs = flow.delay_value * 60 * 1000;
+              else if (flow.delay_unit === "hours") delayMs = flow.delay_value * 3600 * 1000;
+              else if (flow.delay_unit === "days") delayMs = flow.delay_value * 86400 * 1000;
+
+              const scheduledAt = new Date(now.getTime() + delayMs);
+
+              const messageContent = flow.message_content
+                .replace(/\[nome_cliente\]/g, firstName)
+                .replace(/\[lista_produtos\]/g, productsList)
+                .replace(/\[total_pedido\]/g, `R$ ${total.toFixed(2).replace(".", ",")}`)
+                .replace(/\[link_recuperacao\]/g, recoveryUrl)
+                .replace(/\[link_checkout\]/g, recoveryUrl);
+
+              const { error: execError } = await supabase.from("automation_executions").insert({
+                flow_id: flow.id,
+                trigger_data: {
+                  checkout_id: checkout.id,
+                  event: "abandoned_checkout",
+                  customer_name: customerName,
+                  customer_phone: phone,
+                  message_content: messageContent,
+                  media_url: flow.media_url,
+                  media_type: flow.media_type,
+                },
+                scheduled_at: scheduledAt.toISOString(),
+                phone,
+                customer_name: customerName,
+                status: "pending",
+              });
+
+              if (execError) {
+                console.error(`Error scheduling abandoned checkout automation: ${execError.message}`);
+              } else {
+                console.log(`Abandoned checkout automation scheduled: ${flow.name} for ${phone}`);
+              }
+            }
+
+            // Mark as contacted
+            await supabase
+              .from("nuvemshop_abandoned_checkouts")
+              .update({ contacted_at: new Date().toISOString(), contact_channel: "whatsapp" })
+              .eq("checkout_id", checkout.id);
+          }
+        }
       }
     }
 
