@@ -97,6 +97,85 @@ Deno.serve(async (req) => {
       console.error("Error upserting order:", error);
     }
 
+    // ── Upsert customer into imported_customers for segmentation ──
+    if (customerPhone || customerEmail) {
+      try {
+        const identifier = customerPhone?.replace(/\D/g, "") || customerEmail;
+        // Check if customer already exists by phone or email
+        let existingCustomer = null;
+        if (customerPhone) {
+          const cleanPhone = customerPhone.replace(/\D/g, "");
+          const { data } = await supabase
+            .from("imported_customers")
+            .select("id, total_spent, order_count, first_purchase_at")
+            .eq("phone", cleanPhone)
+            .limit(1);
+          if (data?.length) existingCustomer = data[0];
+        }
+        if (!existingCustomer && customerEmail) {
+          const { data } = await supabase
+            .from("imported_customers")
+            .select("id, total_spent, order_count, first_purchase_at")
+            .eq("email", customerEmail)
+            .limit(1);
+          if (data?.length) existingCustomer = data[0];
+        }
+
+        const isNonCancelled = event !== "order/cancelled";
+        const orderDate = order.created_at || new Date().toISOString();
+
+        if (existingCustomer) {
+          // Update existing customer with new order data
+          const updateData: Record<string, any> = {
+            name: customerName || existingCustomer.name,
+          };
+          if (customerPhone) updateData.phone = customerPhone.replace(/\D/g, "");
+          if (customerEmail) updateData.email = customerEmail;
+          if (isNonCancelled && (event === "order/paid" || event === "order/created")) {
+            updateData.total_spent = (Number(existingCustomer.total_spent) || 0) + total;
+            updateData.order_count = (existingCustomer.order_count || 0) + 1;
+            updateData.last_purchase_at = orderDate;
+            if (!existingCustomer.first_purchase_at) {
+              updateData.first_purchase_at = orderDate;
+            }
+          }
+          updateData.source = "nuvemshop";
+
+          await supabase
+            .from("imported_customers")
+            .update(updateData)
+            .eq("id", existingCustomer.id);
+          console.log(`Updated imported_customer ${existingCustomer.id}`);
+        } else {
+          // Insert new customer
+          const insertData: Record<string, any> = {
+            name: customerName || "Cliente",
+            source: "nuvemshop",
+          };
+          if (customerPhone) insertData.phone = customerPhone.replace(/\D/g, "");
+          if (customerEmail) insertData.email = customerEmail;
+          if (isNonCancelled) {
+            insertData.total_spent = total;
+            insertData.order_count = 1;
+            insertData.first_purchase_at = orderDate;
+            insertData.last_purchase_at = orderDate;
+          }
+          // Extract location from order
+          if (order.customer?.billing_city || order.billing_city) {
+            insertData.city = order.customer?.billing_city || order.billing_city;
+          }
+          if (order.customer?.billing_province || order.billing_province) {
+            insertData.state = order.customer?.billing_province || order.billing_province;
+          }
+
+          await supabase.from("imported_customers").insert(insertData);
+          console.log(`Inserted new imported_customer for ${customerName}`);
+        }
+      } catch (syncErr) {
+        console.error("Error syncing customer to imported_customers:", syncErr);
+      }
+    }
+
     // ── Trigger matching automation flows ──
     const triggerMap: Record<string, string> = {
       "order/created": "order/created",
