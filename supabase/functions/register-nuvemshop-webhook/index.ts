@@ -20,6 +20,10 @@ Deno.serve(async (req) => {
       throw new Error("Nuvemshop credentials not configured");
     }
 
+    let body: any = {};
+    try { body = await req.json(); } catch { body = {}; }
+    const forceReregister = body.action === "force_reregister";
+
     const webhookUrl = `${SUPABASE_URL}/functions/v1/nuvemshop-webhook`;
 
     const events = [
@@ -30,47 +34,53 @@ Deno.serve(async (req) => {
       "order/cancelled",
     ];
 
-    // First, list existing webhooks to avoid duplicates
+    const apiHeaders = {
+      "Authentication": `bearer ${NUVEMSHOP_ACCESS_TOKEN}`,
+      "User-Agent": "LOUDER.ink (contato@louder.ink)",
+      "Content-Type": "application/json",
+    };
+
+    // List existing webhooks
     const listRes = await fetch(
       `https://api.tiendanube.com/v1/${NUVEMSHOP_STORE_ID}/webhooks`,
-      {
-        headers: {
-          "Authentication": `bearer ${NUVEMSHOP_ACCESS_TOKEN}`,
-          "User-Agent": "LOUDER.ink (contato@louder.ink)",
-          "Content-Type": "application/json",
-        },
-      }
+      { headers: apiHeaders }
     );
 
     const existingWebhooks = listRes.ok ? await listRes.json() : [];
-    console.log(`Found ${existingWebhooks.length} existing webhooks`);
+    console.log(`Found ${existingWebhooks.length} existing webhooks, forceReregister=${forceReregister}`);
+
+    // If force re-register, delete existing webhooks for our URL first
+    if (forceReregister) {
+      for (const wh of existingWebhooks) {
+        if (wh.url === webhookUrl) {
+          console.log(`Deleting webhook ${wh.id} (${wh.event})`);
+          await fetch(
+            `https://api.tiendanube.com/v1/${NUVEMSHOP_STORE_ID}/webhooks/${wh.id}`,
+            { method: "DELETE", headers: apiHeaders }
+          );
+        }
+      }
+    }
 
     const results: any[] = [];
 
     for (const event of events) {
-      // Check if webhook already exists for this event
-      const existing = existingWebhooks.find(
-        (w: any) => w.event === event && w.url === webhookUrl
-      );
-
-      if (existing) {
-        results.push({ event, status: "already_exists", id: existing.id });
-        continue;
+      if (!forceReregister) {
+        const existing = existingWebhooks.find(
+          (w: any) => w.event === event && w.url === webhookUrl
+        );
+        if (existing) {
+          results.push({ event, status: "already_exists", id: existing.id });
+          continue;
+        }
       }
 
       const res = await fetch(
         `https://api.tiendanube.com/v1/${NUVEMSHOP_STORE_ID}/webhooks`,
         {
           method: "POST",
-          headers: {
-            "Authentication": `bearer ${NUVEMSHOP_ACCESS_TOKEN}`,
-            "User-Agent": "LOUDER.ink (contato@louder.ink)",
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            event,
-            url: webhookUrl,
-          }),
+          headers: apiHeaders,
+          body: JSON.stringify({ event, url: webhookUrl }),
         }
       );
 
