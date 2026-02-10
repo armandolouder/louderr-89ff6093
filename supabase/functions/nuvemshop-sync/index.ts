@@ -32,8 +32,8 @@ Deno.serve(async (req) => {
     const perPage = parseInt(url.searchParams.get("per_page") || "50");
     const sinceId = url.searchParams.get("since_id");
 
-    // Build Nuvemshop API URL
-    let apiUrl = `https://api.nuvemshop.com.br/v1/${storeId}/orders?page=${page}&per_page=${perPage}&fields=id,number,status,payment_status,shipping_status,total,currency,customer,products,created_at,updated_at`;
+    // Build Nuvemshop API URL (tiendanube.com is the API domain)
+    let apiUrl = `https://api.tiendanube.com/v1/${storeId}/orders?page=${page}&per_page=${perPage}&fields=id,number,status,payment_status,shipping_status,total,currency,customer,products,created_at,updated_at`;
     if (sinceId) {
       apiUrl += `&since_id=${sinceId}`;
     }
