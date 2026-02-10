@@ -30,7 +30,7 @@ export const TRIGGER_EVENTS = [
 ];
 
 export const AVAILABLE_VARIABLES = [
-  { key: "[nome_cliente]", label: "Nome do Cliente" },
+  { key: "[nome_cliente]", label: "Nome do Cliente (primeiro nome)" },
   { key: "[numero_pedido]", label: "Número do Pedido" },
   { key: "[total_pedido]", label: "Total do Pedido" },
   { key: "[link_pagamento]", label: "Link para Pagar (Geral)" },
@@ -38,6 +38,7 @@ export const AVAILABLE_VARIABLES = [
   { key: "[url_sucesso]", label: "URL de Sucesso" },
   { key: "[lista_produtos]", label: "Lista de Produtos" },
   { key: "[codigo_rastreio]", label: "Código de Rastreio" },
+  { key: "[link_recuperacao]", label: "Link de Recuperação (Carrinho)" },
 ];
 
 export function useAutomationFlows() {
