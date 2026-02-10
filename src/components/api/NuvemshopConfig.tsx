@@ -150,14 +150,25 @@ export function NuvemshopConfig({ status, onStatusChange }: NuvemshopConfigProps
             </div>
           </div>
 
-          <div className="bg-secondary/30 rounded-lg p-3 text-xs text-muted-foreground space-y-1">
-            <p className="font-medium text-foreground">Loja ID: 2778031</p>
-            <p>Configure os webhooks no painel da Nuvemshop apontando para a URL acima.</p>
+          <div className="bg-secondary/30 rounded-lg p-3 text-xs text-muted-foreground space-y-2">
+            <p className="font-medium text-foreground text-sm mb-2">Configuração da API</p>
+            <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+              <span className="font-medium text-foreground">Store URL:</span>
+              <span>louderink4.lojavirtualnuvem.com.br</span>
+              <span className="font-medium text-foreground">App ID:</span>
+              <span>17587</span>
+              <span className="font-medium text-foreground">Store ID:</span>
+              <span>2778031</span>
+              <span className="font-medium text-foreground">User Agent:</span>
+              <span>LOUDER.ink (allvisualweb@gmail.com)</span>
+              <span className="font-medium text-foreground">API Base URL:</span>
+              <span>https://api.tiendanube.com/v1</span>
+            </div>
             <a
               href="https://dev.nuvemshop.com.br/docs/"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-primary hover:underline mt-1"
+              className="inline-flex items-center gap-1 text-primary hover:underline mt-2"
             >
               Documentação Nuvemshop <ExternalLink className="w-3 h-3" />
             </a>
