@@ -16,6 +16,7 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const accessToken = Deno.env.get("NUVEMSHOP_ACCESS_TOKEN");
     const storeId = Deno.env.get("NUVEMSHOP_STORE_ID");
+    const appId = Deno.env.get("NUVEMSHOP_APP_ID") || "0";
 
     if (!accessToken || !storeId) {
       return new Response(
@@ -38,12 +39,12 @@ Deno.serve(async (req) => {
       apiUrl += `&since_id=${sinceId}`;
     }
 
-    console.log(`Fetching orders from Nuvemshop: page=${page}, per_page=${perPage}`);
+    console.log(`Fetching orders from Nuvemshop: page=${page}, per_page=${perPage}, storeId=${storeId}, token_length=${accessToken.length}`);
 
     const response = await fetch(apiUrl, {
       headers: {
         "Authentication": `bearer ${accessToken}`,
-        "User-Agent": "Lovable App (support@lovable.dev)",
+        "User-Agent": `Lovable App (${appId})`,
         "Content-Type": "application/json",
       },
     });
