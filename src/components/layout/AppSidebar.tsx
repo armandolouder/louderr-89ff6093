@@ -25,7 +25,6 @@ const navigation = [
   { name: "Carrinhos", href: "/abandoned-checkouts", icon: ShoppingCart },
   { name: "Bot", href: "/bot", icon: Bot },
   { name: "APIs", href: "/apis", icon: Zap },
-  { name: "Configurações", href: "/settings", icon: Settings },
 ];
 
 export function AppSidebar() {
