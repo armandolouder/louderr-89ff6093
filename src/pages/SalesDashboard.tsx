@@ -171,17 +171,11 @@ export default function SalesDashboard() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" className="gap-2">
-            <Settings className="w-4 h-4" />
-            Configurações
-          </Button>
-          <Button variant="outline" size="sm" className="gap-2" onClick={handleSync} disabled={syncing}>
+          <Button variant="outline" size="icon" className="h-9 w-9 rounded-full" onClick={handleSync} disabled={syncing} title="Sincronizar">
             <RefreshCw className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`} />
-            {syncing ? "Sincronizando..." : "Sincronizar"}
           </Button>
-          <Button variant="outline" size="sm" className="gap-2 text-destructive hover:text-destructive" onClick={handleClearData} disabled={clearing}>
+          <Button variant="outline" size="icon" className="h-9 w-9 rounded-full text-destructive hover:text-destructive" onClick={handleClearData} disabled={clearing} title="Limpar dados">
             <Trash2 className="w-4 h-4" />
-            Limpar
           </Button>
 
           <Select value={statusFilter} onValueChange={setStatusFilter}>
