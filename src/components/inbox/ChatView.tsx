@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, ClipboardEvent, ChangeEvent } from "react";
-import { Send, Paperclip, Smile, MoreVertical, Phone, User, Loader2, SpellCheck, MessageSquareText, X, Image as ImageIcon } from "lucide-react";
+import { Send, Paperclip, Smile, MoreVertical, Phone, User, Loader2, SpellCheck, MessageSquareText, X, Image as ImageIcon, ArrowDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -31,7 +31,9 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
   const [showQuickResponseManager, setShowQuickResponseManager] = useState(false);
   const [pastedImage, setPastedImage] = useState<{ file: File; preview: string } | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showScrollDown, setShowScrollDown] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isMobile = useIsMobile();
 
@@ -185,10 +187,29 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
 
   const isSending = sendMessage.isPending || sendMediaMessage.isPending;
 
+  const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior });
+    }, 50);
+  };
+
   // Auto-scroll to bottom when messages change
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    scrollToBottom();
   }, [messages]);
+
+  // Scroll to bottom instantly when conversation changes
+  useEffect(() => {
+    scrollToBottom("instant" as ScrollBehavior);
+  }, [conversation.id]);
+
+  // Detect scroll position to show/hide scroll-down button
+  const handleScroll = () => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+    setShowScrollDown(distanceFromBottom > 150);
+  };
 
   return (
     <div className="flex flex-col h-full bg-background overflow-hidden">
@@ -229,7 +250,8 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
       )}
 
       {/* Messages */}
-      <div className={cn("flex-1 overflow-y-auto overflow-x-hidden space-y-4", isMobile ? "p-3" : "p-6")}>
+      <div className="relative flex-1 overflow-hidden">
+        <div ref={messagesContainerRef} onScroll={handleScroll} className={cn("h-full overflow-y-auto overflow-x-hidden space-y-4", isMobile ? "p-3" : "p-6")}>
         {isLoading ? (
           <div className="flex items-center justify-center h-full">
             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
@@ -360,6 +382,19 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
           })
         )}
         <div ref={messagesEndRef} />
+        </div>
+
+        {/* Scroll to bottom button */}
+        {showScrollDown && (
+          <Button
+            variant="secondary"
+            size="icon"
+            className="absolute bottom-4 right-4 rounded-full shadow-lg h-10 w-10 z-10 border border-border/50"
+            onClick={() => scrollToBottom()}
+          >
+            <ArrowDown className="w-5 h-5" />
+          </Button>
+        )}
       </div>
 
       {/* Input - Mobile optimized */}
