@@ -140,6 +140,15 @@ const CLUSTER_DEFINITIONS: ClusterDefinition[] = [
     criteria: { regions: ["Nordeste"] },
   },
   {
+    name: "Regional Sudeste",
+    emoji: "🏙️",
+    description: "Clientes concentrados na região Sudeste",
+    objective: "Marketing regional",
+    recommendation: "Campanhas com identidade regional, foco em grandes centros",
+    color: "#3B82F6",
+    criteria: { regions: ["Sudeste"] },
+  },
+  {
     name: "Pesquisador",
     emoji: "🔍",
     description: "Visitou várias vezes mas comprou pouco",
