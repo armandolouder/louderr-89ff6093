@@ -6,8 +6,6 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-// This function processes pending automation executions
-// It should be called periodically (e.g., via pg_cron every minute)
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -50,12 +48,12 @@ Deno.serve(async (req) => {
       const messageContent = triggerData.message_content || "";
       const mediaUrl = triggerData.media_url;
       const mediaType = triggerData.media_type;
+      const customerName = exec.customer_name || triggerData.customer_name || phone;
 
       try {
         let uazapiResponse;
 
         if (mediaUrl && mediaType) {
-          // Send media message
           uazapiResponse = await fetch(`${UAZAPI_SERVER_URL}/send/media`, {
             method: "POST",
             headers: {
@@ -70,7 +68,6 @@ Deno.serve(async (req) => {
             }),
           });
         } else {
-          // Send text message
           uazapiResponse = await fetch(`${UAZAPI_SERVER_URL}/send/text`, {
             method: "POST",
             headers: {
@@ -87,7 +84,15 @@ Deno.serve(async (req) => {
         const responseText = await uazapiResponse.text();
         console.log(`Automation sent to ${phone}: ${uazapiResponse.status}`);
 
+        let uazapiData;
+        try {
+          uazapiData = JSON.parse(responseText);
+        } catch {
+          uazapiData = { raw: responseText };
+        }
+
         if (uazapiResponse.ok) {
+          // Update execution status
           await supabase
             .from("automation_executions")
             .update({
@@ -95,6 +100,102 @@ Deno.serve(async (req) => {
               executed_at: new Date().toISOString(),
             })
             .eq("id", exec.id);
+
+          // Register message in inbox (find or create conversation)
+          try {
+            // Find existing contact by phone
+            const phoneVariants = [phone, `+${phone}`, `+55${phone}`];
+            let contactId: string | null = null;
+            let conversationId: string | null = null;
+
+            // Search for contact
+            const { data: contacts } = await supabase
+              .from("contacts")
+              .select("id, phone")
+              .or(phoneVariants.map(p => `phone.eq.${p}`).join(","))
+              .limit(1);
+
+            if (contacts && contacts.length > 0) {
+              contactId = contacts[0].id;
+            } else {
+              // Create contact
+              const { data: newContact } = await supabase
+                .from("contacts")
+                .insert({
+                  name: customerName,
+                  phone: phone,
+                })
+                .select("id")
+                .single();
+              
+              if (newContact) {
+                contactId = newContact.id;
+              }
+            }
+
+            if (contactId) {
+              // Find existing conversation
+              const { data: convs } = await supabase
+                .from("conversations")
+                .select("id")
+                .eq("contact_id", contactId)
+                .eq("channel", "whatsapp")
+                .limit(1);
+
+              if (convs && convs.length > 0) {
+                conversationId = convs[0].id;
+              } else {
+                // Create conversation
+                const { data: newConv } = await supabase
+                  .from("conversations")
+                  .insert({
+                    contact_id: contactId,
+                    channel: "whatsapp",
+                    status: "open",
+                    last_message: messageContent,
+                    last_message_at: new Date().toISOString(),
+                  })
+                  .select("id")
+                  .single();
+
+                if (newConv) {
+                  conversationId = newConv.id;
+                }
+              }
+
+              if (conversationId) {
+                // Insert message
+                await supabase.from("messages").insert({
+                  conversation_id: conversationId,
+                  content: messageContent,
+                  sender_type: "agent",
+                  message_type: mediaUrl ? mediaType : "text",
+                  media_url: mediaUrl || null,
+                  status: "sent",
+                  metadata: {
+                    uazapi_response: uazapiData,
+                    automation_flow_id: exec.flow_id,
+                    automation_execution_id: exec.id,
+                  },
+                });
+
+                // Update conversation last message
+                await supabase
+                  .from("conversations")
+                  .update({
+                    last_message: messageContent,
+                    last_message_at: new Date().toISOString(),
+                  })
+                  .eq("id", conversationId);
+
+                console.log(`Message registered in inbox for conversation ${conversationId}`);
+              }
+            }
+          } catch (inboxErr: any) {
+            console.error("Error registering in inbox:", inboxErr.message);
+            // Don't fail the execution just because inbox registration failed
+          }
+
           processed++;
         } else {
           await supabase
