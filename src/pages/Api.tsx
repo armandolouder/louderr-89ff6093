@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
-import { MessageSquare, Brain, Loader2 } from "lucide-react";
+import { MessageSquare, Brain, Loader2, ShoppingBag } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { IntegrationSidebar, type IntegrationId, getIntegrationIcon } from "@/components/api/IntegrationSidebar";
 import { UazapiConfig } from "@/components/api/UazapiConfig";
 import { GroqConfig } from "@/components/api/GroqConfig";
+import { NuvemshopConfig } from "@/components/api/NuvemshopConfig";
 
 interface InstanceStatus {
   connected: boolean;
@@ -21,10 +22,17 @@ interface GroqStatus {
   error?: string;
 }
 
+interface NuvemshopStatus {
+  connected: boolean;
+  orderCount?: number;
+  error?: string;
+}
+
 export default function Api() {
   const [activeIntegration, setActiveIntegration] = useState<IntegrationId>("uazapi");
   const [instanceStatus, setInstanceStatus] = useState<InstanceStatus | null>(null);
   const [groqStatus, setGroqStatus] = useState<GroqStatus | null>(null);
+  const [nuvemshopStatus, setNuvemshopStatus] = useState<NuvemshopStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -93,6 +101,13 @@ export default function Api() {
       icon: <Brain className="w-5 h-5" />,
       connected: groqStatus?.connected ?? false,
     },
+    {
+      id: "nuvemshop" as IntegrationId,
+      name: "Nuvemshop",
+      description: "Pedidos via webhook",
+      icon: <ShoppingBag className="w-5 h-5" />,
+      connected: nuvemshopStatus?.connected ?? false,
+    },
   ];
 
   if (isLoading) {
@@ -122,6 +137,13 @@ export default function Api() {
         <GroqConfig
           status={groqStatus}
           onStatusChange={setGroqStatus}
+        />
+      )}
+      
+      {activeIntegration === "nuvemshop" && (
+        <NuvemshopConfig
+          status={nuvemshopStatus}
+          onStatusChange={setNuvemshopStatus}
         />
       )}
     </div>
