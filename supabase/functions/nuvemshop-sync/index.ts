@@ -33,9 +33,8 @@ Deno.serve(async (req) => {
     const perPage = parseInt(url.searchParams.get("per_page") || "50");
     const sinceId = url.searchParams.get("since_id");
 
-    // Try both API domains
-    const apiDomain = "api.nuvemshop.com.br";
-    let apiUrl = `https://${apiDomain}/v1/${storeId}/orders?page=${page}&per_page=${perPage}`;
+    const apiBaseUrl = "https://api.tiendanube.com/v1";
+    let apiUrl = `${apiBaseUrl}/${storeId}/orders?page=${page}&per_page=${perPage}`;
     if (sinceId) {
       apiUrl += `&since_id=${sinceId}`;
     }
@@ -46,7 +45,7 @@ Deno.serve(async (req) => {
     const response = await fetch(apiUrl, {
       headers: {
         "Authentication": `bearer ${trimmedToken}`,
-        "User-Agent": `Lovable App (${appId})`,
+        "User-Agent": "LOUDER.ink (allvisualweb@gmail.com)",
         "Content-Type": "application/json",
       },
     });
