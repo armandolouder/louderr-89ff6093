@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Copy, CheckCircle, ExternalLink, ShoppingBag, RefreshCw } from "lucide-react";
+import { Copy, CheckCircle, ExternalLink, ShoppingBag, RefreshCw, Download, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +15,7 @@ export function NuvemshopConfig({ status, onStatusChange }: NuvemshopConfigProps
   const [copied, setCopied] = useState(false);
   const [recentOrders, setRecentOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/nuvemshop-webhook`;
 
@@ -41,6 +42,46 @@ export function NuvemshopConfig({ status, onStatusChange }: NuvemshopConfigProps
       console.error("Error fetching orders:", err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const syncOrders = async () => {
+    setSyncing(true);
+    try {
+      let page = 1;
+      let totalSynced = 0;
+      let hasMore = true;
+
+      while (hasMore) {
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/nuvemshop-sync?page=${page}&per_page=50`,
+          {
+            headers: {
+              "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            },
+          }
+        );
+
+        if (!response.ok) {
+          const errData = await response.json();
+          throw new Error(errData.error || "Erro ao sincronizar");
+        }
+
+        const result = await response.json();
+        totalSynced += result.synced || 0;
+        hasMore = result.has_more || false;
+        page++;
+
+        if (page > 20) break; // Safety limit
+      }
+
+      toast.success(`${totalSynced} pedidos sincronizados!`);
+      fetchRecentOrders();
+    } catch (err: any) {
+      console.error("Sync error:", err);
+      toast.error(err.message || "Erro ao sincronizar pedidos");
+    } finally {
+      setSyncing(false);
     }
   };
 
@@ -121,6 +162,37 @@ export function NuvemshopConfig({ status, onStatusChange }: NuvemshopConfigProps
               Documentação Nuvemshop <ExternalLink className="w-3 h-3" />
             </a>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Sync Orders from API */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Download className="w-4 h-4" />
+            Sincronizar Pedidos
+          </CardTitle>
+          <CardDescription>
+            Busque pedidos diretamente da API da Nuvemshop
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button onClick={syncOrders} disabled={syncing} className="w-full">
+            {syncing ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Sincronizando...
+              </>
+            ) : (
+              <>
+                <Download className="w-4 h-4 mr-2" />
+                Sincronizar Pedidos da API
+              </>
+            )}
+          </Button>
+          <p className="text-xs text-muted-foreground mt-2">
+            Busca todos os pedidos da sua loja e salva no banco de dados.
+          </p>
         </CardContent>
       </Card>
 
