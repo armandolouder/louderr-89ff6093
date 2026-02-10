@@ -346,14 +346,23 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
                       )}
                     >
                       {/* Bubble tail */}
-                      <div
+                      <svg
                         className={cn(
-                          "absolute bottom-0 w-3 h-3",
+                          "absolute bottom-0 w-[10px] h-[16px]",
                           msg.sender_type === "agent"
-                            ? "-right-[6px] [clip-path:polygon(0_0,0_100%,100%_100%)] bg-primary/85"
-                            : "-left-[6px] [clip-path:polygon(100%_0,0_100%,100%_100%)] bg-secondary/70"
+                            ? "-right-[9px] text-primary/85"
+                            : "-left-[9px] text-secondary/70"
                         )}
-                      />
+                        viewBox="0 0 10 16"
+                        fill="currentColor"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        {msg.sender_type === "agent" ? (
+                          <path d="M0 16 L0 0 Q10 8 10 16 Z" />
+                        ) : (
+                          <path d="M10 16 L10 0 Q0 8 0 16 Z" />
+                        )}
+                      </svg>
                       <MediaPreview 
                         type={messageType}
                         url={msg.media_url}
