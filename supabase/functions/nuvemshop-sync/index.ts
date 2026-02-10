@@ -1,0 +1,127 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+};
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const accessToken = Deno.env.get("NUVEMSHOP_ACCESS_TOKEN");
+    const storeId = Deno.env.get("NUVEMSHOP_STORE_ID");
+
+    if (!accessToken || !storeId) {
+      return new Response(
+        JSON.stringify({ error: "NUVEMSHOP_ACCESS_TOKEN ou NUVEMSHOP_STORE_ID não configurados" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Parse optional query params
+    const url = new URL(req.url);
+    const page = parseInt(url.searchParams.get("page") || "1");
+    const perPage = parseInt(url.searchParams.get("per_page") || "50");
+    const sinceId = url.searchParams.get("since_id");
+
+    // Build Nuvemshop API URL
+    let apiUrl = `https://api.nuvemshop.com.br/v1/${storeId}/orders?page=${page}&per_page=${perPage}&fields=id,number,status,payment_status,shipping_status,total,currency,customer,products,created_at,updated_at`;
+    if (sinceId) {
+      apiUrl += `&since_id=${sinceId}`;
+    }
+
+    console.log(`Fetching orders from Nuvemshop: page=${page}, per_page=${perPage}`);
+
+    const response = await fetch(apiUrl, {
+      headers: {
+        "Authentication": `bearer ${accessToken}`,
+        "User-Agent": "Lovable App (support@lovable.dev)",
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Nuvemshop API error [${response.status}]:`, errorText);
+      return new Response(
+        JSON.stringify({ error: `Nuvemshop API error: ${response.status}`, details: errorText }),
+        { status: response.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const orders = await response.json();
+    console.log(`Received ${orders.length} orders from Nuvemshop`);
+
+    let synced = 0;
+    let errors = 0;
+
+    for (const order of orders) {
+      const customerName =
+        order.customer?.name ||
+        `${order.customer?.first_name || ""} ${order.customer?.last_name || ""}`.trim() ||
+        null;
+
+      const products = (order.products || []).map((p: any) => ({
+        id: p.product_id,
+        name: p.name,
+        quantity: p.quantity,
+        price: p.price,
+        sku: p.sku,
+      }));
+
+      const total = order.total ? parseFloat(order.total) : 0;
+
+      const { error } = await supabase.from("nuvemshop_orders").upsert(
+        {
+          nuvemshop_order_id: order.id || order.number,
+          store_id: parseInt(storeId),
+          event: "order/synced",
+          status: order.status || null,
+          payment_status: order.payment_status || null,
+          shipping_status: order.shipping_status || null,
+          customer_name: customerName,
+          customer_email: order.customer?.email || null,
+          customer_phone: order.customer?.phone || null,
+          total,
+          currency: order.currency || "BRL",
+          products,
+          raw_data: order,
+        },
+        { onConflict: "nuvemshop_order_id" }
+      );
+
+      if (error) {
+        console.error(`Error upserting order ${order.id}:`, error.message);
+        errors++;
+      } else {
+        synced++;
+      }
+    }
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        total_fetched: orders.length,
+        synced,
+        errors,
+        page,
+        has_more: orders.length === perPage,
+      }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (error) {
+    console.error("Sync error:", error);
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+});
