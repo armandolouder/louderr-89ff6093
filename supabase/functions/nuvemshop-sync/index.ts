@@ -33,17 +33,19 @@ Deno.serve(async (req) => {
     const perPage = parseInt(url.searchParams.get("per_page") || "50");
     const sinceId = url.searchParams.get("since_id");
 
-    // Build Nuvemshop API URL (tiendanube.com is the API domain)
-    let apiUrl = `https://api.tiendanube.com/v1/${storeId}/orders?page=${page}&per_page=${perPage}&fields=id,number,status,payment_status,shipping_status,total,currency,customer,products,created_at,updated_at`;
+    // Try both API domains
+    const apiDomain = "api.nuvemshop.com.br";
+    let apiUrl = `https://${apiDomain}/v1/${storeId}/orders?page=${page}&per_page=${perPage}`;
     if (sinceId) {
       apiUrl += `&since_id=${sinceId}`;
     }
 
-    console.log(`Fetching orders from Nuvemshop: page=${page}, per_page=${perPage}, storeId=${storeId}, token_length=${accessToken.length}`);
+    const trimmedToken = accessToken.trim();
+    console.log(`Token first 8: ${trimmedToken.substring(0, 8)}, length: ${trimmedToken.length}, URL: ${apiUrl}`);
 
     const response = await fetch(apiUrl, {
       headers: {
-        "Authentication": `bearer ${accessToken}`,
+        "Authentication": `bearer ${trimmedToken}`,
         "User-Agent": `Lovable App (${appId})`,
         "Content-Type": "application/json",
       },
