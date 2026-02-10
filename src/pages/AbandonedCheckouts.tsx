@@ -299,39 +299,6 @@ export default function AbandonedCheckouts() {
                           >
                             <ShoppingCart className="w-3.5 h-3.5 text-muted-foreground" />
                           </Button>
-                          {checkout.customer_phone && !checkout.contacted_at && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7"
-                              title="Marcar contatado via WhatsApp"
-                              onClick={() => markAsContacted(checkout.id, "whatsapp")}
-                            >
-                              <MessageSquare className="w-3.5 h-3.5 text-muted-foreground" />
-                            </Button>
-                          )}
-                          {checkout.customer_email && !checkout.contacted_at && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7"
-                              title="Marcar contatado via E-mail"
-                              onClick={() => markAsContacted(checkout.id, "email")}
-                            >
-                              <Mail className="w-3.5 h-3.5 text-muted-foreground" />
-                            </Button>
-                          )}
-                          {checkout.contacted_at && !checkout.recovered && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7"
-                              title="Marcar como recuperado"
-                              onClick={() => markAsRecovered(checkout.id)}
-                            >
-                              <ExternalLink className="w-3.5 h-3.5 text-muted-foreground" />
-                            </Button>
-                          )}
                           {checkout.recovery_url && (
                             <a href={checkout.recovery_url} target="_blank" rel="noopener noreferrer">
                               <Button variant="ghost" size="icon" className="h-7 w-7" title="Link de recuperação">
