@@ -504,15 +504,13 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
               <Button 
                 onClick={handleSend} 
                 disabled={isSending || (!message.trim() && !pastedImage)} 
-                className="shadow-glow h-11"
+                size="icon"
+                className="shadow-glow h-11 w-11 rounded-full flex-shrink-0"
               >
                 {isSending ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  <Loader2 className="w-5 h-5 animate-spin" />
                 ) : (
-                  <>
-                    <Send className="w-4 h-4 mr-2" />
-                    Enviar
-                  </>
+                  <Send className="w-5 h-5" />
                 )}
               </Button>
             </div>
