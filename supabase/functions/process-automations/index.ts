@@ -161,7 +161,7 @@ Deno.serve(async (req) => {
                   .insert({
                     contact_id: contactId,
                     channel: "whatsapp",
-                    status: "open",
+                    status: "novo",
                     last_message: messageContent,
                     last_message_at: new Date().toISOString(),
                   })
