@@ -277,10 +277,27 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
                 
                 <div
                   className={cn(
-                    "flex group",
-                    msg.sender_type === "agent" ? "justify-end" : "justify-start"
+                    "flex flex-col group",
+                    msg.sender_type === "agent" ? "items-end" : "items-start"
                   )}
                 >
+                  {/* Timestamp outside bubble */}
+                  <div className={cn(
+                    "flex items-center gap-1.5 mb-1 px-1",
+                    msg.sender_type === "agent" ? "flex-row-reverse" : "flex-row"
+                  )}>
+                    <span className="text-[10px] text-muted-foreground/60">
+                      {format(new Date(msg.created_at), "HH:mm")}
+                    </span>
+                    {msg.sender_type === "agent" && msg.status && (
+                      <span className="text-[10px] text-muted-foreground/60">
+                        {msg.status === "sent" && "✓"}
+                        {msg.status === "delivered" && "✓✓"}
+                        {msg.status === "read" && "✓✓"}
+                      </span>
+                    )}
+                  </div>
+
                   <div className="flex items-end gap-1">
                     {/* Message actions and reaction picker for received messages */}
                     {msg.sender_type === "contact" && (
@@ -299,10 +316,10 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
                     
                     <div
                       className={cn(
-                        "max-w-[70%] px-4 py-2.5 rounded-2xl relative",
+                        "max-w-[70%] px-4 py-2.5 rounded-2xl relative backdrop-blur-md border",
                         msg.sender_type === "agent"
-                          ? "bg-primary text-primary-foreground rounded-br-md"
-                          : "bg-secondary text-secondary-foreground rounded-bl-md"
+                          ? "bg-primary/85 text-primary-foreground rounded-br-md border-primary/30"
+                          : "bg-secondary/70 text-secondary-foreground rounded-bl-md border-border/30"
                       )}
                     >
                       <MediaPreview 
@@ -311,33 +328,10 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
                         content={msg.content}
                         isAgent={msg.sender_type === "agent"}
                       />
-                      <div className={cn(
-                        "flex items-center gap-2 mt-1",
-                        msg.sender_type === "agent" ? "justify-end" : "justify-start"
-                      )}>
-                        <p
-                          className={cn(
-                            "text-xs",
-                            msg.sender_type === "agent" ? "text-primary-foreground/70" : "text-muted-foreground"
-                          )}
-                        >
-                          {format(new Date(msg.created_at), "HH:mm")}
-                        </p>
-                        {msg.sender_type === "agent" && msg.status && (
-                          <span className={cn(
-                            "text-xs",
-                            msg.status === "read" ? "text-primary-foreground" : "text-primary-foreground/50"
-                          )}>
-                            {msg.status === "sent" && "✓"}
-                            {msg.status === "delivered" && "✓✓"}
-                            {msg.status === "read" && "✓✓"}
-                          </span>
-                        )}
-                      </div>
                       
                       {/* Display reactions on message */}
                       {reactions && reactions.length > 0 && (
-                        <div className="absolute -bottom-3 left-2 flex gap-0.5 bg-card rounded-full px-1 py-0.5 shadow-sm border border-border">
+                        <div className="absolute -bottom-3 left-2 flex gap-0.5 bg-card/80 backdrop-blur-sm rounded-full px-1 py-0.5 shadow-sm border border-border/30">
                           {reactions.map((r, idx) => (
                             <span key={idx} className="text-xs">{r.emoji}</span>
                           ))}
