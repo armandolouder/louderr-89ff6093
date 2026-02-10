@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { TrendingUp, RefreshCw, ShoppingCart, DollarSign, Receipt, Settings, Download } from "lucide-react";
+import { TrendingUp, RefreshCw, ShoppingCart, DollarSign, Receipt, Settings, Download, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -87,17 +87,54 @@ export default function SalesDashboard() {
     return { totalRevenue, totalOrders, avgTicket, totalItems };
   }, [filteredOrders]);
 
+  const [syncing, setSyncing] = useState(false);
+  const [clearing, setClearing] = useState(false);
+
   const handleSync = async () => {
+    setSyncing(true);
     toast.info("Sincronizando pedidos...");
     try {
-      const { data, error } = await supabase.functions.invoke("nuvemshop-sync", {
-        body: null,
-      });
-      if (error) throw error;
-      toast.success(`Sincronização concluída: ${data?.synced || 0} pedidos`);
+      let totalSynced = 0;
+      let page = 1;
+      let hasMore = true;
+
+      while (hasMore) {
+        const res = await supabase.functions.invoke(`nuvemshop-sync?page=${page}&per_page=50`);
+        if (res.error) throw res.error;
+        totalSynced += res.data?.synced || 0;
+        hasMore = res.data?.has_more || false;
+        page++;
+        if (page > 50) break; // safety limit
+      }
+
+      toast.success(`Sincronização concluída: ${totalSynced} pedidos sincronizados`);
       queryClient.invalidateQueries({ queryKey: ["sales-dashboard"] });
     } catch (err: any) {
       toast.error("Erro ao sincronizar: " + (err.message || "Erro desconhecido"));
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const handleClearData = async () => {
+    const confirmed = window.confirm(
+      "Tem certeza que deseja limpar TODOS os pedidos sincronizados? Você precisará sincronizar novamente."
+    );
+    if (!confirmed) return;
+
+    setClearing(true);
+    try {
+      const { error } = await supabase
+        .from("nuvemshop_orders")
+        .delete()
+        .neq("id", "00000000-0000-0000-0000-000000000000"); // delete all rows
+      if (error) throw error;
+      toast.success("Todos os pedidos foram removidos. Sincronize novamente.");
+      queryClient.invalidateQueries({ queryKey: ["sales-dashboard"] });
+    } catch (err: any) {
+      toast.error("Erro ao limpar: " + (err.message || "Erro desconhecido"));
+    } finally {
+      setClearing(false);
     }
   };
 
@@ -120,12 +157,13 @@ export default function SalesDashboard() {
             <Settings className="w-4 h-4" />
             Configurações
           </Button>
-          <Button variant="outline" size="sm" className="gap-2" onClick={handleSync}>
-            <RefreshCw className="w-4 h-4" />
-            Sincronizar
+          <Button variant="outline" size="sm" className="gap-2" onClick={handleSync} disabled={syncing}>
+            <RefreshCw className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`} />
+            {syncing ? "Sincronizando..." : "Sincronizar"}
           </Button>
-          <Button variant="outline" size="sm" className="gap-2">
-            <Download className="w-4 h-4" />
+          <Button variant="outline" size="sm" className="gap-2 text-destructive hover:text-destructive" onClick={handleClearData} disabled={clearing}>
+            <Trash2 className="w-4 h-4" />
+            Limpar
           </Button>
 
           <Select value={statusFilter} onValueChange={setStatusFilter}>
