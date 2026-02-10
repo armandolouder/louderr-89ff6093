@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 
 const MONTHS = [
@@ -99,6 +100,7 @@ export default function SalesDashboard() {
 
   const [syncing, setSyncing] = useState(false);
   const [clearing, setClearing] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<any>(null);
 
   const handleSync = async () => {
     setSyncing(true);
@@ -325,7 +327,7 @@ export default function SalesDashboard() {
                         })()}
                       </TableCell>
                       <TableCell className="text-center">
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedOrder(order)}>
                           <Eye className="w-4 h-4 text-muted-foreground" />
                         </Button>
                       </TableCell>
@@ -337,6 +339,49 @@ export default function SalesDashboard() {
           </Table>
         </div>
       </div>
+
+      {/* Order Detail Modal */}
+      <Dialog open={!!selectedOrder} onOpenChange={() => setSelectedOrder(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Pedido #{selectedOrder?.order_number || selectedOrder?.nuvemshop_order_id}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <span className="text-muted-foreground">Cliente</span>
+              <span>{selectedOrder?.customer_name || "—"}</span>
+              <span className="text-muted-foreground">Data</span>
+              <span>{selectedOrder ? new Date(selectedOrder.order_date || selectedOrder.created_at).toLocaleDateString("pt-BR") : ""}</span>
+              <span className="text-muted-foreground">Total</span>
+              <span className="font-bold">{selectedOrder ? formatCurrency(selectedOrder.total || 0) : ""}</span>
+            </div>
+
+            <div>
+              <h4 className="text-sm font-semibold mb-2">Produtos</h4>
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Produto</TableHead>
+                      <TableHead className="text-center w-[60px]">Qtd</TableHead>
+                      <TableHead className="text-right w-[100px]">Preço</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {(selectedOrder?.products as any[] || []).map((p: any, i: number) => (
+                      <TableRow key={i}>
+                        <TableCell className="text-sm">{p.name || "—"}</TableCell>
+                        <TableCell className="text-center">{p.quantity || 1}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(parseFloat(p.price) || 0)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
