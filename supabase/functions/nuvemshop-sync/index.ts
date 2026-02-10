@@ -108,6 +108,8 @@ Deno.serve(async (req) => {
           products,
           raw_data: order,
           order_date: orderDate,
+          order_number: order.number?.toString() || null,
+          payment_method: order.payment_details?.method || null,
         },
         { onConflict: "nuvemshop_order_id" }
       );

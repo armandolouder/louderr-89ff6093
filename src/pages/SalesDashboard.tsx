@@ -285,7 +285,7 @@ export default function SalesDashboard() {
 
                   return (
                     <TableRow key={order.id}>
-                      <TableCell className="font-mono text-xs text-muted-foreground">#{order.nuvemshop_order_id}</TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">#{(order as any).order_number || order.nuvemshop_order_id}</TableCell>
                       <TableCell className="text-sm">
                         {new Date(order.order_date || order.created_at).toLocaleDateString("pt-BR")}
                       </TableCell>
@@ -311,7 +311,14 @@ export default function SalesDashboard() {
                         {formatCurrency(total)}
                       </TableCell>
                       <TableCell className="text-muted-foreground text-sm">
-                        {order.payment_status === "paid" ? "Pix" : payment.label}
+                        {(() => {
+                          const method = (order as any).payment_method || "";
+                          if (method === "pix") return "Pix";
+                          if (method === "credit_card") return "Cartão";
+                          if (method === "boleto") return "Boleto";
+                          if (method === "debit_card") return "Débito";
+                          return method || "—";
+                        })()}
                       </TableCell>
                       <TableCell>
                         <Badge variant={statusVariant as any}>
