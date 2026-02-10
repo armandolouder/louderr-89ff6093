@@ -290,15 +290,7 @@ export default function SalesDashboard() {
                         {new Date(order.order_date || order.created_at).toLocaleDateString("pt-BR")}
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">{order.customer_name || "Consumidor"}</span>
-                          {itemCount > 0 && (
-                            <Badge variant="secondary" className="gap-1 text-xs">
-                              <MessageSquare className="w-3 h-3" />
-                              {itemCount}
-                            </Badge>
-                          )}
-                        </div>
+                        <span className="font-medium">{(order.customer_name || "Consumidor").split(" ")[0]}</span>
                       </TableCell>
                       <TableCell className="text-muted-foreground">—</TableCell>
                       <TableCell className="text-right font-semibold">
