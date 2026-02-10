@@ -498,6 +498,63 @@ export type Database = {
           },
         ]
       }
+      nuvemshop_orders: {
+        Row: {
+          created_at: string
+          currency: string | null
+          customer_email: string | null
+          customer_name: string | null
+          customer_phone: string | null
+          event: string
+          id: string
+          nuvemshop_order_id: number
+          payment_status: string | null
+          products: Json | null
+          raw_data: Json | null
+          shipping_status: string | null
+          status: string | null
+          store_id: number
+          total: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          currency?: string | null
+          customer_email?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          event: string
+          id?: string
+          nuvemshop_order_id: number
+          payment_status?: string | null
+          products?: Json | null
+          raw_data?: Json | null
+          shipping_status?: string | null
+          status?: string | null
+          store_id: number
+          total?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string | null
+          customer_email?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          event?: string
+          id?: string
+          nuvemshop_order_id?: number
+          payment_status?: string | null
+          products?: Json | null
+          raw_data?: Json | null
+          shipping_status?: string | null
+          status?: string | null
+          store_id?: number
+          total?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
