@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { ShoppingCart, RefreshCw, Mail, MessageSquare, ExternalLink, Phone } from "lucide-react";
+import { ShoppingCart, RefreshCw, Mail, MessageSquare, ExternalLink, Phone, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -27,6 +27,7 @@ export default function AbandonedCheckouts() {
   const queryClient = useQueryClient();
   const [syncing, setSyncing] = useState(false);
   const [selectedCheckout, setSelectedCheckout] = useState<any>(null);
+  const [sendingId, setSendingId] = useState<string | null>(null);
 
   const startDate = new Date(year, month, 1).toISOString();
   const endDate = new Date(year, month + 1, 0, 23, 59, 59).toISOString();
@@ -128,6 +129,78 @@ export default function AbandonedCheckouts() {
     } else {
       toast.success("Marcado como recuperado!");
       queryClient.invalidateQueries({ queryKey: ["abandoned-checkouts"] });
+    }
+  };
+
+  const sendWhatsApp = async (checkout: any) => {
+    if (!checkout.customer_phone) {
+      toast.error("Este cliente não tem telefone cadastrado");
+      return;
+    }
+
+    setSendingId(checkout.id);
+    try {
+      // Find active abandoned checkout flow
+      const { data: flows, error: flowErr } = await supabase
+        .from("automation_flows")
+        .select("*")
+        .eq("trigger_event", "abandoned_checkout")
+        .eq("status", "active")
+        .limit(1);
+
+      if (flowErr) throw flowErr;
+      if (!flows || flows.length === 0) {
+        toast.error("Nenhum fluxo de 'Carrinho Abandonado' ativo. Crie um na página de Automações.");
+        return;
+      }
+
+      const flow = flows[0];
+      const phone = checkout.customer_phone.replace(/\D/g, "");
+      const firstName = (checkout.customer_name || "Cliente").split(" ")[0];
+      const products = (checkout.products as any[]) || [];
+      const productsList = products.map((p: any) => `${p.quantity || 1}x ${p.name}`).join("\n");
+      const recoveryUrl = checkout.recovery_url || "";
+      const total = checkout.total || 0;
+
+      const messageContent = flow.message_content
+        .replace(/\[nome_cliente\]/g, firstName)
+        .replace(/\[lista_produtos\]/g, productsList)
+        .replace(/\[total_pedido\]/g, `R$ ${total.toFixed(2).replace(".", ",")}`)
+        .replace(/\[link_recuperacao\]/g, recoveryUrl)
+        .replace(/\[link_checkout\]/g, recoveryUrl);
+
+      // Schedule immediate execution
+      const { error: execError } = await supabase.from("automation_executions").insert({
+        flow_id: flow.id,
+        trigger_data: {
+          checkout_id: checkout.checkout_id,
+          event: "abandoned_checkout_manual",
+          customer_name: checkout.customer_name,
+          customer_phone: phone,
+          message_content: messageContent,
+          media_url: flow.media_url,
+          media_type: flow.media_type,
+        },
+        scheduled_at: new Date().toISOString(),
+        phone,
+        customer_name: checkout.customer_name,
+        status: "pending",
+      });
+
+      if (execError) throw execError;
+
+      // Mark as contacted
+      await supabase
+        .from("nuvemshop_abandoned_checkouts")
+        .update({ contacted_at: new Date().toISOString(), contact_channel: "whatsapp" })
+        .eq("id", checkout.id);
+
+      toast.success(`Mensagem agendada para ${firstName}! Será enviada no próximo ciclo.`);
+      queryClient.invalidateQueries({ queryKey: ["abandoned-checkouts"] });
+    } catch (err: any) {
+      toast.error("Erro ao enviar: " + (err.message || "Erro desconhecido"));
+    } finally {
+      setSendingId(null);
     }
   };
 
@@ -290,6 +363,18 @@ export default function AbandonedCheckouts() {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center justify-center gap-1">
+                          {checkout.customer_phone && !checkout.contacted_at && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              title="Enviar WhatsApp"
+                              disabled={sendingId === checkout.id}
+                              onClick={() => sendWhatsApp(checkout)}
+                            >
+                              <Send className={`w-3.5 h-3.5 text-primary ${sendingId === checkout.id ? "animate-pulse" : ""}`} />
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="icon"
