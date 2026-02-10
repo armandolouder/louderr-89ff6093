@@ -85,12 +85,9 @@ export default function AbandonedCheckouts() {
       let page = 1;
       let hasMore = true;
 
-      const syncStart = new Date(year, month, 1).toISOString();
-      const syncEnd = new Date(year, month + 1, 0, 23, 59, 59).toISOString();
-
       while (hasMore) {
         const res = await supabase.functions.invoke(
-          `sync-abandoned-checkouts?page=${page}&per_page=50&created_at_min=${encodeURIComponent(syncStart)}&created_at_max=${encodeURIComponent(syncEnd)}`
+          `sync-abandoned-checkouts?page=${page}&per_page=50`
         );
         if (res.error) throw res.error;
         totalSynced += res.data?.synced || 0;
@@ -271,7 +268,7 @@ export default function AbandonedCheckouts() {
                         {new Date(checkout.created_at_nuvemshop || checkout.created_at).toLocaleDateString("pt-BR")}
                       </TableCell>
                       <TableCell>
-                        <span className="font-medium">{(checkout.customer_name || "Anônimo").split(" ")[0]}</span>
+                        <span className="font-medium">{checkout.customer_name ? checkout.customer_name.split(" ")[0] : checkout.customer_email || checkout.customer_phone || "Anônimo"}</span>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {checkout.customer_email || checkout.customer_phone || "—"}
