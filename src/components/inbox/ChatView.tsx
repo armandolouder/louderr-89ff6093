@@ -340,29 +340,12 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
                     <div
                       className={cn(
                         "max-w-[70%] px-4 py-2.5 rounded-2xl relative backdrop-blur-md border",
+                        "after:absolute after:bottom-0 after:w-0 after:h-0 after:border-solid after:border-[6px]",
                         msg.sender_type === "agent"
-                          ? "bg-primary/85 text-primary-foreground rounded-br-none border-primary/30"
-                          : "bg-secondary/70 text-secondary-foreground rounded-bl-none border-border/30"
+                          ? "bg-primary/85 text-primary-foreground rounded-br-none border-primary/30 after:right-[-12px] after:border-t-transparent after:border-r-transparent after:border-b-primary/85 after:border-l-primary/85"
+                          : "bg-secondary/70 text-secondary-foreground rounded-bl-none border-border/30 after:left-[-12px] after:border-t-transparent after:border-l-transparent after:border-b-secondary/70 after:border-r-secondary/70"
                       )}
                     >
-                      {/* Bubble tail */}
-                      <svg
-                        className={cn(
-                          "absolute bottom-0 w-[10px] h-[16px]",
-                          msg.sender_type === "agent"
-                            ? "-right-[9px] text-primary/85"
-                            : "-left-[9px] text-secondary/70"
-                        )}
-                        viewBox="0 0 10 16"
-                        fill="currentColor"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        {msg.sender_type === "agent" ? (
-                          <path d="M0 16 L0 0 Q10 8 10 16 Z" />
-                        ) : (
-                          <path d="M10 16 L10 0 Q0 8 0 16 Z" />
-                        )}
-                      </svg>
                       <MediaPreview 
                         type={messageType}
                         url={msg.media_url}
