@@ -18,11 +18,10 @@ import { Button } from "@/components/ui/button";
 import { useState } from "react";
 
 const navigation = [
-  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Atendimentos", href: "/inbox", icon: MessageSquare },
+  { name: "Painel de Vendas", href: "/sales", icon: TrendingUp },
   { name: "Clientes", href: "/customers", icon: Users },
   { name: "Campanhas", href: "/campaigns", icon: Megaphone },
-  { name: "Painel de Vendas", href: "/sales", icon: TrendingUp },
   { name: "Carrinhos", href: "/abandoned-checkouts", icon: ShoppingCart },
   { name: "Bot", href: "/bot", icon: Bot },
   { name: "APIs", href: "/apis", icon: Zap },
