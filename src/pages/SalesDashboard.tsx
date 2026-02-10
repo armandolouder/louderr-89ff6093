@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { TrendingUp, RefreshCw, ShoppingCart, DollarSign, Receipt, Settings, Download, Trash2 } from "lucide-react";
+import { TrendingUp, RefreshCw, ShoppingCart, DollarSign, Receipt, Settings, Download, Trash2, Eye, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -247,58 +247,81 @@ export default function SalesDashboard() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[100px]">Pedido</TableHead>
-                <TableHead>Cliente</TableHead>
-                <TableHead>E-mail</TableHead>
-                <TableHead>Telefone</TableHead>
-                <TableHead className="text-right">Total</TableHead>
-                <TableHead>Pagamento</TableHead>
-                <TableHead>Envio</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead className="w-[110px]">Pedido</TableHead>
                 <TableHead>Data</TableHead>
+                <TableHead>Cliente</TableHead>
+                <TableHead>Fornecedor</TableHead>
+                <TableHead className="text-right">Nuvempago</TableHead>
+                <TableHead className="text-right">Custos</TableHead>
+                <TableHead className="text-right">Líquido</TableHead>
+                <TableHead>Pagamento</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-center">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
-                    {Array.from({ length: 9 }).map((_, j) => (
+                    {Array.from({ length: 10 }).map((_, j) => (
                       <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
                     ))}
                   </TableRow>
                 ))
               ) : filteredOrders.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                     Nenhum pedido encontrado no período selecionado.
                   </TableCell>
                 </TableRow>
               ) : (
                 filteredOrders.map(order => {
                   const payment = PAYMENT_STATUS_MAP[order.payment_status || ""] || { label: order.payment_status || "—", variant: "outline" as const };
-                  const shipping = SHIPPING_STATUS_MAP[order.shipping_status || ""] || { label: order.shipping_status || "—", variant: "outline" as const };
+                  const statusLabel = order.status === "open" ? "Criado" : order.status === "closed" ? "Fechado" : order.status === "cancelled" ? "Cancelado" : order.status || "—";
+                  const statusVariant = order.status === "cancelled" ? "destructive" : order.status === "closed" ? "default" : "outline";
+                  const total = order.total || 0;
+                  const products = order.products as any[];
+                  const itemCount = Array.isArray(products) ? products.reduce((s, p) => s + (p.quantity || 1), 0) : 0;
+
                   return (
                     <TableRow key={order.id}>
-                      <TableCell className="font-medium">#{order.nuvemshop_order_id}</TableCell>
-                      <TableCell>{order.customer_name || "—"}</TableCell>
-                      <TableCell className="text-muted-foreground text-xs">{order.customer_email || "—"}</TableCell>
-                      <TableCell className="text-muted-foreground text-xs">{order.customer_phone || "—"}</TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">#{order.nuvemshop_order_id}</TableCell>
+                      <TableCell className="text-sm">
+                        {new Date(order.order_date || order.created_at).toLocaleDateString("pt-BR")}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{order.customer_name || "Consumidor"}</span>
+                          {itemCount > 0 && (
+                            <Badge variant="secondary" className="gap-1 text-xs">
+                              <MessageSquare className="w-3 h-3" />
+                              {itemCount}
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">—</TableCell>
                       <TableCell className="text-right font-semibold">
-                        {order.total ? formatCurrency(order.total) : "—"}
+                        {formatCurrency(total)}
+                      </TableCell>
+                      <TableCell className="text-right text-success font-medium">
+                        {formatCurrency(0)}
+                      </TableCell>
+                      <TableCell className="text-right font-bold text-primary">
+                        {formatCurrency(total)}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-sm">
+                        {order.payment_status === "paid" ? "Pix" : payment.label}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={payment.variant}>{payment.label}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={shipping.variant}>{shipping.label}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={order.status === "cancelled" ? "destructive" : "outline"}>
-                          {order.status || "—"}
+                        <Badge variant={statusVariant as any}>
+                          {payment.label === "Pago" ? "Pago (A separar)" : statusLabel}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-muted-foreground text-xs">
-                        {new Date(order.order_date || order.created_at).toLocaleDateString("pt-BR")}
+                      <TableCell className="text-center">
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <Eye className="w-4 h-4 text-muted-foreground" />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   );
