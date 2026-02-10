@@ -480,96 +480,94 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
           </div>
         ) : (
           // Desktop layout
-          <div className="flex items-center gap-3">
+          <div className="space-y-2">
             <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx" />
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground" onClick={() => fileInputRef.current?.click()}>
-                  <Paperclip className="w-5 h-5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Anexar arquivo</TooltipContent>
-            </Tooltip>
-            
-            <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
-              <PopoverTrigger asChild>
-                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
-                  <Smile className="w-5 h-5" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-2" side="top">
-                <div className="grid grid-cols-8 gap-1">
-                  {EMOJI_LIST.map((emoji) => (
-                    <button key={emoji} onClick={() => insertEmoji(emoji)} className="text-xl hover:scale-125 transition-transform p-1">{emoji}</button>
-                  ))}
-                </div>
-              </PopoverContent>
-            </Popover>
-            
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className={cn(
-                    "text-muted-foreground hover:text-foreground",
-                    isCheckingSpelling && "animate-pulse"
-                  )}
-                  onClick={checkSpelling}
-                  disabled={isCheckingSpelling || !message.trim()}
-                >
-                  {isCheckingSpelling ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                  ) : (
-                    <SpellCheck className="w-5 h-5" />
-                  )}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Corrigir ortografia</TooltipContent>
-            </Tooltip>
-            
-            <QuickResponsePicker 
-              onSelect={handleQuickResponseSelect}
-              onManage={() => setShowQuickResponseManager(true)}
-            />
-            
-            <Textarea
-              placeholder={pastedImage ? "Adicione uma legenda (opcional)..." : "Digite sua mensagem..."}
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              onPaste={handlePaste}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSend();
-                }
-              }}
-              className="flex-1 bg-secondary border-border min-h-[40px] max-h-32 resize-none"
-              spellCheck={true}
-              lang="pt-BR"
-              autoComplete="off"
-              autoCorrect="on"
-              rows={1}
-            />
-            <Button 
-              onClick={handleSend} 
-              disabled={isSending || (!message.trim() && !pastedImage)} 
-              className="shadow-glow"
-            >
-              {isSending ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              ) : pastedImage ? (
-                <>
-                  <ImageIcon className="w-4 h-4 mr-2" />
-                  Enviar Imagem
-                </>
-              ) : (
-                <>
-                  <Send className="w-4 h-4 mr-2" />
-                  Enviar
-                </>
-              )}
-            </Button>
+            <div className="flex items-end gap-2">
+              <Textarea
+                placeholder={pastedImage ? "Adicione uma legenda (opcional)..." : "Digite sua mensagem..."}
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                onPaste={handlePaste}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                  }
+                }}
+                className="flex-1 bg-secondary border-border min-h-[44px] max-h-32 resize-none"
+                spellCheck={true}
+                lang="pt-BR"
+                autoComplete="off"
+                autoCorrect="on"
+                rows={1}
+              />
+              <Button 
+                onClick={handleSend} 
+                disabled={isSending || (!message.trim() && !pastedImage)} 
+                className="shadow-glow h-11"
+              >
+                {isSending ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <>
+                    <Send className="w-4 h-4 mr-2" />
+                    Enviar
+                  </>
+                )}
+              </Button>
+            </div>
+            <div className="flex items-center gap-1">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => fileInputRef.current?.click()}>
+                    <Paperclip className="w-4 h-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Anexar arquivo</TooltipContent>
+              </Tooltip>
+              
+              <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+                    <Smile className="w-4 h-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-2" side="top">
+                  <div className="grid grid-cols-8 gap-1">
+                    {EMOJI_LIST.map((emoji) => (
+                      <button key={emoji} onClick={() => insertEmoji(emoji)} className="text-xl hover:scale-125 transition-transform p-1">{emoji}</button>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+              
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className={cn(
+                      "h-8 w-8 text-muted-foreground hover:text-foreground",
+                      isCheckingSpelling && "animate-pulse"
+                    )}
+                    onClick={checkSpelling}
+                    disabled={isCheckingSpelling || !message.trim()}
+                  >
+                    {isCheckingSpelling ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <SpellCheck className="w-4 h-4" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Corrigir ortografia</TooltipContent>
+              </Tooltip>
+              
+              <QuickResponsePicker 
+                onSelect={handleQuickResponseSelect}
+                onManage={() => setShowQuickResponseManager(true)}
+              />
+            </div>
           </div>
         )}
       </div>
