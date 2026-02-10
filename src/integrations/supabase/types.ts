@@ -14,6 +14,98 @@ export type Database = {
   }
   public: {
     Tables: {
+      automation_executions: {
+        Row: {
+          created_at: string
+          customer_name: string | null
+          error_message: string | null
+          executed_at: string | null
+          flow_id: string
+          id: string
+          phone: string
+          scheduled_at: string
+          status: string
+          trigger_data: Json
+        }
+        Insert: {
+          created_at?: string
+          customer_name?: string | null
+          error_message?: string | null
+          executed_at?: string | null
+          flow_id: string
+          id?: string
+          phone: string
+          scheduled_at: string
+          status?: string
+          trigger_data?: Json
+        }
+        Update: {
+          created_at?: string
+          customer_name?: string | null
+          error_message?: string | null
+          executed_at?: string | null
+          flow_id?: string
+          id?: string
+          phone?: string
+          scheduled_at?: string
+          status?: string
+          trigger_data?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_executions_flow_id_fkey"
+            columns: ["flow_id"]
+            isOneToOne: false
+            referencedRelation: "automation_flows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      automation_flows: {
+        Row: {
+          created_at: string
+          delay_unit: string
+          delay_value: number
+          id: string
+          media_type: string | null
+          media_url: string | null
+          message_content: string
+          name: string
+          status: string
+          trigger_event: string
+          updated_at: string
+          variables: Json | null
+        }
+        Insert: {
+          created_at?: string
+          delay_unit?: string
+          delay_value?: number
+          id?: string
+          media_type?: string | null
+          media_url?: string | null
+          message_content?: string
+          name: string
+          status?: string
+          trigger_event: string
+          updated_at?: string
+          variables?: Json | null
+        }
+        Update: {
+          created_at?: string
+          delay_unit?: string
+          delay_value?: number
+          id?: string
+          media_type?: string | null
+          media_url?: string | null
+          message_content?: string
+          name?: string
+          status?: string
+          trigger_event?: string
+          updated_at?: string
+          variables?: Json | null
+        }
+        Relationships: []
+      }
       campaign_messages: {
         Row: {
           campaign_id: string

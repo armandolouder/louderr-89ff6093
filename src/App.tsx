@@ -13,6 +13,7 @@ import Settings from "./pages/Settings";
 import Api from "./pages/Api";
 import SalesDashboard from "./pages/SalesDashboard";
 import AbandonedCheckouts from "./pages/AbandonedCheckouts";
+import Automations from "./pages/Automations";
 import Auth from "./pages/Auth";
 import Install from "./pages/Install";
 import NotFound from "./pages/NotFound";
@@ -39,6 +40,7 @@ const App = () => (
             <Route path="/apis" element={<Api />} />
             <Route path="/sales" element={<SalesDashboard />} />
             <Route path="/abandoned-checkouts" element={<AbandonedCheckouts />} />
+            <Route path="/automations" element={<Automations />} />
             <Route path="/settings" element={<Settings />} />
           </Route>
           <Route path="*" element={<NotFound />} />
