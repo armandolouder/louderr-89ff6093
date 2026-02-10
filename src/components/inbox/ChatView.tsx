@@ -193,15 +193,16 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
     }, 50);
   };
 
-  // Auto-scroll to bottom when messages change
+  // Auto-scroll to bottom when messages load or change
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  // Scroll to bottom instantly when conversation changes
-  useEffect(() => {
-    scrollToBottom("instant" as ScrollBehavior);
-  }, [conversation.id]);
+    if (!messages?.length) return;
+    // Use longer delay on conversation switch to wait for render
+    const delay = 100;
+    const timer = setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "instant" as ScrollBehavior });
+    }, delay);
+    return () => clearTimeout(timer);
+  }, [messages, conversation.id]);
 
   // Detect scroll position to show/hide scroll-down button
   const handleScroll = () => {
