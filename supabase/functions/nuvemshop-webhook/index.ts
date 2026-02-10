@@ -131,9 +131,10 @@ Deno.serve(async (req) => {
           // Replace variables in message
           const productsList = products.map((p: any) => `${p.quantity}x ${p.name}`).join("\n");
           const trackingCode = order.shipping_tracking_number || order.tracking_number || "";
+          const firstName = (customerName || "Cliente").split(" ")[0];
 
           const messageContent = flow.message_content
-            .replace(/\[nome_cliente\]/g, customerName || "Cliente")
+            .replace(/\[nome_cliente\]/g, firstName)
             .replace(/\[numero_pedido\]/g, order.number || String(orderId))
             .replace(/\[total_pedido\]/g, `R$ ${total.toFixed(2).replace(".", ",")}`)
             .replace(/\[link_pagamento\]/g, order.checkout_url || "")
@@ -181,8 +182,9 @@ Deno.serve(async (req) => {
             if (postFlows && postFlows.length > 0) {
               for (const flow of postFlows) {
                 const scheduledAt = new Date(Date.now() + postSaleDays[i] * 86400 * 1000);
+                const postFirstName = (customerName || "Cliente").split(" ")[0];
                 const messageContent = flow.message_content
-                  .replace(/\[nome_cliente\]/g, customerName || "Cliente")
+                  .replace(/\[nome_cliente\]/g, postFirstName)
                   .replace(/\[numero_pedido\]/g, order.number || String(orderId));
 
                 await supabase.from("automation_executions").insert({
