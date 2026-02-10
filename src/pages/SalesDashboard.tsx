@@ -318,8 +318,8 @@ export default function SalesDashboard() {
                           const isPaid = order.payment_status === "paid";
                           if (shipping === "shipped") return <Badge className="text-xs px-2 py-0.5 bg-emerald-500/20 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/30">Enviado</Badge>;
                           if (shipping === "delivered") return <Badge className="text-xs px-2 py-0.5 bg-emerald-500/20 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/30">Entregue</Badge>;
-                          if (shipping === "unpacked" && isPaid) return <Badge className="text-xs px-2 py-0.5 bg-blue-500/20 text-blue-400 border-blue-500/30 hover:bg-blue-500/30">Embalado</Badge>;
-                          if (isPaid) return <Badge variant="secondary" className="text-xs px-2 py-0.5">Pago (A separar)</Badge>;
+                          if (shipping === "unpacked" && isPaid) return <Badge className="text-xs px-2 py-0.5 bg-emerald-500/20 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/30">Pago</Badge>;
+                          if (isPaid) return <Badge className="text-xs px-2 py-0.5 bg-blue-500/20 text-blue-400 border-blue-500/30 hover:bg-blue-500/30">Embalado</Badge>;
                           if (order.status === "cancelled") return <Badge variant="destructive" className="text-xs px-2 py-0.5">Cancelado</Badge>;
                           return <Badge variant="outline" className="text-xs px-2 py-0.5">{statusLabel}</Badge>;
                         })()}
