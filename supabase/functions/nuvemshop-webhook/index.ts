@@ -198,6 +198,20 @@ Deno.serve(async (req) => {
         console.log(`Found ${flows.length} active flows for event ${triggerEvent}, phone: ${phone}`);
         
         for (const flow of flows) {
+          // Deduplication: skip if execution already exists for this flow + order
+          const { data: existingExec } = await supabase
+            .from("automation_executions")
+            .select("id")
+            .eq("flow_id", flow.id)
+            .eq("phone", phone)
+            .filter("trigger_data->>order_id", "eq", String(orderId))
+            .limit(1);
+
+          if (existingExec && existingExec.length > 0) {
+            console.log(`Skipping duplicate: flow ${flow.name} already scheduled for order ${orderId}`);
+            continue;
+          }
+
           // Calculate scheduled time based on delay
           const now = new Date();
           let delayMs = 0;
