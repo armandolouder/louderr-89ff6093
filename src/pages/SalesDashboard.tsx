@@ -87,8 +87,8 @@ export default function SalesDashboard() {
   }, [orders, statusFilter]);
 
   const metrics = useMemo(() => {
-    // Exclude cancelled orders from financial metrics and counts
-    const billable = filteredOrders.filter(o => o.status !== "cancelled");
+    // Exclude cancelled and unpaid orders from financial metrics and counts
+    const billable = filteredOrders.filter(o => o.status !== "cancelled" && o.payment_status === "paid");
     const totalRevenue = billable.reduce((sum, o) => sum + (o.total || 0), 0);
     const totalOrders = billable.length;
     const avgTicket = totalOrders > 0 ? totalRevenue / totalOrders : 0;
