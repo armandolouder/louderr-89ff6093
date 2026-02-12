@@ -337,7 +337,15 @@ export function CarouselBuilder() {
                 <Input
                   placeholder="5511999999999"
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                  onChange={(e) => {
+                    const digits = e.target.value.replace(/\D/g, "");
+                    // Auto-prefix with 55 if pasted Brazilian format without country code
+                    if (digits.length >= 10 && !digits.startsWith("55")) {
+                      setPhone("55" + digits);
+                    } else {
+                      setPhone(digits);
+                    }
+                  }}
                 />
               </div>
             ) : (
