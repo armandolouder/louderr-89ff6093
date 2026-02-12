@@ -73,6 +73,31 @@ Deno.serve(async (req) => {
       sku: p.sku,
     }));
 
+    // Build checkout success URL from store domain + order token
+    let checkoutSuccessUrl = "";
+    if (NUVEMSHOP_ACCESS_TOKEN && NUVEMSHOP_STORE_ID && order.token) {
+      try {
+        const storeRes = await fetch(
+          `https://api.tiendanube.com/v1/${NUVEMSHOP_STORE_ID}/store`,
+          {
+            headers: {
+              "Authentication": `bearer ${NUVEMSHOP_ACCESS_TOKEN}`,
+              "User-Agent": "LOUDER.ink (contato@louder.ink)",
+              "Content-Type": "application/json",
+            },
+          }
+        );
+        if (storeRes.ok) {
+          const storeData = await storeRes.json();
+          const domain = storeData.url_with_protocol || `https://${storeData.original_domain}`;
+          checkoutSuccessUrl = `${domain}/checkout/v3/success/${orderId}/${order.token}`;
+          console.log(`Checkout success URL built: ${checkoutSuccessUrl}`);
+        }
+      } catch (storeErr) {
+        console.error("Error fetching store info for URL:", storeErr);
+      }
+    }
+
     // Upsert order (avoid duplicate key errors)
     const { error } = await supabase.from("nuvemshop_orders").upsert(
       {
@@ -232,7 +257,8 @@ Deno.serve(async (req) => {
             .replace(/\[total_pedido\]/g, `R$ ${total.toFixed(2).replace(".", ",")}`)
             .replace(/\[link_pagamento\]/g, order.checkout_url || "")
             .replace(/\[link_boleto\]/g, order.payment_details?.boleto_url || "")
-            .replace(/\[url_sucesso\]/g, "https://www.louder.ink")
+            .replace(/\[url_sucesso_pedido\]/g, checkoutSuccessUrl)
+            .replace(/\[url_sucesso\]/g, checkoutSuccessUrl || "https://www.louder.ink")
             .replace(/\[lista_produtos\]/g, productsList)
             .replace(/\[codigo_rastreio\]/g, trackingCode);
 

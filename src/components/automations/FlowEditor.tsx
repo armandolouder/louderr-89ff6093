@@ -90,7 +90,8 @@ export function FlowEditor({ flow, onBack }: FlowEditorProps) {
     .replace(/\[total_pedido\]/g, "R$ 189,90")
     .replace(/\[link_pagamento\]/g, "https://pay.example.com/abc")
     .replace(/\[link_boleto\]/g, "https://boleto.example.com/xyz")
-    .replace(/\[url_sucesso\]/g, "https://www.louder.ink")
+    .replace(/\[url_sucesso_pedido\]/g, "https://loja.example.com/checkout/v3/success/123/token123")
+    .replace(/\[url_sucesso\]/g, "https://loja.example.com/checkout/v3/success/123/token123")
     .replace(/\[lista_produtos\]/g, "1x Camiseta LOUDER\n1x Boné LOUDER")
     .replace(/\[codigo_rastreio\]/g, "AB123456789BR");
 
