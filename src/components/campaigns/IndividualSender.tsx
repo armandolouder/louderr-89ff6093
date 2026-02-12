@@ -4,10 +4,13 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Send, Image, Loader2, ChevronLeft, Smile, Paperclip, Mic, Camera } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Send, Image, Loader2, ChevronLeft, Smile, Paperclip, Mic, Camera, Plus, Pencil, Trash2, MessageSquareText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 function PhonePreview({ message, mediaUrl }: { message: string; mediaUrl?: string }) {
   const currentTime = format(new Date(), "HH:mm");
@@ -17,7 +20,6 @@ function PhonePreview({ message, mediaUrl }: { message: string; mediaUrl?: strin
       <div className="relative bg-[#0b141a] rounded-[2.5rem] p-2 shadow-2xl border-4 border-[#1f2c33]">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-6 bg-[#0b141a] rounded-b-2xl z-10" />
         <div className="bg-[#0b141a] rounded-[2rem] overflow-hidden" style={{ height: "420px" }}>
-          {/* Header */}
           <div className="bg-[#1f2c33] px-3 py-2 flex items-center gap-3">
             <ChevronLeft className="w-5 h-5 text-[#00a884]" />
             <div className="w-9 h-9 rounded-full bg-[#6b7c85] flex items-center justify-center">
@@ -29,7 +31,6 @@ function PhonePreview({ message, mediaUrl }: { message: string; mediaUrl?: strin
             </div>
           </div>
 
-          {/* Chat */}
           <div
             className="p-3 overflow-y-auto"
             style={{
@@ -47,16 +48,12 @@ function PhonePreview({ message, mediaUrl }: { message: string; mediaUrl?: strin
                         src={mediaUrl}
                         alt="Preview"
                         className="w-full max-h-40 object-cover"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).style.display = "none";
-                        }}
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
                       />
                     </div>
                   )}
                   <div className={`bg-[#005c4b] px-2.5 py-1.5 rounded-lg ${mediaUrl ? "rounded-tr-none" : ""}`}>
-                    <p className="text-white text-[13px] whitespace-pre-wrap leading-5">
-                      {message || ""}
-                    </p>
+                    <p className="text-white text-[13px] whitespace-pre-wrap leading-5">{message || ""}</p>
                     <div className="flex items-center justify-end gap-1 mt-0.5">
                       <span className="text-[10px] text-[#8696a0]">{currentTime}</span>
                       <svg className="w-4 h-3 text-[#53bdeb]" viewBox="0 0 16 11" fill="currentColor">
@@ -75,7 +72,6 @@ function PhonePreview({ message, mediaUrl }: { message: string; mediaUrl?: strin
             )}
           </div>
 
-          {/* Input */}
           <div className="bg-[#1f2c33] px-2 py-2 flex items-center gap-2">
             <Smile className="w-5 h-5 text-[#8696a0]" />
             <Paperclip className="w-5 h-5 text-[#8696a0]" />
@@ -91,11 +87,132 @@ function PhonePreview({ message, mediaUrl }: { message: string; mediaUrl?: strin
   );
 }
 
+interface SavedMessage {
+  id: string;
+  title: string;
+  content: string;
+  media_url: string | null;
+}
+
+function SavedMessageDialog({
+  open,
+  onOpenChange,
+  editItem,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  editItem: SavedMessage | null;
+}) {
+  const queryClient = useQueryClient();
+  const [title, setTitle] = useState(editItem?.title || "");
+  const [body, setBody] = useState(editItem?.content || "");
+  const [imgUrl, setImgUrl] = useState(editItem?.media_url || "");
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    if (!title.trim() || !body.trim()) {
+      toast.error("Preencha título e conteúdo");
+      return;
+    }
+    setSaving(true);
+    try {
+      if (editItem) {
+        const { error } = await supabase
+          .from("quick_responses")
+          .update({ title, content: body, media_url: imgUrl || null, category: "individual" })
+          .eq("id", editItem.id);
+        if (error) throw error;
+        toast.success("Mensagem atualizada!");
+      } else {
+        const { error } = await supabase
+          .from("quick_responses")
+          .insert({ title, content: body, media_url: imgUrl || null, category: "individual" });
+        if (error) throw error;
+        toast.success("Mensagem salva!");
+      }
+      queryClient.invalidateQueries({ queryKey: ["saved-individual-messages"] });
+      onOpenChange(false);
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Reset fields when dialog opens with new data
+  useState(() => {
+    setTitle(editItem?.title || "");
+    setBody(editItem?.content || "");
+    setImgUrl(editItem?.media_url || "");
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{editItem ? "Editar Mensagem" : "Nova Mensagem Salva"}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <Label>Título</Label>
+            <Input placeholder="Ex: Promoção de verão" value={title} onChange={(e) => setTitle(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <Label>Conteúdo</Label>
+            <Textarea placeholder="Texto da mensagem..." value={body} onChange={(e) => setBody(e.target.value)} rows={4} />
+          </div>
+          <div className="space-y-1">
+            <Label>URL da Imagem (opcional)</Label>
+            <Input placeholder="https://..." value={imgUrl} onChange={(e) => setImgUrl(e.target.value)} />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button onClick={handleSave} disabled={saving}>
+            {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+            Salvar
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function IndividualSender() {
   const [phone, setPhone] = useState("");
   const [content, setContent] = useState("");
   const [mediaUrl, setMediaUrl] = useState("");
   const [sending, setSending] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editItem, setEditItem] = useState<SavedMessage | null>(null);
+
+  const queryClient = useQueryClient();
+
+  const { data: savedMessages = [] } = useQuery({
+    queryKey: ["saved-individual-messages"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("quick_responses")
+        .select("id, title, content, media_url")
+        .eq("category", "individual")
+        .eq("is_active", true)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data as SavedMessage[];
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("quick_responses").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["saved-individual-messages"] });
+      toast.success("Mensagem excluída");
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const digits = e.target.value.replace(/\D/g, "");
@@ -111,16 +228,13 @@ export function IndividualSender() {
       toast.error("Preencha o número e a mensagem");
       return;
     }
-
     setSending(true);
     try {
       const { data, error } = await supabase.functions.invoke("send-individual", {
         body: { phone, content, mediaUrl: mediaUrl || undefined },
       });
-
       if (error) throw error;
       if (!data.success) throw new Error(data.error);
-
       toast.success("Mensagem enviada com sucesso!");
       setContent("");
       setMediaUrl("");
@@ -132,71 +246,128 @@ export function IndividualSender() {
     }
   };
 
+  const selectSavedMessage = (msg: SavedMessage) => {
+    setContent(msg.content);
+    if (msg.media_url) setMediaUrl(msg.media_url);
+  };
+
+  const openEdit = (msg: SavedMessage) => {
+    setEditItem(msg);
+    setDialogOpen(true);
+  };
+
+  const openNew = () => {
+    setEditItem(null);
+    setDialogOpen(true);
+  };
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-      {/* Form */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Send className="w-5 h-5" />
-            Envio Individual
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label>Número do WhatsApp</Label>
-            <Input
-              placeholder="5511999999999"
-              value={phone}
-              onChange={handlePhoneChange}
-            />
-            <p className="text-xs text-muted-foreground">
-              Cole no formato (19) 98237-2868 — será formatado automaticamente
-            </p>
-          </div>
+    <>
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-6 items-start">
+        <div className="space-y-4">
+          {/* Form */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Send className="w-5 h-5" />
+                Envio Individual
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>Número do WhatsApp</Label>
+                <Input placeholder="5511999999999" value={phone} onChange={handlePhoneChange} />
+                <p className="text-xs text-muted-foreground">
+                  Cole no formato (19) 98237-2868 — será formatado automaticamente
+                </p>
+              </div>
 
-          <div className="space-y-2">
-            <Label>Mensagem</Label>
-            <Textarea
-              placeholder="Digite sua mensagem..."
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              rows={4}
-            />
-          </div>
+              <div className="space-y-2">
+                <Label>Mensagem</Label>
+                <Textarea placeholder="Digite sua mensagem..." value={content} onChange={(e) => setContent(e.target.value)} rows={4} />
+              </div>
 
-          <div className="space-y-2">
-            <Label className="flex items-center gap-1">
-              <Image className="w-4 h-4" />
-              URL da Imagem (opcional)
-            </Label>
-            <Input
-              placeholder="https://exemplo.com/foto.jpg"
-              value={mediaUrl}
-              onChange={(e) => setMediaUrl(e.target.value)}
-            />
-          </div>
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1">
+                  <Image className="w-4 h-4" />
+                  URL da Imagem (opcional)
+                </Label>
+                <Input placeholder="https://exemplo.com/foto.jpg" value={mediaUrl} onChange={(e) => setMediaUrl(e.target.value)} />
+              </div>
 
-          <Button
-            onClick={handleSend}
-            disabled={sending || !phone || !content}
-            className="w-full"
-          >
-            {sending ? (
-              <Loader2 className="w-4 h-4 animate-spin mr-2" />
-            ) : (
-              <Send className="w-4 h-4 mr-2" />
-            )}
-            {sending ? "Enviando..." : "Enviar Mensagem"}
-          </Button>
-        </CardContent>
-      </Card>
+              <Button onClick={handleSend} disabled={sending || !phone || !content} className="w-full">
+                {sending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
+                {sending ? "Enviando..." : "Enviar Mensagem"}
+              </Button>
+            </CardContent>
+          </Card>
 
-      {/* WhatsApp Preview */}
-      <div className="flex flex-col items-center gap-3">
-        <p className="text-sm font-medium text-muted-foreground">Preview</p>
-        <PhonePreview message={content} mediaUrl={mediaUrl || undefined} />
+          {/* Saved Messages */}
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <MessageSquareText className="w-5 h-5" />
+                  Mensagens Salvas
+                </CardTitle>
+                <Button size="sm" variant="outline" onClick={openNew}>
+                  <Plus className="w-4 h-4 mr-1" />
+                  Adicionar
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {savedMessages.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  Nenhuma mensagem salva. Clique em "Adicionar" para criar.
+                </p>
+              ) : (
+                <ScrollArea className="max-h-64">
+                  <div className="space-y-2">
+                    {savedMessages.map((msg) => (
+                      <div
+                        key={msg.id}
+                        className="flex items-center gap-2 p-2.5 rounded-md border border-border hover:bg-muted/50 cursor-pointer group transition-colors"
+                        onClick={() => selectSavedMessage(msg)}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{msg.title}</p>
+                          <p className="text-xs text-muted-foreground truncate">{msg.content}</p>
+                        </div>
+                        {msg.media_url && <Image className="w-4 h-4 text-muted-foreground shrink-0" />}
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7 opacity-0 group-hover:opacity-100 shrink-0"
+                          onClick={(e) => { e.stopPropagation(); openEdit(msg); }}
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7 opacity-0 group-hover:opacity-100 text-destructive shrink-0"
+                          onClick={(e) => { e.stopPropagation(); deleteMutation.mutate(msg.id); }}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* WhatsApp Preview */}
+        <div className="flex flex-col items-center gap-3">
+          <p className="text-sm font-medium text-muted-foreground">Preview</p>
+          <PhonePreview message={content} mediaUrl={mediaUrl || undefined} />
+        </div>
       </div>
-    </div>
+
+      <SavedMessageDialog open={dialogOpen} onOpenChange={setDialogOpen} editItem={editItem} />
+    </>
   );
 }
