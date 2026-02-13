@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, MessageCircle, Instagram, Loader2 } from "lucide-react";
+import { Search, MessageCircle, Instagram, Loader2, Archive } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ConversationItem } from "./ConversationItem";
@@ -10,21 +10,26 @@ interface ConversationListProps {
   selectedId?: string;
   onSelect: (conversation: Conversation) => void;
   filterTabId?: string | null;
+  showArchived?: boolean;
+  onToggleArchived?: () => void;
 }
 
-export function ConversationList({ selectedId, onSelect, filterTabId }: ConversationListProps) {
+export function ConversationList({ selectedId, onSelect, filterTabId, showArchived = false, onToggleArchived }: ConversationListProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [channelFilter, setChannelFilter] = useState<"all" | "whatsapp" | "instagram">("all");
   
   const { data: conversations, isLoading, error } = useConversations();
 
   const filteredConversations = (conversations || []).filter((conv) => {
+    const matchesArchived = showArchived ? conv.is_archived : !conv.is_archived;
     const matchesSearch = conv.contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (conv.last_message?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
     const matchesChannel = channelFilter === "all" || conv.channel === channelFilter;
     const matchesTab = filterTabId === null || (conv as any).tab_id === filterTabId;
-    return matchesSearch && matchesChannel && matchesTab;
+    return matchesArchived && matchesSearch && matchesChannel && matchesTab;
   });
+
+  const archivedCount = (conversations || []).filter(c => c.is_archived).length;
 
   return (
     <div className="flex flex-col h-full border-r border-border bg-card">
@@ -74,6 +79,25 @@ export function ConversationList({ selectedId, onSelect, filterTabId }: Conversa
             <Instagram className="w-4 h-4 mr-1" />
             Instagram
           </Button>
+          {onToggleArchived && (
+            <Button
+              variant={showArchived ? "default" : "outline"}
+              size="sm"
+              onClick={onToggleArchived}
+              className={cn(
+                !showArchived && "border-border text-muted-foreground",
+                "relative"
+              )}
+            >
+              <Archive className="w-4 h-4 mr-1" />
+              Arquivados
+              {archivedCount > 0 && !showArchived && (
+                <span className="ml-1 text-xs bg-muted-foreground/20 rounded-full px-1.5">
+                  {archivedCount}
+                </span>
+              )}
+            </Button>
+          )}
         </div>
       </div>
       

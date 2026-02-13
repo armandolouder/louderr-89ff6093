@@ -257,6 +257,7 @@ export type Database = {
           contact_id: string
           created_at: string | null
           id: string
+          is_archived: boolean
           last_message: string | null
           last_message_at: string | null
           status: string
@@ -271,6 +272,7 @@ export type Database = {
           contact_id: string
           created_at?: string | null
           id?: string
+          is_archived?: boolean
           last_message?: string | null
           last_message_at?: string | null
           status?: string
@@ -285,6 +287,7 @@ export type Database = {
           contact_id?: string
           created_at?: string | null
           id?: string
+          is_archived?: boolean
           last_message?: string | null
           last_message_at?: string | null
           status?: string

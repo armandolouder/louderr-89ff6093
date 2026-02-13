@@ -13,6 +13,7 @@ import { useNewMessageAlerts } from "@/hooks/useNewMessageAlerts";
 export default function Inbox() {
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [selectedTabId, setSelectedTabId] = useState<string | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
   const isMobile = useIsMobile();
   
   // Ativa notificações de novas mensagens (som + toast + animação)
@@ -64,6 +65,8 @@ export default function Inbox() {
               selectedId={selectedConversation?.id}
               onSelect={handleSelectConversation}
               filterTabId={selectedTabId}
+              showArchived={showArchived}
+              onToggleArchived={() => setShowArchived(!showArchived)}
             />
           </div>
 
@@ -91,6 +94,8 @@ export default function Inbox() {
           selectedId={selectedConversation?.id}
           onSelect={handleSelectConversation}
           filterTabId={selectedTabId}
+          showArchived={showArchived}
+          onToggleArchived={() => setShowArchived(!showArchived)}
         />
       </div>
       
