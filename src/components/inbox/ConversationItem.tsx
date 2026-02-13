@@ -4,7 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Conversation } from "@/hooks/useConversations";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { MoreHorizontal, FolderInput, FolderX } from "lucide-react";
+import { MoreHorizontal, FolderInput, FolderX, Archive, ArchiveRestore } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -17,6 +17,8 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { useCustomTabs, useMoveToTab } from "@/hooks/useCustomTabs";
+import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useIsConversationNew } from "@/hooks/useNewMessageAlerts";
 
@@ -36,7 +38,23 @@ const statusColors = {
 export function ConversationItem({ conversation, isActive, onClick }: ConversationItemProps) {
   const { data: tabs = [] } = useCustomTabs();
   const moveToTab = useMoveToTab();
+  const queryClient = useQueryClient();
   const isNewMessage = useIsConversationNew(conversation.id);
+
+  const handleArchiveToggle = async () => {
+    const newValue = !conversation.is_archived;
+    try {
+      const { error } = await supabase
+        .from("conversations")
+        .update({ is_archived: newValue })
+        .eq("id", conversation.id);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ["conversations"] });
+      toast.success(newValue ? "Conversa arquivada" : "Conversa desarquivada");
+    } catch {
+      toast.error("Erro ao arquivar conversa");
+    }
+  };
 
   const initials = conversation.contact.name
     .split(" ")
@@ -180,6 +198,16 @@ export function ConversationItem({ conversation, isActive, onClick }: Conversati
                 <span className="text-muted-foreground text-sm">Crie uma aba primeiro</span>
               </DropdownMenuItem>
             )}
+
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleArchiveToggle}>
+              {conversation.is_archived ? (
+                <ArchiveRestore className="h-4 w-4 mr-2" />
+              ) : (
+                <Archive className="h-4 w-4 mr-2" />
+              )}
+              {conversation.is_archived ? "Desarquivar" : "Arquivar"}
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

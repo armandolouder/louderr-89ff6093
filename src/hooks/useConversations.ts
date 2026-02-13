@@ -25,6 +25,7 @@ export interface Conversation {
   created_at: string;
   updated_at: string;
   tab_id: string | null;
+  is_archived: boolean;
   contact: Contact;
 }
 
