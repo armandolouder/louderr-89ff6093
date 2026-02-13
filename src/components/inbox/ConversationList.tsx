@@ -44,55 +44,58 @@ export function ConversationList({ selectedId, onSelect, filterTabId, showArchiv
           />
         </div>
         
-        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+        <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
           <Button
-            variant={channelFilter === "all" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setChannelFilter("all")}
-            className={cn(channelFilter !== "all" && "border-border text-muted-foreground")}
+            variant={channelFilter === "all" && !showArchived ? "default" : "outline"}
+            size="icon"
+            onClick={() => { setChannelFilter("all"); if (showArchived && onToggleArchived) onToggleArchived(); }}
+            className={cn("h-8 w-8", channelFilter !== "all" || showArchived ? "border-border text-muted-foreground" : "")}
+            title="Todos"
           >
-            Todos
+            <MessageCircle className="w-4 h-4" />
           </Button>
           <Button
-            variant={channelFilter === "whatsapp" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setChannelFilter("whatsapp")}
+            variant={channelFilter === "whatsapp" && !showArchived ? "default" : "outline"}
+            size="icon"
+            onClick={() => { setChannelFilter("whatsapp"); if (showArchived && onToggleArchived) onToggleArchived(); }}
             className={cn(
-              channelFilter === "whatsapp" 
+              "h-8 w-8",
+              channelFilter === "whatsapp" && !showArchived
                 ? "bg-whatsapp text-whatsapp-foreground hover:bg-whatsapp/90" 
                 : "border-border text-muted-foreground"
             )}
+            title="WhatsApp"
           >
-            <MessageCircle className="w-4 h-4 mr-1" />
-            WhatsApp
+            <MessageCircle className="w-4 h-4" />
           </Button>
           <Button
-            variant={channelFilter === "instagram" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setChannelFilter("instagram")}
+            variant={channelFilter === "instagram" && !showArchived ? "default" : "outline"}
+            size="icon"
+            onClick={() => { setChannelFilter("instagram"); if (showArchived && onToggleArchived) onToggleArchived(); }}
             className={cn(
-              channelFilter === "instagram" 
+              "h-8 w-8",
+              channelFilter === "instagram" && !showArchived
                 ? "bg-instagram text-instagram-foreground hover:bg-instagram/90" 
                 : "border-border text-muted-foreground"
             )}
+            title="Instagram"
           >
-            <Instagram className="w-4 h-4 mr-1" />
-            Instagram
+            <Instagram className="w-4 h-4" />
           </Button>
           {onToggleArchived && (
             <Button
               variant={showArchived ? "default" : "outline"}
-              size="sm"
+              size="icon"
               onClick={onToggleArchived}
               className={cn(
-                !showArchived && "border-border text-muted-foreground",
-                "relative"
+                "h-8 w-8 relative",
+                !showArchived && "border-border text-muted-foreground"
               )}
+              title="Arquivados"
             >
-              <Archive className="w-4 h-4 mr-1" />
-              Arquivados
+              <Archive className="w-4 h-4" />
               {archivedCount > 0 && !showArchived && (
-                <span className="ml-1 text-xs bg-muted-foreground/20 rounded-full px-1.5">
+                <span className="absolute -top-1 -right-1 text-[10px] bg-primary text-primary-foreground rounded-full w-4 h-4 flex items-center justify-center">
                   {archivedCount}
                 </span>
               )}
