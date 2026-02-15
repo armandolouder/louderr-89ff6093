@@ -44,3 +44,6 @@ verify_jwt = false
 
 [functions.send-individual]
 verify_jwt = false
+
+[functions.sync-abandoned-checkouts]
+verify_jwt = false
