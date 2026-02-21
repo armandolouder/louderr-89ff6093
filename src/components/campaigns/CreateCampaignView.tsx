@@ -174,8 +174,6 @@ export function CreateCampaignView({ onBack }: CreateCampaignViewProps) {
   const [testPhone, setTestPhone] = useState("");
   const [isSendingTest, setIsSendingTest] = useState(false);
 
-  const ABANDONED_SEGMENT_ID = "__abandoned_checkouts__";
-
   const { data: clusters } = useQuery({
     queryKey: ["customer-clusters"],
     queryFn: async () => {
@@ -189,28 +187,9 @@ export function CreateCampaignView({ onBack }: CreateCampaignViewProps) {
     },
   });
 
-  const { data: abandonedCount } = useQuery({
-    queryKey: ["abandoned-checkouts-count"],
-    queryFn: async () => {
-      const { count, error } = await supabase
-        .from("nuvemshop_abandoned_checkouts")
-        .select("*", { count: "exact", head: true })
-        .not("customer_phone", "is", null)
-        .neq("customer_phone", "");
-      if (error) throw error;
-      return count || 0;
-    },
-  });
-
-  const totalRecipients = (() => {
-    let total = clusters
-      ?.filter((c) => selectedClusters.includes(c.id))
-      .reduce((sum, c) => sum + c.customer_count, 0) || 0;
-    if (selectedClusters.includes(ABANDONED_SEGMENT_ID)) {
-      total += abandonedCount || 0;
-    }
-    return total;
-  })();
+  const totalRecipients = clusters
+    ?.filter((c) => selectedClusters.includes(c.id))
+    .reduce((sum, c) => sum + c.customer_count, 0) || 0;
 
   const selectedClusterData = clusters?.find((c) => selectedClusters.includes(c.id));
   const activeMessage = messages[activeMessageIdx];
@@ -345,91 +324,24 @@ export function CreateCampaignView({ onBack }: CreateCampaignViewProps) {
       if (msgError) throw msgError;
 
       let allCustomers: any[] = [];
-      const realClusterIds = selectedClusters.filter(id => id !== ABANDONED_SEGMENT_ID);
+      let offset = 0;
+      const pageSize = 1000;
 
-      // Fetch customers from regular clusters
-      if (realClusterIds.length > 0) {
-        let offset = 0;
-        const pageSize = 1000;
-        while (true) {
-          const { data: batch, error: customersError } = await supabase
-            .from("imported_customers")
-            .select("id, name, phone, cluster_id")
-            .in("cluster_id", realClusterIds)
-            .eq("phone_status", "valid")
-            .not("phone", "is", null)
-            .range(offset, offset + pageSize - 1);
+      while (true) {
+        const { data: batch, error: customersError } = await supabase
+          .from("imported_customers")
+          .select("id, name, phone, cluster_id")
+          .in("cluster_id", selectedClusters)
+          .eq("phone_status", "valid")
+          .not("phone", "is", null)
+          .range(offset, offset + pageSize - 1);
 
-          if (customersError) throw customersError;
-          if (!batch || batch.length === 0) break;
-          allCustomers = allCustomers.concat(batch);
-          if (batch.length < pageSize) break;
-          offset += pageSize;
-        }
-      }
-
-      // Fetch abandoned checkout customers — match them to imported_customers by phone
-      if (selectedClusters.includes(ABANDONED_SEGMENT_ID)) {
-        let offset = 0;
-        const pageSize = 1000;
-        const existingPhones = new Set(allCustomers.map((c: any) => c.phone?.replace(/\D/g, "")));
+        if (customersError) throw customersError;
+        if (!batch || batch.length === 0) break;
         
-        while (true) {
-          const { data: batch, error: abError } = await supabase
-            .from("nuvemshop_abandoned_checkouts")
-            .select("id, customer_name, customer_phone")
-            .not("customer_phone", "is", null)
-            .neq("customer_phone", "")
-            .range(offset, offset + pageSize - 1);
-
-          if (abError) throw abError;
-          if (!batch || batch.length === 0) break;
-          
-          for (const ab of batch) {
-            const phone = (ab.customer_phone || "").replace(/\D/g, "");
-            if (!phone || existingPhones.has(phone)) continue;
-            existingPhones.add(phone);
-
-            // Try to find in imported_customers
-            const { data: existing } = await supabase
-              .from("imported_customers")
-              .select("id, name, phone")
-              .or(`phone.eq.${phone},phone.eq.+${phone}`)
-              .limit(1)
-              .maybeSingle();
-
-            if (existing) {
-              allCustomers.push({
-                id: existing.id,
-                name: existing.name || ab.customer_name || phone,
-                phone: existing.phone,
-                cluster_id: ABANDONED_SEGMENT_ID,
-              });
-            } else {
-              // Create entry in imported_customers
-              const { data: newCust } = await supabase
-                .from("imported_customers")
-                .insert({
-                  name: ab.customer_name || phone,
-                  phone,
-                  phone_status: "valid",
-                  source: "abandoned_checkout",
-                })
-                .select("id, name, phone")
-                .single();
-              if (newCust) {
-                allCustomers.push({
-                  id: newCust.id,
-                  name: newCust.name,
-                  phone: newCust.phone,
-                  cluster_id: ABANDONED_SEGMENT_ID,
-                });
-              }
-            }
-          }
-          if (batch.length < pageSize) break;
-          offset += pageSize;
-        }
+        allCustomers = allCustomers.concat(batch);
+        if (batch.length < pageSize) break;
+        offset += pageSize;
       }
 
       if (allCustomers.length > 0) {
@@ -616,34 +528,6 @@ export function CreateCampaignView({ onBack }: CreateCampaignViewProps) {
               <div className="space-y-2">
                 <Label>Selecione os segmentos</Label>
                 <div className="grid gap-2">
-                  {/* Abandoned Checkouts virtual segment */}
-                  {(abandonedCount ?? 0) > 0 && (
-                    <div
-                      className={cn(
-                        "flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors",
-                        selectedClusters.includes(ABANDONED_SEGMENT_ID)
-                          ? "border-primary bg-primary/5"
-                          : "hover:border-primary/50"
-                      )}
-                      onClick={() => toggleCluster(ABANDONED_SEGMENT_ID)}
-                    >
-                      <Checkbox
-                        checked={selectedClusters.includes(ABANDONED_SEGMENT_ID)}
-                        onCheckedChange={() => toggleCluster(ABANDONED_SEGMENT_ID)}
-                      />
-                      <span className="text-xl">🛒</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-foreground">Carrinhos Abandonados</p>
-                        <p className="text-xs text-muted-foreground line-clamp-1">
-                          Clientes que abandonaram o carrinho na loja
-                        </p>
-                      </div>
-                      <Badge variant="secondary" className="shrink-0">
-                        <Users className="w-3 h-3 mr-1" />
-                        {abandonedCount}
-                      </Badge>
-                    </div>
-                  )}
                   {clusters?.map((cluster) => (
                     <div
                       key={cluster.id}
