@@ -21,6 +21,7 @@ interface Customer {
   order_count: number;
   first_purchase_at: string | null;
   last_purchase_at: string | null;
+  source: string | null;
 }
 
 interface ClusterDefinition {
@@ -157,6 +158,15 @@ const CLUSTER_DEFINITIONS: ClusterDefinition[] = [
     color: "#8B5CF6",
     criteria: { rfm_scores: ["311", "211", "111"], ticket_level: ["low"] },
   },
+  {
+    name: "Carrinhos Abandonados",
+    emoji: "🛒",
+    description: "Clientes que abandonaram o carrinho na loja",
+    objective: "Recuperação de vendas",
+    recommendation: "Enviar mensagem de recuperação com link do carrinho e oferta especial",
+    color: "#F97316",
+    criteria: { source: "abandoned_checkout" },
+  },
 ];
 
 function calculateRFMScores(customers: Customer[]): Map<string, { r: number; f: number; m: number; score: string }> {
@@ -278,7 +288,7 @@ async function processAnalysis(supabase: any, jobId: string) {
     while (true) {
       const { data: batch, error: fetchError } = await supabase
         .from("imported_customers")
-        .select("*")
+        .select("*, source")
         .range(offset, offset + pageSize - 1)
         .order("created_at", { ascending: false });
 
@@ -345,6 +355,27 @@ async function processAnalysis(supabase: any, jobId: string) {
       if (!rfm) return;
 
       const ticketLevel = getTicketLevel(customer.total_spent || 0, avgTicket);
+
+      // Abandoned checkout customers go to their own cluster
+      if (customer.source === "abandoned_checkout") {
+        const abandonedClusterId = clusterNameToId.get("Carrinhos Abandonados");
+        if (abandonedClusterId) {
+          if (!customersByCluster.has(abandonedClusterId)) {
+            customersByCluster.set(abandonedClusterId, []);
+          }
+          customersByCluster.get(abandonedClusterId)!.push({
+            id: customer.id,
+            rfm_recency: rfm.r,
+            rfm_frequency: rfm.f,
+            rfm_monetary: rfm.m,
+            rfm_score: rfm.score,
+            ticket_level: ticketLevel,
+          });
+          clusterCounts.set("Carrinhos Abandonados", (clusterCounts.get("Carrinhos Abandonados") || 0) + 1);
+          return;
+        }
+      }
+
       const cluster = assignCustomerToCluster(customer, rfm, ticketLevel, CLUSTER_DEFINITIONS);
 
       if (cluster) {
