@@ -107,6 +107,31 @@ export default function AbandonedCheckouts() {
     }
   };
 
+  const checkRecovery = async () => {
+    setCheckingRecovery(true);
+    try {
+      const res = await supabase.functions.invoke("check-abandoned-recovery");
+      if (res.error) throw res.error;
+      const { recovered, checked } = res.data || {};
+      if (recovered > 0) {
+        toast.success(`${recovered} carrinho(s) marcado(s) como recuperado(s)!`);
+        queryClient.invalidateQueries({ queryKey: ["abandoned-checkouts"] });
+      } else {
+        toast.info(`${checked} carrinhos verificados, nenhuma nova recuperação detectada.`);
+      }
+    } catch (err: any) {
+      toast.error("Erro ao verificar recuperações: " + (err.message || "Erro"));
+    } finally {
+      setCheckingRecovery(false);
+    }
+  };
+
+  // Auto-check recovery on page load
+  useEffect(() => {
+    checkRecovery();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const markAsContacted = async (id: string, channel: string) => {
     const { error } = await supabase
       .from("nuvemshop_abandoned_checkouts")
