@@ -28,6 +28,7 @@ export default function AbandonedCheckouts() {
   const [syncing, setSyncing] = useState(false);
   const [selectedCheckout, setSelectedCheckout] = useState<any>(null);
   const [sendingId, setSendingId] = useState<string | null>(null);
+  const [checkingRecovery, setCheckingRecovery] = useState(false);
 
   const startDate = new Date(year, month, 1).toISOString();
   const endDate = new Date(year, month + 1, 0, 23, 59, 59).toISOString();
