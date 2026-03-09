@@ -252,6 +252,11 @@ export default function AbandonedCheckouts() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" className="gap-2" onClick={checkRecovery} disabled={checkingRecovery}>
+            <CheckCircle2 className={`w-4 h-4 ${checkingRecovery ? "animate-spin" : ""}`} />
+            {checkingRecovery ? "Verificando..." : "Verificar Recuperações"}
+          </Button>
+
           <Button variant="outline" size="sm" className="gap-2" onClick={handleSync} disabled={syncing}>
             <RefreshCw className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`} />
             {syncing ? "Sincronizando..." : "Sincronizar"}
