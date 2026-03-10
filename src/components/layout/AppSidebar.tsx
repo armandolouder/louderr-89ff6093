@@ -26,6 +26,7 @@ const navigation = [
   { name: "Campanhas", href: "/campaigns", icon: Megaphone },
   { name: "Carrinhos", href: "/abandoned-checkouts", icon: ShoppingCart },
   { name: "Automações", href: "/automations", icon: Workflow },
+  { name: "Tarefas", href: "/todos", icon: ListTodo },
   { name: "Bot", href: "/bot", icon: Bot },
   { name: "APIs", href: "/apis", icon: Zap },
 ];
