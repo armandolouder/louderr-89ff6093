@@ -78,6 +78,7 @@ export type Database = {
           trigger_config: Json | null
           trigger_event: string
           updated_at: string
+          variables: Json | null
         }
         Insert: {
           actions?: Json | null
@@ -98,6 +99,7 @@ export type Database = {
           trigger_config?: Json | null
           trigger_event: string
           updated_at?: string
+          variables?: Json | null
         }
         Update: {
           actions?: Json | null
@@ -118,6 +120,7 @@ export type Database = {
           trigger_config?: Json | null
           trigger_event?: string
           updated_at?: string
+          variables?: Json | null
         }
         Relationships: []
       }
