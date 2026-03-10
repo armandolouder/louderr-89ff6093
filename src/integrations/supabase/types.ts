@@ -14,6 +14,829 @@ export type Database = {
   }
   public: {
     Tables: {
+      automation_executions: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          flow_id: string | null
+          id: string
+          result: Json | null
+          started_at: string | null
+          status: string | null
+          trigger_data: Json | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          flow_id?: string | null
+          id?: string
+          result?: Json | null
+          started_at?: string | null
+          status?: string | null
+          trigger_data?: Json | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          flow_id?: string | null
+          id?: string
+          result?: Json | null
+          started_at?: string | null
+          status?: string | null
+          trigger_data?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_executions_flow_id_fkey"
+            columns: ["flow_id"]
+            isOneToOne: false
+            referencedRelation: "automation_flows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      automation_flows: {
+        Row: {
+          actions: Json | null
+          created_at: string
+          description: string | null
+          execution_count: number | null
+          id: string
+          is_active: boolean | null
+          last_executed_at: string | null
+          name: string
+          trigger_config: Json | null
+          trigger_event: string
+          updated_at: string
+        }
+        Insert: {
+          actions?: Json | null
+          created_at?: string
+          description?: string | null
+          execution_count?: number | null
+          id?: string
+          is_active?: boolean | null
+          last_executed_at?: string | null
+          name: string
+          trigger_config?: Json | null
+          trigger_event: string
+          updated_at?: string
+        }
+        Update: {
+          actions?: Json | null
+          created_at?: string
+          description?: string | null
+          execution_count?: number | null
+          id?: string
+          is_active?: boolean | null
+          last_executed_at?: string | null
+          name?: string
+          trigger_config?: Json | null
+          trigger_event?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      campaign_messages: {
+        Row: {
+          campaign_id: string
+          content: string
+          created_at: string
+          id: string
+          is_active: boolean | null
+          media_url: string | null
+          message_type: string | null
+          use_count: number | null
+        }
+        Insert: {
+          campaign_id: string
+          content: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          media_url?: string | null
+          message_type?: string | null
+          use_count?: number | null
+        }
+        Update: {
+          campaign_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          media_url?: string | null
+          message_type?: string | null
+          use_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_messages_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaigns: {
+        Row: {
+          channel: string | null
+          cluster_ids: string[] | null
+          completed_at: string | null
+          created_at: string
+          daily_limit: number | null
+          delay_max_seconds: number | null
+          delay_min_seconds: number | null
+          description: string | null
+          failed_count: number | null
+          id: string
+          metadata: Json | null
+          name: string
+          scheduled_at: string | null
+          sent_count: number | null
+          started_at: string | null
+          status: string | null
+          total_recipients: number | null
+          updated_at: string
+        }
+        Insert: {
+          channel?: string | null
+          cluster_ids?: string[] | null
+          completed_at?: string | null
+          created_at?: string
+          daily_limit?: number | null
+          delay_max_seconds?: number | null
+          delay_min_seconds?: number | null
+          description?: string | null
+          failed_count?: number | null
+          id?: string
+          metadata?: Json | null
+          name: string
+          scheduled_at?: string | null
+          sent_count?: number | null
+          started_at?: string | null
+          status?: string | null
+          total_recipients?: number | null
+          updated_at?: string
+        }
+        Update: {
+          channel?: string | null
+          cluster_ids?: string[] | null
+          completed_at?: string | null
+          created_at?: string
+          daily_limit?: number | null
+          delay_max_seconds?: number | null
+          delay_min_seconds?: number | null
+          description?: string | null
+          failed_count?: number | null
+          id?: string
+          metadata?: Json | null
+          name?: string
+          scheduled_at?: string | null
+          sent_count?: number | null
+          started_at?: string | null
+          status?: string | null
+          total_recipients?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      contacts: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          email: string | null
+          id: string
+          instagram_id: string | null
+          name: string
+          notes: string | null
+          phone: string | null
+          tags: Json | null
+          updated_at: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          instagram_id?: string | null
+          name: string
+          notes?: string | null
+          phone?: string | null
+          tags?: Json | null
+          updated_at?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          instagram_id?: string | null
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          tags?: Json | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      conversations: {
+        Row: {
+          assignee_id: string | null
+          assignee_name: string | null
+          channel: string
+          contact_id: string
+          created_at: string | null
+          id: string
+          is_archived: boolean
+          last_message: string | null
+          last_message_at: string | null
+          status: string
+          tab_id: string | null
+          unread_count: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          assignee_id?: string | null
+          assignee_name?: string | null
+          channel: string
+          contact_id: string
+          created_at?: string | null
+          id?: string
+          is_archived?: boolean
+          last_message?: string | null
+          last_message_at?: string | null
+          status?: string
+          tab_id?: string | null
+          unread_count?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          assignee_id?: string | null
+          assignee_name?: string | null
+          channel?: string
+          contact_id?: string
+          created_at?: string | null
+          id?: string
+          is_archived?: boolean
+          last_message?: string | null
+          last_message_at?: string | null
+          status?: string
+          tab_id?: string | null
+          unread_count?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversations_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversations_tab_id_fkey"
+            columns: ["tab_id"]
+            isOneToOne: false
+            referencedRelation: "custom_tabs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      custom_tabs: {
+        Row: {
+          color: string
+          created_at: string
+          icon: string
+          id: string
+          name: string
+          order: number
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          icon?: string
+          id?: string
+          name: string
+          order?: number
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          icon?: string
+          id?: string
+          name?: string
+          order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      customer_clusters: {
+        Row: {
+          color: string | null
+          created_at: string
+          criteria: Json | null
+          customer_count: number | null
+          description: string | null
+          emoji: string | null
+          id: string
+          name: string
+          objective: string | null
+          percentage: number | null
+          recommendation: string | null
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          criteria?: Json | null
+          customer_count?: number | null
+          description?: string | null
+          emoji?: string | null
+          id?: string
+          name: string
+          objective?: string | null
+          percentage?: number | null
+          recommendation?: string | null
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          criteria?: Json | null
+          customer_count?: number | null
+          description?: string | null
+          emoji?: string | null
+          id?: string
+          name?: string
+          objective?: string | null
+          percentage?: number | null
+          recommendation?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      import_batches: {
+        Row: {
+          absent_emails: number | null
+          absent_phones: number | null
+          column_mapping: Json | null
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          filename: string
+          id: string
+          invalid_emails: number | null
+          invalid_phones: number | null
+          invalid_rows: number | null
+          status: string | null
+          total_rows: number | null
+          valid_emails: number | null
+          valid_phones: number | null
+          valid_rows: number | null
+        }
+        Insert: {
+          absent_emails?: number | null
+          absent_phones?: number | null
+          column_mapping?: Json | null
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          filename: string
+          id?: string
+          invalid_emails?: number | null
+          invalid_phones?: number | null
+          invalid_rows?: number | null
+          status?: string | null
+          total_rows?: number | null
+          valid_emails?: number | null
+          valid_phones?: number | null
+          valid_rows?: number | null
+        }
+        Update: {
+          absent_emails?: number | null
+          absent_phones?: number | null
+          column_mapping?: Json | null
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          filename?: string
+          id?: string
+          invalid_emails?: number | null
+          invalid_phones?: number | null
+          invalid_rows?: number | null
+          status?: string | null
+          total_rows?: number | null
+          valid_emails?: number | null
+          valid_phones?: number | null
+          valid_rows?: number | null
+        }
+        Relationships: []
+      }
+      imported_customers: {
+        Row: {
+          city: string | null
+          cluster_id: string | null
+          created_at: string
+          email: string | null
+          email_status: string | null
+          favorite_category: string | null
+          favorite_product: string | null
+          first_purchase_at: string | null
+          id: string
+          import_batch_id: string | null
+          last_purchase_at: string | null
+          metadata: Json | null
+          name: string
+          order_count: number | null
+          phone: string | null
+          phone_status: string | null
+          region: string | null
+          rfm_frequency: number | null
+          rfm_monetary: number | null
+          rfm_recency: number | null
+          rfm_score: string | null
+          source: string | null
+          state: string | null
+          ticket_level: string | null
+          total_spent: number | null
+          updated_at: string
+        }
+        Insert: {
+          city?: string | null
+          cluster_id?: string | null
+          created_at?: string
+          email?: string | null
+          email_status?: string | null
+          favorite_category?: string | null
+          favorite_product?: string | null
+          first_purchase_at?: string | null
+          id?: string
+          import_batch_id?: string | null
+          last_purchase_at?: string | null
+          metadata?: Json | null
+          name: string
+          order_count?: number | null
+          phone?: string | null
+          phone_status?: string | null
+          region?: string | null
+          rfm_frequency?: number | null
+          rfm_monetary?: number | null
+          rfm_recency?: number | null
+          rfm_score?: string | null
+          source?: string | null
+          state?: string | null
+          ticket_level?: string | null
+          total_spent?: number | null
+          updated_at?: string
+        }
+        Update: {
+          city?: string | null
+          cluster_id?: string | null
+          created_at?: string
+          email?: string | null
+          email_status?: string | null
+          favorite_category?: string | null
+          favorite_product?: string | null
+          first_purchase_at?: string | null
+          id?: string
+          import_batch_id?: string | null
+          last_purchase_at?: string | null
+          metadata?: Json | null
+          name?: string
+          order_count?: number | null
+          phone?: string | null
+          phone_status?: string | null
+          region?: string | null
+          rfm_frequency?: number | null
+          rfm_monetary?: number | null
+          rfm_recency?: number | null
+          rfm_score?: string | null
+          source?: string | null
+          state?: string | null
+          ticket_level?: string | null
+          total_spent?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "imported_customers_cluster_id_fkey"
+            columns: ["cluster_id"]
+            isOneToOne: false
+            referencedRelation: "customer_clusters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "imported_customers_import_batch_id_fkey"
+            columns: ["import_batch_id"]
+            isOneToOne: false
+            referencedRelation: "import_batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      messages: {
+        Row: {
+          content: string
+          conversation_id: string
+          created_at: string | null
+          id: string
+          media_url: string | null
+          message_type: string | null
+          metadata: Json | null
+          sender_id: string | null
+          sender_type: string
+          status: string | null
+        }
+        Insert: {
+          content: string
+          conversation_id: string
+          created_at?: string | null
+          id?: string
+          media_url?: string | null
+          message_type?: string | null
+          metadata?: Json | null
+          sender_id?: string | null
+          sender_type: string
+          status?: string | null
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          created_at?: string | null
+          id?: string
+          media_url?: string | null
+          message_type?: string | null
+          metadata?: Json | null
+          sender_id?: string | null
+          sender_type?: string
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nuvemshop_abandoned_checkouts: {
+        Row: {
+          contact_channel: string | null
+          contacted_at: string | null
+          created_at: string
+          created_at_nuvemshop: string | null
+          currency: string | null
+          customer_email: string | null
+          customer_name: string | null
+          customer_phone: string | null
+          id: string
+          nuvemshop_checkout_id: string | null
+          products: Json | null
+          recovered: boolean | null
+          status: string | null
+          total: number | null
+          updated_at: string
+        }
+        Insert: {
+          contact_channel?: string | null
+          contacted_at?: string | null
+          created_at?: string
+          created_at_nuvemshop?: string | null
+          currency?: string | null
+          customer_email?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          id?: string
+          nuvemshop_checkout_id?: string | null
+          products?: Json | null
+          recovered?: boolean | null
+          status?: string | null
+          total?: number | null
+          updated_at?: string
+        }
+        Update: {
+          contact_channel?: string | null
+          contacted_at?: string | null
+          created_at?: string
+          created_at_nuvemshop?: string | null
+          currency?: string | null
+          customer_email?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          id?: string
+          nuvemshop_checkout_id?: string | null
+          products?: Json | null
+          recovered?: boolean | null
+          status?: string | null
+          total?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      nuvemshop_orders: {
+        Row: {
+          created_at: string
+          currency: string | null
+          customer_email: string | null
+          customer_name: string | null
+          customer_phone: string | null
+          id: string
+          nuvemshop_order_id: string | null
+          order_date: string | null
+          order_number: string | null
+          payment_status: string | null
+          products: Json | null
+          status: string | null
+          subtotal: number | null
+          total: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          currency?: string | null
+          customer_email?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          id?: string
+          nuvemshop_order_id?: string | null
+          order_date?: string | null
+          order_number?: string | null
+          payment_status?: string | null
+          products?: Json | null
+          status?: string | null
+          subtotal?: number | null
+          total?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string | null
+          customer_email?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          id?: string
+          nuvemshop_order_id?: string | null
+          order_date?: string | null
+          order_number?: string | null
+          payment_status?: string | null
+          products?: Json | null
+          status?: string | null
+          subtotal?: number | null
+          total?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          id: string
+          name: string | null
+          phone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          id?: string
+          name?: string | null
+          phone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          id?: string
+          name?: string | null
+          phone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      quick_responses: {
+        Row: {
+          category: string | null
+          content: string
+          created_at: string
+          id: string
+          is_active: boolean | null
+          media_type: string | null
+          media_url: string | null
+          shortcut: string | null
+          title: string
+          updated_at: string
+          use_count: number | null
+        }
+        Insert: {
+          category?: string | null
+          content: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          media_type?: string | null
+          media_url?: string | null
+          shortcut?: string | null
+          title: string
+          updated_at?: string
+          use_count?: number | null
+        }
+        Update: {
+          category?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          media_type?: string | null
+          media_url?: string | null
+          shortcut?: string | null
+          title?: string
+          updated_at?: string
+          use_count?: number | null
+        }
+        Relationships: []
+      }
+      send_logs: {
+        Row: {
+          campaign_id: string | null
+          channel: string
+          cluster_name: string | null
+          content: string | null
+          customer_id: string | null
+          email: string | null
+          error_message: string | null
+          id: string
+          phone: string | null
+          queue_id: string | null
+          response_data: Json | null
+          sent_at: string
+          status: string
+        }
+        Insert: {
+          campaign_id?: string | null
+          channel: string
+          cluster_name?: string | null
+          content?: string | null
+          customer_id?: string | null
+          email?: string | null
+          error_message?: string | null
+          id?: string
+          phone?: string | null
+          queue_id?: string | null
+          response_data?: Json | null
+          sent_at?: string
+          status: string
+        }
+        Update: {
+          campaign_id?: string | null
+          channel?: string
+          cluster_name?: string | null
+          content?: string | null
+          customer_id?: string | null
+          email?: string | null
+          error_message?: string | null
+          id?: string
+          phone?: string | null
+          queue_id?: string | null
+          response_data?: Json | null
+          sent_at?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "send_logs_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "send_logs_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "imported_customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "send_logs_queue_id_fkey"
+            columns: ["queue_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_queue"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       todos: {
         Row: {
           created_at: string
@@ -46,6 +869,76 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      whatsapp_queue: {
+        Row: {
+          attempts: number | null
+          campaign_id: string
+          content: string
+          created_at: string
+          customer_id: string
+          error_message: string | null
+          id: string
+          message_id: string | null
+          metadata: Json | null
+          phone: string
+          scheduled_at: string | null
+          sent_at: string | null
+          status: string | null
+        }
+        Insert: {
+          attempts?: number | null
+          campaign_id: string
+          content: string
+          created_at?: string
+          customer_id: string
+          error_message?: string | null
+          id?: string
+          message_id?: string | null
+          metadata?: Json | null
+          phone: string
+          scheduled_at?: string | null
+          sent_at?: string | null
+          status?: string | null
+        }
+        Update: {
+          attempts?: number | null
+          campaign_id?: string
+          content?: string
+          created_at?: string
+          customer_id?: string
+          error_message?: string | null
+          id?: string
+          message_id?: string | null
+          metadata?: Json | null
+          phone?: string
+          scheduled_at?: string | null
+          sent_at?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_queue_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_queue_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "imported_customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_queue_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_messages"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
