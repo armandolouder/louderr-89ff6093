@@ -1,7 +1,7 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { ShoppingCart, RefreshCw, Mail, MessageSquare, ExternalLink, Phone, Send, CheckCircle2 } from "lucide-react";
+import { ShoppingCart, RefreshCw, Mail, MessageSquare, ExternalLink, Phone, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -28,7 +28,6 @@ export default function AbandonedCheckouts() {
   const [syncing, setSyncing] = useState(false);
   const [selectedCheckout, setSelectedCheckout] = useState<any>(null);
   const [sendingId, setSendingId] = useState<string | null>(null);
-  const [checkingRecovery, setCheckingRecovery] = useState(false);
 
   const startDate = new Date(year, month, 1).toISOString();
   const endDate = new Date(year, month + 1, 0, 23, 59, 59).toISOString();
@@ -106,31 +105,6 @@ export default function AbandonedCheckouts() {
       setSyncing(false);
     }
   };
-
-  const checkRecovery = async () => {
-    setCheckingRecovery(true);
-    try {
-      const res = await supabase.functions.invoke("check-abandoned-recovery");
-      if (res.error) throw res.error;
-      const { recovered, checked } = res.data || {};
-      if (recovered > 0) {
-        toast.success(`${recovered} carrinho(s) marcado(s) como recuperado(s)!`);
-        queryClient.invalidateQueries({ queryKey: ["abandoned-checkouts"] });
-      } else {
-        toast.info(`${checked} carrinhos verificados, nenhuma nova recuperação detectada.`);
-      }
-    } catch (err: any) {
-      toast.error("Erro ao verificar recuperações: " + (err.message || "Erro"));
-    } finally {
-      setCheckingRecovery(false);
-    }
-  };
-
-  // Auto-check recovery on page load
-  useEffect(() => {
-    checkRecovery();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const markAsContacted = async (id: string, channel: string) => {
     const { error } = await supabase
@@ -252,11 +226,6 @@ export default function AbandonedCheckouts() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" className="gap-2" onClick={checkRecovery} disabled={checkingRecovery}>
-            <CheckCircle2 className={`w-4 h-4 ${checkingRecovery ? "animate-spin" : ""}`} />
-            {checkingRecovery ? "Verificando..." : "Verificar Recuperações"}
-          </Button>
-
           <Button variant="outline" size="sm" className="gap-2" onClick={handleSync} disabled={syncing}>
             <RefreshCw className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`} />
             {syncing ? "Sincronizando..." : "Sincronizar"}

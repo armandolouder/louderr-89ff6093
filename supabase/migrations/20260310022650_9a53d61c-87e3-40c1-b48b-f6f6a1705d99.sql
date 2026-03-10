@@ -1,1 +1,0 @@
-ALTER TABLE public.automation_flows ADD COLUMN IF NOT EXISTS variables JSONB DEFAULT '[]'::jsonb;

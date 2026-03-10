@@ -13,7 +13,6 @@ import {
   TrendingUp,
   ShoppingCart,
   Workflow,
-  ListTodo,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -26,7 +25,6 @@ const navigation = [
   { name: "Campanhas", href: "/campaigns", icon: Megaphone },
   { name: "Carrinhos", href: "/abandoned-checkouts", icon: ShoppingCart },
   { name: "Automações", href: "/automations", icon: Workflow },
-  { name: "Tarefas", href: "/todos", icon: ListTodo },
   { name: "Bot", href: "/bot", icon: Bot },
   { name: "APIs", href: "/apis", icon: Zap },
 ];
