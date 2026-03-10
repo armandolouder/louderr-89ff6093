@@ -62,12 +62,19 @@ export type Database = {
         Row: {
           actions: Json | null
           created_at: string
+          delay_unit: string | null
+          delay_value: number | null
           description: string | null
           execution_count: number | null
           id: string
           is_active: boolean | null
           last_executed_at: string | null
+          media_type: string | null
+          media_url: string | null
+          message_content: string | null
           name: string
+          status: string | null
+          target_phone: string | null
           trigger_config: Json | null
           trigger_event: string
           updated_at: string
@@ -75,12 +82,19 @@ export type Database = {
         Insert: {
           actions?: Json | null
           created_at?: string
+          delay_unit?: string | null
+          delay_value?: number | null
           description?: string | null
           execution_count?: number | null
           id?: string
           is_active?: boolean | null
           last_executed_at?: string | null
+          media_type?: string | null
+          media_url?: string | null
+          message_content?: string | null
           name: string
+          status?: string | null
+          target_phone?: string | null
           trigger_config?: Json | null
           trigger_event: string
           updated_at?: string
@@ -88,12 +102,19 @@ export type Database = {
         Update: {
           actions?: Json | null
           created_at?: string
+          delay_unit?: string | null
+          delay_value?: number | null
           description?: string | null
           execution_count?: number | null
           id?: string
           is_active?: boolean | null
           last_executed_at?: string | null
+          media_type?: string | null
+          media_url?: string | null
+          message_content?: string | null
           name?: string
+          status?: string | null
+          target_phone?: string | null
           trigger_config?: Json | null
           trigger_event?: string
           updated_at?: string
@@ -601,6 +622,7 @@ export type Database = {
           nuvemshop_checkout_id: string | null
           products: Json | null
           recovered: boolean | null
+          recovery_url: string | null
           status: string | null
           total: number | null
           updated_at: string
@@ -618,6 +640,7 @@ export type Database = {
           nuvemshop_checkout_id?: string | null
           products?: Json | null
           recovered?: boolean | null
+          recovery_url?: string | null
           status?: string | null
           total?: number | null
           updated_at?: string
@@ -635,6 +658,7 @@ export type Database = {
           nuvemshop_checkout_id?: string | null
           products?: Json | null
           recovered?: boolean | null
+          recovery_url?: string | null
           status?: string | null
           total?: number | null
           updated_at?: string
@@ -654,6 +678,7 @@ export type Database = {
           order_number: string | null
           payment_status: string | null
           products: Json | null
+          shipping_status: string | null
           status: string | null
           subtotal: number | null
           total: number | null
@@ -671,6 +696,7 @@ export type Database = {
           order_number?: string | null
           payment_status?: string | null
           products?: Json | null
+          shipping_status?: string | null
           status?: string | null
           subtotal?: number | null
           total?: number | null
@@ -688,6 +714,7 @@ export type Database = {
           order_number?: string | null
           payment_status?: string | null
           products?: Json | null
+          shipping_status?: string | null
           status?: string | null
           subtotal?: number | null
           total?: number | null
