@@ -47,6 +47,7 @@ const App = () => (
               <Route path="/abandoned-checkouts" element={<AbandonedCheckouts />} />
               <Route path="/automations" element={<Automations />} />
               <Route path="/todos" element={<Todos />} />
+              <Route path="/orders" element={<Orders />} />
               <Route path="/settings" element={<Settings />} />
             </Route>
             <Route path="*" element={<NotFound />} />
