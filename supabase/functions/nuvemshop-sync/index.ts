@@ -94,9 +94,7 @@ Deno.serve(async (req) => {
 
       const { error } = await supabase.from("nuvemshop_orders").upsert(
         {
-          nuvemshop_order_id: order.id || order.number,
-          store_id: parseInt(storeId),
-          event: "order/synced",
+          nuvemshop_order_id: (order.id || order.number)?.toString(),
           status: order.status || null,
           payment_status: order.payment_status || null,
           shipping_status: order.shipping_status || null,
@@ -106,10 +104,8 @@ Deno.serve(async (req) => {
           total,
           currency: order.currency || "BRL",
           products,
-          raw_data: order,
           order_date: orderDate,
           order_number: order.number?.toString() || null,
-          payment_method: order.payment_details?.method || null,
         },
         { onConflict: "nuvemshop_order_id" }
       );
