@@ -18,10 +18,14 @@ export type Database = {
         Row: {
           completed_at: string | null
           created_at: string
+          customer_name: string | null
           error_message: string | null
+          executed_at: string | null
           flow_id: string | null
           id: string
+          phone: string | null
           result: Json | null
+          scheduled_at: string | null
           started_at: string | null
           status: string | null
           trigger_data: Json | null
@@ -29,10 +33,14 @@ export type Database = {
         Insert: {
           completed_at?: string | null
           created_at?: string
+          customer_name?: string | null
           error_message?: string | null
+          executed_at?: string | null
           flow_id?: string | null
           id?: string
+          phone?: string | null
           result?: Json | null
+          scheduled_at?: string | null
           started_at?: string | null
           status?: string | null
           trigger_data?: Json | null
@@ -40,10 +48,14 @@ export type Database = {
         Update: {
           completed_at?: string | null
           created_at?: string
+          customer_name?: string | null
           error_message?: string | null
+          executed_at?: string | null
           flow_id?: string | null
           id?: string
+          phone?: string | null
           result?: Json | null
+          scheduled_at?: string | null
           started_at?: string | null
           status?: string | null
           trigger_data?: Json | null
