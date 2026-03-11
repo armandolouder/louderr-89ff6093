@@ -37,9 +37,10 @@ export function NuvemshopConfig({ status, onStatusChange }: NuvemshopConfigProps
 
       if (error) throw error;
       setRecentOrders(data || []);
-      onStatusChange({ connected: (count || 0) > 0, orderCount: count || 0 });
+      onStatusChange({ connected: true, orderCount: count || 0 });
     } catch (err: any) {
       console.error("Error fetching orders:", err);
+      onStatusChange({ connected: false, orderCount: 0, error: err?.message || "Erro ao carregar pedidos" });
     } finally {
       setLoading(false);
     }

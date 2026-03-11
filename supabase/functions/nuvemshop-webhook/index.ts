@@ -101,9 +101,7 @@ Deno.serve(async (req) => {
     // Upsert order (avoid duplicate key errors)
     const { error } = await supabase.from("nuvemshop_orders").upsert(
       {
-        nuvemshop_order_id: orderId,
-        store_id: storeId,
-        event,
+        nuvemshop_order_id: String(orderId),
         status,
         payment_status: paymentStatus,
         shipping_status: shippingStatus,
@@ -113,7 +111,8 @@ Deno.serve(async (req) => {
         total,
         currency,
         products,
-        raw_data: order,
+        order_date: order.created_at || null,
+        order_number: order.number?.toString() || null,
       },
       { onConflict: "nuvemshop_order_id" }
     );
@@ -251,7 +250,7 @@ Deno.serve(async (req) => {
           const trackingCode = order.shipping_tracking_number || order.tracking_number || "";
           const firstName = (customerName || "Cliente").split(" ")[0];
 
-          const messageContent = flow.message_content
+          const messageContent = (flow.message_content || "")
             .replace(/\[nome_cliente\]/g, firstName)
             .replace(/\[numero_pedido\]/g, order.number || String(orderId))
             .replace(/\[total_pedido\]/g, `R$ ${total.toFixed(2).replace(".", ",")}`)
@@ -302,7 +301,7 @@ Deno.serve(async (req) => {
               for (const flow of postFlows) {
                 const scheduledAt = new Date(Date.now() + postSaleDays[i] * 86400 * 1000);
                 const postFirstName = (customerName || "Cliente").split(" ")[0];
-                const messageContent = flow.message_content
+                const messageContent = (flow.message_content || "")
                   .replace(/\[nome_cliente\]/g, postFirstName)
                   .replace(/\[numero_pedido\]/g, order.number || String(orderId));
 

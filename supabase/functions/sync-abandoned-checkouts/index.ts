@@ -89,15 +89,14 @@ Deno.serve(async (req) => {
       const { data: existing } = await supabase
         .from("nuvemshop_abandoned_checkouts")
         .select("id, contacted_at")
-        .eq("checkout_id", checkout.id)
+        .eq("nuvemshop_checkout_id", String(checkout.id))
         .limit(1);
 
       const isNew = !existing || existing.length === 0;
 
       const { error } = await supabase.from("nuvemshop_abandoned_checkouts").upsert(
         {
-          checkout_id: checkout.id,
-          store_id: parseInt(storeId),
+          nuvemshop_checkout_id: String(checkout.id),
           customer_name: customerName,
           customer_email: customerEmail,
           customer_phone: customerPhone,
@@ -107,10 +106,8 @@ Deno.serve(async (req) => {
           products,
           status: "abandoned",
           created_at_nuvemshop: checkout.created_at || null,
-          updated_at_nuvemshop: checkout.updated_at || null,
-          raw_data: checkout,
         },
-        { onConflict: "checkout_id" }
+        { onConflict: "nuvemshop_checkout_id" }
       );
 
       if (error) {
@@ -144,8 +141,7 @@ Deno.serve(async (req) => {
             if (!existingCustomer) {
               const insertData: Record<string, any> = {
                 name: customerName || "Cliente",
-                source: "nuvemshop",
-                total_spent: 0,
+                source: "abandoned_checkout",
                 order_count: 0,
               };
               if (customerPhone) insertData.phone = customerPhone.replace(/\D/g, "");
@@ -185,7 +181,7 @@ Deno.serve(async (req) => {
 
               const scheduledAt = new Date(now.getTime() + delayMs);
 
-              const messageContent = flow.message_content
+              const messageContent = (flow.message_content || "")
                 .replace(/\[nome_cliente\]/g, firstName)
                 .replace(/\[lista_produtos\]/g, productsList)
                 .replace(/\[total_pedido\]/g, `R$ ${total.toFixed(2).replace(".", ",")}`)
@@ -220,7 +216,7 @@ Deno.serve(async (req) => {
             await supabase
               .from("nuvemshop_abandoned_checkouts")
               .update({ contacted_at: new Date().toISOString(), contact_channel: "whatsapp" })
-              .eq("checkout_id", checkout.id);
+              .eq("nuvemshop_checkout_id", String(checkout.id));
           }
         }
       }
