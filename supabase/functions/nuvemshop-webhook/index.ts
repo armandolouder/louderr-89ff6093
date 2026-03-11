@@ -250,7 +250,7 @@ Deno.serve(async (req) => {
           const trackingCode = order.shipping_tracking_number || order.tracking_number || "";
           const firstName = (customerName || "Cliente").split(" ")[0];
 
-          const messageContent = flow.message_content
+          const messageContent = (flow.message_content || "")
             .replace(/\[nome_cliente\]/g, firstName)
             .replace(/\[numero_pedido\]/g, order.number || String(orderId))
             .replace(/\[total_pedido\]/g, `R$ ${total.toFixed(2).replace(".", ",")}`)
