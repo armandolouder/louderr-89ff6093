@@ -104,7 +104,7 @@ Deno.serve(async (req) => {
         nuvemshop_order_id: String(orderId),
         status,
         payment_status: paymentStatus,
-        shipping_status,
+        shipping_status: shippingStatus,
         customer_name: customerName,
         customer_email: customerEmail,
         customer_phone: customerPhone,
