@@ -96,8 +96,7 @@ Deno.serve(async (req) => {
 
       const { error } = await supabase.from("nuvemshop_abandoned_checkouts").upsert(
         {
-          checkout_id: checkout.id,
-          store_id: parseInt(storeId),
+          nuvemshop_checkout_id: String(checkout.id),
           customer_name: customerName,
           customer_email: customerEmail,
           customer_phone: customerPhone,
@@ -107,10 +106,8 @@ Deno.serve(async (req) => {
           products,
           status: "abandoned",
           created_at_nuvemshop: checkout.created_at || null,
-          updated_at_nuvemshop: checkout.updated_at || null,
-          raw_data: checkout,
         },
-        { onConflict: "checkout_id" }
+        { onConflict: "nuvemshop_checkout_id" }
       );
 
       if (error) {
