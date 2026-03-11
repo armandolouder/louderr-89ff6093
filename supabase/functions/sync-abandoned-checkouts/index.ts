@@ -181,7 +181,7 @@ Deno.serve(async (req) => {
 
               const scheduledAt = new Date(now.getTime() + delayMs);
 
-              const messageContent = flow.message_content
+              const messageContent = (flow.message_content || "")
                 .replace(/\[nome_cliente\]/g, firstName)
                 .replace(/\[lista_produtos\]/g, productsList)
                 .replace(/\[total_pedido\]/g, `R$ ${total.toFixed(2).replace(".", ",")}`)
