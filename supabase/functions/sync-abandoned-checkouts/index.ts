@@ -141,8 +141,7 @@ Deno.serve(async (req) => {
             if (!existingCustomer) {
               const insertData: Record<string, any> = {
                 name: customerName || "Cliente",
-                source: "nuvemshop",
-                total_spent: 0,
+                source: "abandoned_checkout",
                 order_count: 0,
               };
               if (customerPhone) insertData.phone = customerPhone.replace(/\D/g, "");
