@@ -89,7 +89,7 @@ Deno.serve(async (req) => {
       const { data: existing } = await supabase
         .from("nuvemshop_abandoned_checkouts")
         .select("id, contacted_at")
-        .eq("checkout_id", checkout.id)
+        .eq("nuvemshop_checkout_id", String(checkout.id))
         .limit(1);
 
       const isNew = !existing || existing.length === 0;

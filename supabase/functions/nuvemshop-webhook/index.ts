@@ -101,19 +101,18 @@ Deno.serve(async (req) => {
     // Upsert order (avoid duplicate key errors)
     const { error } = await supabase.from("nuvemshop_orders").upsert(
       {
-        nuvemshop_order_id: orderId,
-        store_id: storeId,
-        event,
+        nuvemshop_order_id: String(orderId),
         status,
         payment_status: paymentStatus,
-        shipping_status: shippingStatus,
+        shipping_status,
         customer_name: customerName,
         customer_email: customerEmail,
         customer_phone: customerPhone,
         total,
         currency,
         products,
-        raw_data: order,
+        order_date: order.created_at || null,
+        order_number: order.number?.toString() || null,
       },
       { onConflict: "nuvemshop_order_id" }
     );
