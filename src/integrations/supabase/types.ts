@@ -16,40 +16,37 @@ export type Database = {
     Tables: {
       automation_executions: {
         Row: {
+          completed_at: string | null
           created_at: string
-          customer_name: string | null
           error_message: string | null
-          executed_at: string | null
-          flow_id: string
+          flow_id: string | null
           id: string
-          phone: string
-          scheduled_at: string
-          status: string
-          trigger_data: Json
+          result: Json | null
+          started_at: string | null
+          status: string | null
+          trigger_data: Json | null
         }
         Insert: {
+          completed_at?: string | null
           created_at?: string
-          customer_name?: string | null
           error_message?: string | null
-          executed_at?: string | null
-          flow_id: string
+          flow_id?: string | null
           id?: string
-          phone: string
-          scheduled_at: string
-          status?: string
-          trigger_data?: Json
+          result?: Json | null
+          started_at?: string | null
+          status?: string | null
+          trigger_data?: Json | null
         }
         Update: {
+          completed_at?: string | null
           created_at?: string
-          customer_name?: string | null
           error_message?: string | null
-          executed_at?: string | null
-          flow_id?: string
+          flow_id?: string | null
           id?: string
-          phone?: string
-          scheduled_at?: string
-          status?: string
-          trigger_data?: Json
+          result?: Json | null
+          started_at?: string | null
+          status?: string | null
+          trigger_data?: Json | null
         }
         Relationships: [
           {
@@ -63,43 +60,64 @@ export type Database = {
       }
       automation_flows: {
         Row: {
+          actions: Json | null
           created_at: string
-          delay_unit: string
-          delay_value: number
+          delay_unit: string | null
+          delay_value: number | null
+          description: string | null
+          execution_count: number | null
           id: string
+          is_active: boolean | null
+          last_executed_at: string | null
           media_type: string | null
           media_url: string | null
-          message_content: string
+          message_content: string | null
           name: string
-          status: string
+          status: string | null
+          target_phone: string | null
+          trigger_config: Json | null
           trigger_event: string
           updated_at: string
           variables: Json | null
         }
         Insert: {
+          actions?: Json | null
           created_at?: string
-          delay_unit?: string
-          delay_value?: number
+          delay_unit?: string | null
+          delay_value?: number | null
+          description?: string | null
+          execution_count?: number | null
           id?: string
+          is_active?: boolean | null
+          last_executed_at?: string | null
           media_type?: string | null
           media_url?: string | null
-          message_content?: string
+          message_content?: string | null
           name: string
-          status?: string
+          status?: string | null
+          target_phone?: string | null
+          trigger_config?: Json | null
           trigger_event: string
           updated_at?: string
           variables?: Json | null
         }
         Update: {
+          actions?: Json | null
           created_at?: string
-          delay_unit?: string
-          delay_value?: number
+          delay_unit?: string | null
+          delay_value?: number | null
+          description?: string | null
+          execution_count?: number | null
           id?: string
+          is_active?: boolean | null
+          last_executed_at?: string | null
           media_type?: string | null
           media_url?: string | null
-          message_content?: string
+          message_content?: string | null
           name?: string
-          status?: string
+          status?: string | null
+          target_phone?: string | null
+          trigger_config?: Json | null
           trigger_event?: string
           updated_at?: string
           variables?: Json | null
@@ -595,7 +613,6 @@ export type Database = {
       }
       nuvemshop_abandoned_checkouts: {
         Row: {
-          checkout_id: number
           contact_channel: string | null
           contacted_at: string | null
           created_at: string
@@ -605,18 +622,15 @@ export type Database = {
           customer_name: string | null
           customer_phone: string | null
           id: string
+          nuvemshop_checkout_id: string | null
           products: Json | null
-          raw_data: Json | null
           recovered: boolean | null
           recovery_url: string | null
           status: string | null
-          store_id: number
           total: number | null
           updated_at: string
-          updated_at_nuvemshop: string | null
         }
         Insert: {
-          checkout_id: number
           contact_channel?: string | null
           contacted_at?: string | null
           created_at?: string
@@ -626,18 +640,15 @@ export type Database = {
           customer_name?: string | null
           customer_phone?: string | null
           id?: string
+          nuvemshop_checkout_id?: string | null
           products?: Json | null
-          raw_data?: Json | null
           recovered?: boolean | null
           recovery_url?: string | null
           status?: string | null
-          store_id: number
           total?: number | null
           updated_at?: string
-          updated_at_nuvemshop?: string | null
         }
         Update: {
-          checkout_id?: number
           contact_channel?: string | null
           contacted_at?: string | null
           created_at?: string
@@ -647,15 +658,13 @@ export type Database = {
           customer_name?: string | null
           customer_phone?: string | null
           id?: string
+          nuvemshop_checkout_id?: string | null
           products?: Json | null
-          raw_data?: Json | null
           recovered?: boolean | null
           recovery_url?: string | null
           status?: string | null
-          store_id?: number
           total?: number | null
           updated_at?: string
-          updated_at_nuvemshop?: string | null
         }
         Relationships: []
       }
@@ -666,18 +675,15 @@ export type Database = {
           customer_email: string | null
           customer_name: string | null
           customer_phone: string | null
-          event: string
           id: string
-          nuvemshop_order_id: number
+          nuvemshop_order_id: string | null
           order_date: string | null
           order_number: string | null
-          payment_method: string | null
           payment_status: string | null
           products: Json | null
-          raw_data: Json | null
           shipping_status: string | null
           status: string | null
-          store_id: number
+          subtotal: number | null
           total: number | null
           updated_at: string
         }
@@ -687,18 +693,15 @@ export type Database = {
           customer_email?: string | null
           customer_name?: string | null
           customer_phone?: string | null
-          event: string
           id?: string
-          nuvemshop_order_id: number
+          nuvemshop_order_id?: string | null
           order_date?: string | null
           order_number?: string | null
-          payment_method?: string | null
           payment_status?: string | null
           products?: Json | null
-          raw_data?: Json | null
           shipping_status?: string | null
           status?: string | null
-          store_id: number
+          subtotal?: number | null
           total?: number | null
           updated_at?: string
         }
@@ -708,18 +711,15 @@ export type Database = {
           customer_email?: string | null
           customer_name?: string | null
           customer_phone?: string | null
-          event?: string
           id?: string
-          nuvemshop_order_id?: number
+          nuvemshop_order_id?: string | null
           order_date?: string | null
           order_number?: string | null
-          payment_method?: string | null
           payment_status?: string | null
           products?: Json | null
-          raw_data?: Json | null
           shipping_status?: string | null
           status?: string | null
-          store_id?: number
+          subtotal?: number | null
           total?: number | null
           updated_at?: string
         }
@@ -866,6 +866,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      todos: {
+        Row: {
+          created_at: string
+          description: string | null
+          due_date: string | null
+          id: string
+          is_completed: boolean
+          priority: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          is_completed?: boolean
+          priority?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          is_completed?: boolean
+          priority?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       whatsapp_queue: {
         Row: {
