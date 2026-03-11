@@ -216,7 +216,7 @@ Deno.serve(async (req) => {
             await supabase
               .from("nuvemshop_abandoned_checkouts")
               .update({ contacted_at: new Date().toISOString(), contact_channel: "whatsapp" })
-              .eq("checkout_id", checkout.id);
+              .eq("nuvemshop_checkout_id", String(checkout.id));
           }
         }
       }

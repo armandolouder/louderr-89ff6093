@@ -301,7 +301,7 @@ Deno.serve(async (req) => {
               for (const flow of postFlows) {
                 const scheduledAt = new Date(Date.now() + postSaleDays[i] * 86400 * 1000);
                 const postFirstName = (customerName || "Cliente").split(" ")[0];
-                const messageContent = flow.message_content
+                const messageContent = (flow.message_content || "")
                   .replace(/\[nome_cliente\]/g, postFirstName)
                   .replace(/\[numero_pedido\]/g, order.number || String(orderId));
 
