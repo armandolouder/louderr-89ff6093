@@ -625,6 +625,7 @@ export type Database = {
       }
       nuvemshop_abandoned_checkouts: {
         Row: {
+          clicked_at: string | null
           contact_channel: string | null
           contacted_at: string | null
           created_at: string
@@ -633,16 +634,20 @@ export type Database = {
           customer_email: string | null
           customer_name: string | null
           customer_phone: string | null
+          expired_at: string | null
           id: string
           nuvemshop_checkout_id: string | null
           products: Json | null
           recovered: boolean | null
+          recovery_flow_id: string | null
+          recovery_status: string | null
           recovery_url: string | null
           status: string | null
           total: number | null
           updated_at: string
         }
         Insert: {
+          clicked_at?: string | null
           contact_channel?: string | null
           contacted_at?: string | null
           created_at?: string
@@ -651,16 +656,20 @@ export type Database = {
           customer_email?: string | null
           customer_name?: string | null
           customer_phone?: string | null
+          expired_at?: string | null
           id?: string
           nuvemshop_checkout_id?: string | null
           products?: Json | null
           recovered?: boolean | null
+          recovery_flow_id?: string | null
+          recovery_status?: string | null
           recovery_url?: string | null
           status?: string | null
           total?: number | null
           updated_at?: string
         }
         Update: {
+          clicked_at?: string | null
           contact_channel?: string | null
           contacted_at?: string | null
           created_at?: string
@@ -669,10 +678,13 @@ export type Database = {
           customer_email?: string | null
           customer_name?: string | null
           customer_phone?: string | null
+          expired_at?: string | null
           id?: string
           nuvemshop_checkout_id?: string | null
           products?: Json | null
           recovered?: boolean | null
+          recovery_flow_id?: string | null
+          recovery_status?: string | null
           recovery_url?: string | null
           status?: string | null
           total?: number | null
@@ -808,6 +820,170 @@ export type Database = {
           use_count?: number | null
         }
         Relationships: []
+      }
+      recovery_executions: {
+        Row: {
+          cart_items: Json | null
+          cart_value: number | null
+          checkout_id: string | null
+          completed_at: string | null
+          created_at: string
+          current_step: number | null
+          customer_email: string | null
+          customer_name: string | null
+          customer_phone: string | null
+          flow_id: string | null
+          id: string
+          metadata: Json | null
+          recovery_url: string | null
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          cart_items?: Json | null
+          cart_value?: number | null
+          checkout_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          current_step?: number | null
+          customer_email?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          flow_id?: string | null
+          id?: string
+          metadata?: Json | null
+          recovery_url?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cart_items?: Json | null
+          cart_value?: number | null
+          checkout_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          current_step?: number | null
+          customer_email?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          flow_id?: string | null
+          id?: string
+          metadata?: Json | null
+          recovery_url?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recovery_executions_checkout_id_fkey"
+            columns: ["checkout_id"]
+            isOneToOne: false
+            referencedRelation: "nuvemshop_abandoned_checkouts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recovery_executions_flow_id_fkey"
+            columns: ["flow_id"]
+            isOneToOne: false
+            referencedRelation: "recovery_flows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recovery_flows: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          segmentation_rules: Json | null
+          steps: Json | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          segmentation_rules?: Json | null
+          steps?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          segmentation_rules?: Json | null
+          steps?: Json | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      recovery_messages: {
+        Row: {
+          ab_winner: boolean | null
+          channel: string
+          clicked_at: string | null
+          content: string | null
+          created_at: string
+          error_message: string | null
+          execution_id: string | null
+          id: string
+          metadata: Json | null
+          opened_at: string | null
+          sent_at: string | null
+          status: string | null
+          step_number: number
+          subject: string | null
+          variant: string | null
+        }
+        Insert: {
+          ab_winner?: boolean | null
+          channel: string
+          clicked_at?: string | null
+          content?: string | null
+          created_at?: string
+          error_message?: string | null
+          execution_id?: string | null
+          id?: string
+          metadata?: Json | null
+          opened_at?: string | null
+          sent_at?: string | null
+          status?: string | null
+          step_number: number
+          subject?: string | null
+          variant?: string | null
+        }
+        Update: {
+          ab_winner?: boolean | null
+          channel?: string
+          clicked_at?: string | null
+          content?: string | null
+          created_at?: string
+          error_message?: string | null
+          execution_id?: string | null
+          id?: string
+          metadata?: Json | null
+          opened_at?: string | null
+          sent_at?: string | null
+          status?: string | null
+          step_number?: number
+          subject?: string | null
+          variant?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recovery_messages_execution_id_fkey"
+            columns: ["execution_id"]
+            isOneToOne: false
+            referencedRelation: "recovery_executions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       send_logs: {
         Row: {

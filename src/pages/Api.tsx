@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
-import { MessageSquare, Brain, Loader2, ShoppingBag } from "lucide-react";
+import { MessageSquare, Brain, Loader2, ShoppingBag, Mail } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { IntegrationSidebar, type IntegrationId, getIntegrationIcon } from "@/components/api/IntegrationSidebar";
+import { IntegrationSidebar, type IntegrationId } from "@/components/api/IntegrationSidebar";
 import { UazapiConfig } from "@/components/api/UazapiConfig";
 import { GroqConfig } from "@/components/api/GroqConfig";
 import { NuvemshopConfig } from "@/components/api/NuvemshopConfig";
+import { BrevoConfig } from "@/components/api/BrevoConfig";
 
 interface InstanceStatus {
   connected: boolean;
@@ -28,15 +29,23 @@ interface NuvemshopStatus {
   error?: string;
 }
 
+interface BrevoStatus {
+  connected: boolean;
+  senderName?: string;
+  senderEmail?: string;
+  error?: string;
+}
+
 export default function Api() {
   const [activeIntegration, setActiveIntegration] = useState<IntegrationId>("uazapi");
   const [instanceStatus, setInstanceStatus] = useState<InstanceStatus | null>(null);
   const [groqStatus, setGroqStatus] = useState<GroqStatus | null>(null);
   const [nuvemshopStatus, setNuvemshopStatus] = useState<NuvemshopStatus | null>(null);
+  const [brevoStatus, setBrevoStatus] = useState<BrevoStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([checkInstanceStatus(), checkGroqStatus()]).finally(() => {
+    Promise.all([checkInstanceStatus(), checkGroqStatus(), checkBrevoStatus()]).finally(() => {
       setIsLoading(false);
     });
   }, []);
@@ -86,6 +95,27 @@ export default function Api() {
     }
   };
 
+  const checkBrevoStatus = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke("send-brevo-email", {
+        body: { action: "test-connection" },
+      });
+      if (error) {
+        setBrevoStatus({ connected: false, error: error.message });
+      } else if (data?.success) {
+        setBrevoStatus({
+          connected: true,
+          senderName: data.senderName,
+          senderEmail: data.senderEmail,
+        });
+      } else {
+        setBrevoStatus({ connected: false, error: data?.error || "Falha" });
+      }
+    } catch {
+      setBrevoStatus({ connected: false, error: "Erro de conexão" });
+    }
+  };
+
   const integrations = [
     {
       id: "uazapi" as IntegrationId,
@@ -108,6 +138,13 @@ export default function Api() {
       icon: <ShoppingBag className="w-5 h-5" />,
       connected: nuvemshopStatus?.connected ?? false,
     },
+    {
+      id: "brevo" as IntegrationId,
+      name: "Brevo",
+      description: "E-mails de recuperação",
+      icon: <Mail className="w-5 h-5" />,
+      connected: brevoStatus?.connected ?? false,
+    },
   ];
 
   if (isLoading) {
@@ -127,24 +164,19 @@ export default function Api() {
       />
       
       {activeIntegration === "uazapi" && (
-        <UazapiConfig
-          status={instanceStatus}
-          onStatusChange={setInstanceStatus}
-        />
+        <UazapiConfig status={instanceStatus} onStatusChange={setInstanceStatus} />
       )}
       
       {activeIntegration === "groq" && (
-        <GroqConfig
-          status={groqStatus}
-          onStatusChange={setGroqStatus}
-        />
+        <GroqConfig status={groqStatus} onStatusChange={setGroqStatus} />
       )}
       
       {activeIntegration === "nuvemshop" && (
-        <NuvemshopConfig
-          status={nuvemshopStatus}
-          onStatusChange={setNuvemshopStatus}
-        />
+        <NuvemshopConfig status={nuvemshopStatus} onStatusChange={setNuvemshopStatus} />
+      )}
+      
+      {activeIntegration === "brevo" && (
+        <BrevoConfig status={brevoStatus} onStatusChange={setBrevoStatus} />
       )}
     </div>
   );

@@ -15,6 +15,7 @@ const Settings = lazy(() => import("./pages/Settings"));
 const Api = lazy(() => import("./pages/Api"));
 const SalesDashboard = lazy(() => import("./pages/SalesDashboard"));
 const AbandonedCheckouts = lazy(() => import("./pages/AbandonedCheckouts"));
+const RecoveryDashboard = lazy(() => import("./pages/RecoveryDashboard"));
 const Automations = lazy(() => import("./pages/Automations"));
 const Auth = lazy(() => import("./pages/Auth"));
 const Install = lazy(() => import("./pages/Install"));
@@ -43,6 +44,7 @@ const App = () => (
               <Route path="/apis" element={<Api />} />
               <Route path="/sales" element={<SalesDashboard />} />
               <Route path="/abandoned-checkouts" element={<AbandonedCheckouts />} />
+              <Route path="/recovery" element={<RecoveryDashboard />} />
               <Route path="/automations" element={<Automations />} />
               <Route path="/settings" element={<Settings />} />
             </Route>
