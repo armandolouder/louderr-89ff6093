@@ -74,6 +74,8 @@ export function getIntegrationIcon(id: IntegrationId) {
       return <Brain className={iconClass} />;
     case "nuvemshop":
       return <ShoppingBag className={iconClass} />;
+    case "brevo":
+      return <Mail className={iconClass} />;
     default:
       return <Server className={iconClass} />;
   }
