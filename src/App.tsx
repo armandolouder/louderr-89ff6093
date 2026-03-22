@@ -44,6 +44,7 @@ const App = () => (
               <Route path="/apis" element={<Api />} />
               <Route path="/sales" element={<SalesDashboard />} />
               <Route path="/abandoned-checkouts" element={<AbandonedCheckouts />} />
+              <Route path="/recovery" element={<RecoveryDashboard />} />
               <Route path="/automations" element={<Automations />} />
               <Route path="/settings" element={<Settings />} />
             </Route>
