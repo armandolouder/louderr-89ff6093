@@ -156,7 +156,7 @@ export default function RecoveryDashboard() {
       const payload = {
         name: flowName,
         description: flowDescription,
-        steps: flowSteps,
+        steps: JSON.parse(JSON.stringify(flowSteps)),
         is_active: true,
       };
 
@@ -169,7 +169,7 @@ export default function RecoveryDashboard() {
       } else {
         const { error } = await supabase
           .from("recovery_flows")
-          .insert(payload);
+          .insert([payload]);
         if (error) throw error;
       }
     },
