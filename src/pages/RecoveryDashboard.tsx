@@ -17,6 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { EmailTemplatePreview } from "@/components/recovery/EmailTemplatePreview";
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
@@ -267,6 +268,7 @@ export default function RecoveryDashboard() {
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="flows">Fluxos</TabsTrigger>
           <TabsTrigger value="messages">Mensagens</TabsTrigger>
+          <TabsTrigger value="templates">Templates</TabsTrigger>
         </TabsList>
 
         {/* === DASHBOARD TAB === */}
@@ -517,6 +519,11 @@ export default function RecoveryDashboard() {
               ))
             )}
           </div>
+        </TabsContent>
+
+        {/* === TEMPLATES TAB === */}
+        <TabsContent value="templates" className="space-y-4 mt-4">
+          <EmailTemplatePreview />
         </TabsContent>
       </Tabs>
 

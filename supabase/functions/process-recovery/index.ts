@@ -242,7 +242,52 @@ Responda APENAS com a mensagem reescrita, sem explicações.`,
               }
             }
 
-            // Send via UAZAPI
+            // Send product image first if available (max 2 items)
+            const productsWithImages = products.filter((p: any) => p.image);
+            if (productsWithImages.length > 0 && productsWithImages.length <= 2) {
+              for (const prod of productsWithImages) {
+                try {
+                  await fetch(`${uazapiUrl}/sendImage`, {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                      Authorization: `Bearer ${uazapiToken}`,
+                    },
+                    body: JSON.stringify({
+                      phone,
+                      image: prod.image,
+                      caption: `${prod.name} — R$ ${Number(prod.price || 0).toFixed(2).replace(".", ",")}`,
+                    }),
+                  });
+                  // Small delay between images
+                  await new Promise(r => setTimeout(r, 1500));
+                } catch (imgErr) {
+                  console.error("Error sending product image:", imgErr);
+                }
+              }
+            } else if (productsWithImages.length > 2) {
+              // Send only the first (most expensive) product image
+              const highlight = productsWithImages.sort((a: any, b: any) => (b.price || 0) - (a.price || 0))[0];
+              try {
+                await fetch(`${uazapiUrl}/sendImage`, {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${uazapiToken}`,
+                  },
+                  body: JSON.stringify({
+                    phone,
+                    image: highlight.image,
+                    caption: `${highlight.name} — R$ ${Number(highlight.price || 0).toFixed(2).replace(".", ",")}`,
+                  }),
+                });
+                await new Promise(r => setTimeout(r, 1500));
+              } catch (imgErr) {
+                console.error("Error sending highlight image:", imgErr);
+              }
+            }
+
+            // Send text message
             const sendRes = await fetch(`${uazapiUrl}/sendText`, {
               method: "POST",
               headers: {
