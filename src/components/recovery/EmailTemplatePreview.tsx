@@ -36,7 +36,7 @@ export function EmailTemplatePreview() {
           customerName: "Marina",
           products: SAMPLE_PRODUCTS,
           total: 379.8,
-          recoveryUrl: "https://louder.ink/checkout/exemplo",
+          recoveryUrl: "https://louder.ink/checkout/v3/proxy/1926087182/a43a28e5a4b5d9454a04d142d471d60cdf73e52e",
         },
       });
 
