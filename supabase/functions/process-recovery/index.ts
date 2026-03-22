@@ -290,13 +290,13 @@ Responda APENAS com a mensagem reescrita, sem explicações.`,
             }
 
             // Send text message
-            const sendRes = await fetch(`${uazapiUrl}/sendText`, {
+            const sendRes = await fetch(`${uazapiUrl}/send/text`, {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
-                Authorization: `Bearer ${uazapiToken}`,
+                "token": uazapiToken,
               },
-              body: JSON.stringify({ phone, message: messageText }),
+              body: JSON.stringify({ number: phone, text: messageText }),
             });
 
             sendSuccess = sendRes.ok;
