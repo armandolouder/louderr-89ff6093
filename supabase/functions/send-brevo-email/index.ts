@@ -111,8 +111,8 @@ function buildRecoveryEmail(
           
           <!-- HEADER: Black with logo -->
           <tr>
-            <td style="background: #000000; padding: 28px 40px; text-align: center;">
-              <img src="https://acdn-us.mitiendanube.com/stores/002/778/031/themes/common/logo-507807513-1674425349-aa10b3e5b7752a1b2b57c619e6ba49b41674425349-640-0.webp" alt="LOUDER.ink" height="48" style="display: inline-block; height: 48px; width: auto;" />
+            <td style="background: #000000; padding: 24px 40px; text-align: center;">
+              <img src="https://acdn-us.mitiendanube.com/stores/002/778/031/themes/common/logo-507807513-1674425349-aa10b3e5b7752a1b2b57c619e6ba49b41674425349-640-0.webp" alt="LOUDER.ink" style="display: inline-block; max-width: 280px; width: 100%; height: auto;" />
             </td>
           </tr>
           
