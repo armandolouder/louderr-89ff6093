@@ -247,16 +247,17 @@ Responda APENAS com a mensagem reescrita, sem explicações.`,
             if (productsWithImages.length > 0 && productsWithImages.length <= 2) {
               for (const prod of productsWithImages) {
                 try {
-                  await fetch(`${uazapiUrl}/sendImage`, {
+                  await fetch(`${uazapiUrl}/send/media`, {
                     method: "POST",
                     headers: {
                       "Content-Type": "application/json",
-                      Authorization: `Bearer ${uazapiToken}`,
+                      "token": uazapiToken,
                     },
                     body: JSON.stringify({
-                      phone,
-                      image: prod.image,
-                      caption: `${prod.name} — R$ ${Number(prod.price || 0).toFixed(2).replace(".", ",")}`,
+                      number: phone,
+                      type: "image",
+                      file: prod.image,
+                      text: `${prod.name} — R$ ${Number(prod.price || 0).toFixed(2).replace(".", ",")}`,
                     }),
                   });
                   // Small delay between images
@@ -269,16 +270,17 @@ Responda APENAS com a mensagem reescrita, sem explicações.`,
               // Send only the first (most expensive) product image
               const highlight = productsWithImages.sort((a: any, b: any) => (b.price || 0) - (a.price || 0))[0];
               try {
-                await fetch(`${uazapiUrl}/sendImage`, {
+                await fetch(`${uazapiUrl}/send/media`, {
                   method: "POST",
                   headers: {
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${uazapiToken}`,
+                    "token": uazapiToken,
                   },
                   body: JSON.stringify({
-                    phone,
-                    image: highlight.image,
-                    caption: `${highlight.name} — R$ ${Number(highlight.price || 0).toFixed(2).replace(".", ",")}`,
+                    number: phone,
+                    type: "image",
+                    file: highlight.image,
+                    text: `${highlight.name} — R$ ${Number(highlight.price || 0).toFixed(2).replace(".", ",")}`,
                   }),
                 });
                 await new Promise(r => setTimeout(r, 1500));
@@ -288,13 +290,13 @@ Responda APENAS com a mensagem reescrita, sem explicações.`,
             }
 
             // Send text message
-            const sendRes = await fetch(`${uazapiUrl}/sendText`, {
+            const sendRes = await fetch(`${uazapiUrl}/send/text`, {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
-                Authorization: `Bearer ${uazapiToken}`,
+                "token": uazapiToken,
               },
-              body: JSON.stringify({ phone, message: messageText }),
+              body: JSON.stringify({ number: phone, text: messageText }),
             });
 
             sendSuccess = sendRes.ok;
