@@ -6,6 +6,207 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+function buildProductGrid(products: any[]) {
+  if (!products?.length) return "";
+  return products
+    .map(
+      (p: any) => `
+      <tr>
+        <td style="padding: 12px 0; border-bottom: 1px solid #f0f0f0;">
+          <table cellpadding="0" cellspacing="0" border="0" width="100%">
+            <tr>
+              ${
+                p.image
+                  ? `<td width="80" style="vertical-align: top; padding-right: 16px;">
+                      <img src="${p.image}" alt="${p.name || "Produto"}" width="80" height="80" style="display: block; border-radius: 8px; object-fit: cover; background: #f5f5f5;" />
+                    </td>`
+                  : `<td width="80" style="vertical-align: top; padding-right: 16px;">
+                      <div style="width: 80px; height: 80px; background: #f5f5f5; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                        <span style="font-size: 28px;">🛒</span>
+                      </div>
+                    </td>`
+              }
+              <td style="vertical-align: middle;">
+                <p style="margin: 0 0 4px; font-size: 15px; font-weight: 600; color: #111;">${p.name || "Produto"}</p>
+                ${p.variant ? `<p style="margin: 0 0 4px; font-size: 12px; color: #888;">${p.variant}</p>` : ""}
+                <p style="margin: 0; font-size: 14px; color: #111;">
+                  ${p.quantity && p.quantity > 1 ? `${p.quantity}x ` : ""}R$ ${Number(p.price || 0).toFixed(2).replace(".", ",")}
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>`
+    )
+    .join("");
+}
+
+function buildRecoveryEmail(
+  stepType: string,
+  firstName: string,
+  products: any[],
+  total: number,
+  recoveryUrl: string | null
+) {
+  const totalFormatted = `R$ ${Number(total || 0).toFixed(2).replace(".", ",")}`;
+  const productGrid = buildProductGrid(products);
+
+  const headlines: Record<string, { subject: string; title: string; subtitle: string; ctaText: string; ctaColor: string; emote: string }> = {
+    emocional: {
+      subject: `${firstName}, você deixou isso aqui 💜`,
+      title: "Você deixou isso aqui.",
+      subtitle: "Esses itens não ficaram aí por acaso.",
+      ctaText: "FINALIZAR COMPRA",
+      ctaColor: "#000000",
+      emote: "💜",
+    },
+    urgencia: {
+      subject: `⚡ ${firstName}, seus itens podem esgotar!`,
+      title: "Corre, esses itens são limitados.",
+      subtitle: "O estoque tá acabando e a gente não quer que você perca.",
+      ctaText: "GARANTIR AGORA",
+      ctaColor: "#dc2626",
+      emote: "⚡",
+    },
+    incentivo: {
+      subject: `🎁 ${firstName}, temos algo especial pra você`,
+      title: "Esse carrinho libera algo exclusivo.",
+      subtitle: "Finalize sua compra e desbloqueie um conteúdo especial da LOUDER.",
+      ctaText: "QUERO MEU BÔNUS",
+      ctaColor: "#000000",
+      emote: "🎁",
+    },
+    ultima_chamada: {
+      subject: `⏰ Última chance, ${firstName}!`,
+      title: "Última chamada.",
+      subtitle: "Seu carrinho será limpo em breve. Essa é a última vez que vamos te lembrar.",
+      ctaText: "FINALIZAR COMPRA",
+      ctaColor: "#f59e0b",
+      emote: "⏰",
+    },
+    leve: {
+      subject: `${firstName}, separamos seu carrinho 👋`,
+      title: "Separamos tudo pra você.",
+      subtitle: "É só finalizar a compra. Rápido e fácil.",
+      ctaText: "FINALIZAR COMPRA",
+      ctaColor: "#000000",
+      emote: "👋",
+    },
+  };
+
+  const h = headlines[stepType] || headlines.emocional;
+
+  const html = `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+</head>
+<body style="margin: 0; padding: 0; background: #f5f5f5; font-family: 'Helvetica Neue', Arial, sans-serif;">
+  <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background: #f5f5f5;">
+    <tr>
+      <td align="center" style="padding: 0;">
+        <table cellpadding="0" cellspacing="0" border="0" width="600" style="max-width: 600px; background: #ffffff;">
+          
+          <!-- HEADER: Black with logo -->
+          <tr>
+            <td style="background: #000000; padding: 32px 40px; text-align: center;">
+              <h1 style="margin: 0; font-size: 28px; font-weight: 800; letter-spacing: 3px; color: #ffffff; font-family: 'Helvetica Neue', Arial, sans-serif;">
+                LOUDER<span style="color: #ffffff; opacity: 0.5;">.ink</span>
+              </h1>
+              <p style="margin: 6px 0 0; font-size: 10px; letter-spacing: 4px; color: #ffffff; opacity: 0.4; text-transform: uppercase;">
+                Vista sua atitude
+              </p>
+            </td>
+          </tr>
+          
+          <!-- BODY -->
+          <tr>
+            <td style="padding: 40px 40px 20px;">
+              <h2 style="margin: 0 0 8px; font-size: 24px; font-weight: 700; color: #111111; line-height: 1.2;">
+                ${h.title}
+              </h2>
+              <p style="margin: 0 0 32px; font-size: 15px; color: #666666; line-height: 1.5;">
+                ${firstName ? `Oi ${firstName}, ` : ""}${h.subtitle.charAt(0).toLowerCase() + h.subtitle.slice(1)}
+              </p>
+            </td>
+          </tr>
+          
+          <!-- PRODUCTS GRID -->
+          <tr>
+            <td style="padding: 0 40px;">
+              <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                ${productGrid}
+              </table>
+            </td>
+          </tr>
+          
+          <!-- TOTAL -->
+          <tr>
+            <td style="padding: 20px 40px 0;">
+              <table cellpadding="0" cellspacing="0" border="0" width="100%" style="border-top: 2px solid #111;">
+                <tr>
+                  <td style="padding: 16px 0;">
+                    <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                      <tr>
+                        <td style="font-size: 14px; color: #666; text-transform: uppercase; letter-spacing: 1px;">Total</td>
+                        <td style="text-align: right; font-size: 22px; font-weight: 700; color: #111;">${totalFormatted}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          
+          <!-- CTA BUTTON -->
+          ${
+            recoveryUrl
+              ? `<tr>
+                  <td style="padding: 32px 40px; text-align: center;">
+                    <a href="${recoveryUrl}" style="display: inline-block; background: ${h.ctaColor}; color: ${h.ctaColor === "#f59e0b" ? "#000" : "#fff"}; padding: 16px 48px; border-radius: 4px; text-decoration: none; font-weight: 700; font-size: 14px; letter-spacing: 1.5px; text-transform: uppercase;">
+                      ${h.ctaText} →
+                    </a>
+                  </td>
+                </tr>`
+              : ""
+          }
+          
+          <!-- EMOTIONAL HOOK -->
+          <tr>
+            <td style="padding: 0 40px 40px; text-align: center;">
+              <p style="margin: 0; font-size: 13px; color: #999; font-style: italic;">
+                ${stepType === "incentivo" ? "Esse carrinho libera algo exclusivo depois da compra." : "Isso não ficou aí por acaso."}
+              </p>
+            </td>
+          </tr>
+          
+          <!-- FOOTER: Black -->
+          <tr>
+            <td style="background: #000000; padding: 32px 40px; text-align: center;">
+              <p style="margin: 0 0 8px; font-size: 16px; font-weight: 700; letter-spacing: 2px; color: #ffffff; opacity: 0.9;">
+                LOUDER.ink
+              </p>
+              <p style="margin: 0 0 16px; font-size: 11px; color: #ffffff; opacity: 0.4; letter-spacing: 1px;">
+                Vista sua atitude
+              </p>
+              <p style="margin: 0; font-size: 11px; color: #ffffff; opacity: 0.3;">
+                © ${new Date().getFullYear()} LOUDER.ink — Todos os direitos reservados
+              </p>
+            </td>
+          </tr>
+          
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+  return { subject: h.subject, html };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -23,7 +224,7 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const { action } = body;
 
-    // Test connection - get account info
+    // Test connection
     if (action === "test-connection") {
       const res = await fetch("https://api.brevo.com/v3/senders", {
         headers: { "api-key": brevoApiKey, "Content-Type": "application/json" },
@@ -62,7 +263,6 @@ Deno.serve(async (req) => {
         );
       }
 
-      // Get default sender
       let fromName = senderName || "Armando";
       let fromEmail = senderEmail;
 
@@ -92,9 +292,7 @@ Deno.serve(async (req) => {
         tags: tags || ["recovery-engine"],
       };
 
-      if (params) {
-        emailPayload.params = params;
-      }
+      if (params) emailPayload.params = params;
 
       const res = await fetch("https://api.brevo.com/v3/smtp/email", {
         method: "POST",
@@ -112,15 +310,13 @@ Deno.serve(async (req) => {
       }
 
       const result = await res.json();
-      console.log("Brevo email sent:", result);
-
       return new Response(
         JSON.stringify({ success: true, messageId: result.messageId }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Send recovery email with template
+    // Send recovery email with branded template
     if (action === "send-recovery") {
       const { to, customerName, products, total, recoveryUrl, variant, stepType } = body;
 
@@ -149,82 +345,19 @@ Deno.serve(async (req) => {
       }
 
       const firstName = (customerName || "").split(" ")[0] || "Cliente";
-      const productsList = (products || [])
-        .map((p: any) => `<li>${p.quantity || 1}x ${p.name} - R$ ${Number(p.price || 0).toFixed(2).replace(".", ",")}</li>`)
-        .join("");
-      const totalFormatted = `R$ ${Number(total || 0).toFixed(2).replace(".", ",")}`;
-
-      // Different email templates based on step type
-      const templates: Record<string, { subject: string; html: string }> = {
-        emocional: {
-          subject: `${firstName}, seus itens estão esperando por você 💜`,
-          html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #000; color: #fff;">
-              <h1 style="font-size: 24px; margin-bottom: 16px;">Ei ${firstName},</h1>
-              <p style="color: #ccc; line-height: 1.6;">Notamos que você deixou alguns itens incríveis no seu carrinho. Eles ainda estão lá, esperando por você.</p>
-              <div style="background: #111; border-radius: 8px; padding: 16px; margin: 20px 0;">
-                <ul style="list-style: none; padding: 0; color: #ddd;">${productsList}</ul>
-                <p style="font-size: 18px; font-weight: bold; color: #fff; margin-top: 12px;">Total: ${totalFormatted}</p>
-              </div>
-              ${recoveryUrl ? `<a href="${recoveryUrl}" style="display: inline-block; background: #7c3aed; color: #fff; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; margin-top: 12px;">Finalizar Compra →</a>` : ""}
-              <p style="color: #666; font-size: 12px; margin-top: 24px;">LOUDER.ink — Vista sua atitude</p>
-            </div>
-          `,
-        },
-        urgencia: {
-          subject: `⚡ ${firstName}, seus itens podem esgotar!`,
-          html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #000; color: #fff;">
-              <h1 style="font-size: 24px; margin-bottom: 16px;">Corre, ${firstName}!</h1>
-              <p style="color: #ccc; line-height: 1.6;">Os itens do seu carrinho são limitados e podem não estar disponíveis por muito tempo.</p>
-              <div style="background: #111; border-radius: 8px; padding: 16px; margin: 20px 0;">
-                <ul style="list-style: none; padding: 0; color: #ddd;">${productsList}</ul>
-                <p style="font-size: 18px; font-weight: bold; color: #fff; margin-top: 12px;">Total: ${totalFormatted}</p>
-              </div>
-              ${recoveryUrl ? `<a href="${recoveryUrl}" style="display: inline-block; background: #dc2626; color: #fff; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; margin-top: 12px;">Garantir Agora →</a>` : ""}
-              <p style="color: #666; font-size: 12px; margin-top: 24px;">LOUDER.ink — Vista sua atitude</p>
-            </div>
-          `,
-        },
-        incentivo: {
-          subject: `🎁 ${firstName}, temos algo especial pra você`,
-          html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #000; color: #fff;">
-              <h1 style="font-size: 24px; margin-bottom: 16px;">${firstName}, você merece isso!</h1>
-              <p style="color: #ccc; line-height: 1.6;">Finalize sua compra agora e receba um conteúdo exclusivo da LOUDER.</p>
-              <div style="background: #111; border-radius: 8px; padding: 16px; margin: 20px 0;">
-                <ul style="list-style: none; padding: 0; color: #ddd;">${productsList}</ul>
-                <p style="font-size: 18px; font-weight: bold; color: #fff; margin-top: 12px;">Total: ${totalFormatted}</p>
-              </div>
-              ${recoveryUrl ? `<a href="${recoveryUrl}" style="display: inline-block; background: #7c3aed; color: #fff; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; margin-top: 12px;">Quero Meu Bônus →</a>` : ""}
-              <p style="color: #666; font-size: 12px; margin-top: 24px;">LOUDER.ink — Vista sua atitude</p>
-            </div>
-          `,
-        },
-        ultima_chamada: {
-          subject: `⏰ Última chance, ${firstName}!`,
-          html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #000; color: #fff;">
-              <h1 style="font-size: 24px; margin-bottom: 16px;">Última chamada, ${firstName}.</h1>
-              <p style="color: #ccc; line-height: 1.6;">Seu carrinho será limpo em breve. Essa é a última vez que vamos te lembrar.</p>
-              <div style="background: #111; border-radius: 8px; padding: 16px; margin: 20px 0;">
-                <ul style="list-style: none; padding: 0; color: #ddd;">${productsList}</ul>
-                <p style="font-size: 18px; font-weight: bold; color: #fff; margin-top: 12px;">Total: ${totalFormatted}</p>
-              </div>
-              ${recoveryUrl ? `<a href="${recoveryUrl}" style="display: inline-block; background: #f59e0b; color: #000; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; margin-top: 12px;">Finalizar Compra →</a>` : ""}
-              <p style="color: #666; font-size: 12px; margin-top: 24px;">LOUDER.ink — Vista sua atitude</p>
-            </div>
-          `,
-        },
-      };
-
-      const template = templates[stepType || "emocional"] || templates.emocional;
+      const emailContent = buildRecoveryEmail(
+        stepType || "emocional",
+        firstName,
+        products || [],
+        total || 0,
+        recoveryUrl
+      );
 
       const emailPayload = {
-        sender: { name: "Armando", email: fromEmail },
+        sender: { name: "LOUDER.ink", email: fromEmail },
         to: [{ email: to }],
-        subject: template.subject,
-        htmlContent: template.html,
+        subject: emailContent.subject,
+        htmlContent: emailContent.html,
         tags: ["recovery-engine", stepType || "emocional", variant || "A"],
       };
 
@@ -245,6 +378,24 @@ Deno.serve(async (req) => {
       const result = await res.json();
       return new Response(
         JSON.stringify({ success: true, messageId: result.messageId }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Preview email template (for dashboard)
+    if (action === "preview-template") {
+      const { stepType, customerName, products, total, recoveryUrl } = body;
+      const firstName = (customerName || "").split(" ")[0] || "Cliente";
+      const emailContent = buildRecoveryEmail(
+        stepType || "emocional",
+        firstName,
+        products || [],
+        total || 0,
+        recoveryUrl || "https://louder.ink/checkout/exemplo"
+      );
+
+      return new Response(
+        JSON.stringify({ success: true, subject: emailContent.subject, html: emailContent.html }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
