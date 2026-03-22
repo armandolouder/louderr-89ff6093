@@ -270,16 +270,17 @@ Responda APENAS com a mensagem reescrita, sem explicações.`,
               // Send only the first (most expensive) product image
               const highlight = productsWithImages.sort((a: any, b: any) => (b.price || 0) - (a.price || 0))[0];
               try {
-                await fetch(`${uazapiUrl}/sendImage`, {
+                await fetch(`${uazapiUrl}/send/media`, {
                   method: "POST",
                   headers: {
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${uazapiToken}`,
+                    "token": uazapiToken,
                   },
                   body: JSON.stringify({
-                    phone,
-                    image: highlight.image,
-                    caption: `${highlight.name} — R$ ${Number(highlight.price || 0).toFixed(2).replace(".", ",")}`,
+                    number: phone,
+                    type: "image",
+                    file: highlight.image,
+                    text: `${highlight.name} — R$ ${Number(highlight.price || 0).toFixed(2).replace(".", ",")}`,
                   }),
                 });
                 await new Promise(r => setTimeout(r, 1500));
