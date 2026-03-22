@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
-import { MessageSquare, Brain, Server, CreditCard, Database, CheckCircle, XCircle, ShoppingBag } from "lucide-react";
+import { MessageSquare, Brain, Server, CreditCard, Database, CheckCircle, XCircle, ShoppingBag, Mail } from "lucide-react";
 
-export type IntegrationId = "uazapi" | "groq" | "nuvemshop";
+export type IntegrationId = "uazapi" | "groq" | "nuvemshop" | "brevo";
 
 interface Integration {
   id: IntegrationId;
