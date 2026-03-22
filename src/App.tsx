@@ -15,6 +15,7 @@ const Settings = lazy(() => import("./pages/Settings"));
 const Api = lazy(() => import("./pages/Api"));
 const SalesDashboard = lazy(() => import("./pages/SalesDashboard"));
 const AbandonedCheckouts = lazy(() => import("./pages/AbandonedCheckouts"));
+const RecoveryDashboard = lazy(() => import("./pages/RecoveryDashboard"));
 const Automations = lazy(() => import("./pages/Automations"));
 const Auth = lazy(() => import("./pages/Auth"));
 const Install = lazy(() => import("./pages/Install"));
