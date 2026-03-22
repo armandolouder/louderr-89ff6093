@@ -520,6 +520,11 @@ export default function RecoveryDashboard() {
             )}
           </div>
         </TabsContent>
+
+        {/* === TEMPLATES TAB === */}
+        <TabsContent value="templates" className="space-y-4 mt-4">
+          <EmailTemplatePreview />
+        </TabsContent>
       </Tabs>
 
       {/* === FLOW EDITOR DIALOG === */}
