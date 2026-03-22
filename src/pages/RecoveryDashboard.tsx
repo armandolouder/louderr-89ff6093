@@ -268,6 +268,7 @@ export default function RecoveryDashboard() {
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="flows">Fluxos</TabsTrigger>
           <TabsTrigger value="messages">Mensagens</TabsTrigger>
+          <TabsTrigger value="templates">Templates</TabsTrigger>
         </TabsList>
 
         {/* === DASHBOARD TAB === */}
