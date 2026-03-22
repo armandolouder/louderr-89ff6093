@@ -111,13 +111,8 @@ function buildRecoveryEmail(
           
           <!-- HEADER: Black with logo -->
           <tr>
-            <td style="background: #000000; padding: 32px 40px; text-align: center;">
-              <h1 style="margin: 0; font-size: 28px; font-weight: 800; letter-spacing: 3px; color: #ffffff; font-family: 'Helvetica Neue', Arial, sans-serif;">
-                LOUDER<span style="color: #ffffff; opacity: 0.5;">.ink</span>
-              </h1>
-              <p style="margin: 6px 0 0; font-size: 10px; letter-spacing: 4px; color: #ffffff; opacity: 0.4; text-transform: uppercase;">
-                Vista sua atitude
-              </p>
+            <td style="background: #000000; padding: 28px 40px; text-align: center;">
+              <img src="https://acdn-us.mitiendanube.com/stores/002/778/031/themes/common/logo-507807513-1674425349-aa10b3e5b7752a1b2b57c619e6ba49b41674425349-640-0.webp" alt="LOUDER.ink" height="48" style="display: inline-block; height: 48px; width: auto;" />
             </td>
           </tr>
           
