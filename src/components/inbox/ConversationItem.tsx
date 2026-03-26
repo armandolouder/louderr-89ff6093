@@ -56,6 +56,20 @@ export function ConversationItem({ conversation, isActive, onClick }: Conversati
     }
   };
 
+  const handleDelete = async () => {
+    if (!confirm("Tem certeza que deseja apagar esta conversa e todas as mensagens?")) return;
+    try {
+      // Delete messages first, then conversation
+      await supabase.from("messages").delete().eq("conversation_id", conversation.id);
+      const { error } = await supabase.from("conversations").delete().eq("id", conversation.id);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ["conversations"] });
+      toast.success("Conversa apagada");
+    } catch {
+      toast.error("Erro ao apagar conversa");
+    }
+  };
+
   const initials = conversation.contact.name
     .split(" ")
     .map((n) => n[0])
