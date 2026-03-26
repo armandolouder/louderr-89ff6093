@@ -4,7 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Conversation } from "@/hooks/useConversations";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { MoreHorizontal, FolderInput, FolderX, Archive, ArchiveRestore } from "lucide-react";
+import { MoreHorizontal, FolderInput, FolderX, Archive, ArchiveRestore, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -53,6 +53,20 @@ export function ConversationItem({ conversation, isActive, onClick }: Conversati
       toast.success(newValue ? "Conversa arquivada" : "Conversa desarquivada");
     } catch {
       toast.error("Erro ao arquivar conversa");
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirm("Tem certeza que deseja apagar esta conversa e todas as mensagens?")) return;
+    try {
+      // Delete messages first, then conversation
+      await supabase.from("messages").delete().eq("conversation_id", conversation.id);
+      const { error } = await supabase.from("conversations").delete().eq("id", conversation.id);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ["conversations"] });
+      toast.success("Conversa apagada");
+    } catch {
+      toast.error("Erro ao apagar conversa");
     }
   };
 
@@ -207,6 +221,11 @@ export function ConversationItem({ conversation, isActive, onClick }: Conversati
                 <Archive className="h-4 w-4 mr-2" />
               )}
               {conversation.is_archived ? "Desarquivar" : "Arquivar"}
+            </DropdownMenuItem>
+
+            <DropdownMenuItem onClick={handleDelete} className="text-destructive focus:text-destructive">
+              <Trash2 className="h-4 w-4 mr-2" />
+              Apagar conversa
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
