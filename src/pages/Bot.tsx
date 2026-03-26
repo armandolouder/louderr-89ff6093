@@ -26,8 +26,9 @@ interface MenuConfig {
 const generateId = () => crypto.randomUUID();
 const RE_NOME = /\{nome\}/g;
 const RE_SAUDACAO = /\{saudacao\}/g;
+const VAR_NOME = "{nome}";
+const VAR_SAUDACAO = "{saudacao}";
 
-const defaultConfig: MenuConfig = {
   welcome_message: "{saudacao}, {nome}! Como posso ajudar? Escolha uma opção digitando o número:",
   fallback_message: "Desculpe, não entendi. Por favor, escolha uma das opções digitando o número correspondente.",
   menu_items: [
