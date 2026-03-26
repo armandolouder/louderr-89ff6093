@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Bot as BotIcon, Save, Loader2, Plus, Trash2, GripVertical, MessageSquare } from "lucide-react";
+import { Bot as BotIcon, Save, Loader2, Plus, Trash2, GripVertical, MessageSquare, Variable } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,7 +26,7 @@ interface MenuConfig {
 const generateId = () => crypto.randomUUID();
 
 const defaultConfig: MenuConfig = {
-  welcome_message: "Olá! Como posso ajudar? Escolha uma opção digitando o número:",
+  welcome_message: "{saudacao}, {nome}! Como posso ajudar? Escolha uma opção digitando o número:",
   fallback_message: "Desculpe, não entendi. Por favor, escolha uma das opções digitando o número correspondente.",
   menu_items: [
     { id: generateId(), label: "Suporte", response: "Para suporte, descreva seu problema que vamos te ajudar!" },
@@ -135,13 +135,29 @@ export default function Bot() {
     }));
   };
 
-  // Build preview text
+  // Build preview text with sample variable replacements
   const previewText = () => {
-    let text = config.welcome_message + "\n\n";
+    const now = new Date();
+    const hour = now.getHours();
+    const saudacao = hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
+    
+    let text = config.welcome_message
+      .replace(/\{nome\}/g, "João")
+      .replace(/\{saudacao\}/g, saudacao);
+    text += "\n\n";
     config.menu_items.forEach((item, i) => {
       text += `${i + 1} - ${item.label}\n`;
     });
     return text;
+  };
+
+  const previewResponse = (response: string) => {
+    const now = new Date();
+    const hour = now.getHours();
+    const saudacao = hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
+    return response
+      .replace(/\{nome\}/g, "João")
+      .replace(/\{saudacao\}/g, saudacao);
   };
 
   if (isLoading) {
@@ -171,7 +187,26 @@ export default function Bot() {
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           {/* Config */}
-          <div className="space-y-6 pb-6">
+            <Card className="border-primary/30 bg-primary/5">
+              <CardContent className="pt-4 pb-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <Variable className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-medium text-foreground">Variáveis disponíveis</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="outline" className="font-mono text-xs cursor-pointer hover:bg-primary/10" onClick={() => navigator.clipboard.writeText("{nome}").then(() => toast.success("Copiado!"))}>
+                    {"{nome}"}
+                  </Badge>
+                  <Badge variant="outline" className="font-mono text-xs cursor-pointer hover:bg-primary/10" onClick={() => navigator.clipboard.writeText("{saudacao}").then(() => toast.success("Copiado!"))}>
+                    {"{saudacao}"}
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Clique para copiar. <strong>{"{nome}"}</strong> = nome do contato, <strong>{"{saudacao}"}</strong> = Bom dia/Boa tarde/Boa noite (automático).
+                </p>
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader>
                 <div className="flex items-center gap-2">
@@ -292,7 +327,7 @@ export default function Bot() {
                       </div>
                       <div className="flex justify-start">
                         <div className="bg-[#202c33] text-[#e9edef] rounded-lg rounded-tl-none px-3 py-2 max-w-[85%] text-sm whitespace-pre-line">
-                          {config.menu_items[0]?.response || "..."}
+                          {previewResponse(config.menu_items[0]?.response || "...")}
                         </div>
                       </div>
                     </>
