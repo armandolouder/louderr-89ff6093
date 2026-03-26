@@ -24,6 +24,8 @@ interface MenuConfig {
 }
 
 const generateId = () => crypto.randomUUID();
+const RE_NOME = /\{nome\}/g;
+const RE_SAUDACAO = /\{saudacao\}/g;
 
 const defaultConfig: MenuConfig = {
   welcome_message: "{saudacao}, {nome}! Como posso ajudar? Escolha uma opção digitando o número:",
@@ -142,8 +144,8 @@ export default function Bot() {
     const saudacao = hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
     
     let text = config.welcome_message
-      .replace(/\{nome\}/g, "João")
-      .replace(/\{saudacao\}/g, saudacao);
+      .replace(RE_NOME, "João")
+      .replace(RE_SAUDACAO, saudacao);
     text += "\n\n";
     config.menu_items.forEach((item, i) => {
       text += `${i + 1} - ${item.label}\n`;
@@ -156,8 +158,8 @@ export default function Bot() {
     const hour = now.getHours();
     const saudacao = hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
     return response
-      .replace(/\{nome\}/g, "João")
-      .replace(/\{saudacao\}/g, saudacao);
+      .replace(RE_NOME, "João")
+      .replace(RE_SAUDACAO, saudacao);
   };
 
   if (isLoading) {
