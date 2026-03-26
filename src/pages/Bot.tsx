@@ -187,7 +187,26 @@ export default function Bot() {
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           {/* Config */}
-          <div className="space-y-6 pb-6">
+            <Card className="border-primary/30 bg-primary/5">
+              <CardContent className="pt-4 pb-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <Variable className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-medium text-foreground">Variáveis disponíveis</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="outline" className="font-mono text-xs cursor-pointer hover:bg-primary/10" onClick={() => navigator.clipboard.writeText("{nome}").then(() => toast.success("Copiado!"))}>
+                    {"{nome}"}
+                  </Badge>
+                  <Badge variant="outline" className="font-mono text-xs cursor-pointer hover:bg-primary/10" onClick={() => navigator.clipboard.writeText("{saudacao}").then(() => toast.success("Copiado!"))}>
+                    {"{saudacao}"}
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Clique para copiar. <strong>{"{nome}"}</strong> = nome do contato, <strong>{"{saudacao}"}</strong> = Bom dia/Boa tarde/Boa noite (automático).
+                </p>
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader>
                 <div className="flex items-center gap-2">
