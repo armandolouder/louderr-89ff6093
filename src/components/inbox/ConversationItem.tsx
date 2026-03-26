@@ -222,6 +222,11 @@ export function ConversationItem({ conversation, isActive, onClick }: Conversati
               )}
               {conversation.is_archived ? "Desarquivar" : "Arquivar"}
             </DropdownMenuItem>
+
+            <DropdownMenuItem onClick={handleDelete} className="text-destructive focus:text-destructive">
+              <Trash2 className="h-4 w-4 mr-2" />
+              Apagar conversa
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
