@@ -630,55 +630,55 @@ serve(async (req) => {
               const model = (settings.model as string) || "llama-3.3-70b-versatile";
               const maxTokens = (settings.max_tokens as number) || 512;
 
-              // Fetch Nuvemshop product catalog for context
+              // Fetch Nuvemshop product catalog for context (paginated)
               let productCatalog = "";
               try {
                 const NUVEMSHOP_ACCESS_TOKEN = Deno.env.get("NUVEMSHOP_ACCESS_TOKEN");
                 const NUVEMSHOP_STORE_ID = Deno.env.get("NUVEMSHOP_STORE_ID");
 
                 if (NUVEMSHOP_ACCESS_TOKEN && NUVEMSHOP_STORE_ID) {
-                  // Get store info for domain
-                  const storeRes = await fetch(
-                    `https://api.nuvemshop.com.br/v1/${NUVEMSHOP_STORE_ID}/store`,
-                    {
-                      headers: {
-                        "Authentication": `bearer ${NUVEMSHOP_ACCESS_TOKEN}`,
-                        "User-Agent": "OmniDesk (support@omnidesk.com)",
-                        "Content-Type": "application/json",
-                      },
+                  const headers = {
+                    "Authentication": `bearer ${NUVEMSHOP_ACCESS_TOKEN}`,
+                    "User-Agent": "OmniDesk (support@omnidesk.com)",
+                    "Content-Type": "application/json",
+                  };
+
+                  // Fetch ALL products with pagination (200 per page max)
+                  let allProducts: any[] = [];
+                  let page = 1;
+                  let hasMore = true;
+                  while (hasMore && page <= 10) { // max 10 pages = 2000 products
+                    const productsRes = await fetch(
+                      `https://api.nuvemshop.com.br/v1/${NUVEMSHOP_STORE_ID}/products?per_page=200&page=${page}&published=true`,
+                      { headers }
+                    );
+                    if (productsRes.ok) {
+                      const batch = await productsRes.json();
+                      if (batch.length > 0) {
+                        allProducts = allProducts.concat(batch);
+                        page++;
+                        if (batch.length < 200) hasMore = false;
+                      } else {
+                        hasMore = false;
+                      }
+                    } else {
+                      console.error("Products API error:", productsRes.status);
+                      hasMore = false;
                     }
-                  );
-                  let storeDomain = "";
-                  if (storeRes.ok) {
-                    const storeData = await storeRes.json();
-                    storeDomain = storeData.url_with_protocol || storeData.original_domain || "";
                   }
 
-                  // Get products (top 50 active)
-                  const productsRes = await fetch(
-                    `https://api.nuvemshop.com.br/v1/${NUVEMSHOP_STORE_ID}/products?per_page=50&published=true`,
-                    {
-                      headers: {
-                        "Authentication": `bearer ${NUVEMSHOP_ACCESS_TOKEN}`,
-                        "User-Agent": "OmniDesk (support@omnidesk.com)",
-                        "Content-Type": "application/json",
-                      },
-                    }
-                  );
+                  console.log(`Fetched ${allProducts.length} products from Nuvemshop`);
 
-                  if (productsRes.ok) {
-                    const products = await productsRes.json();
-                    if (products.length > 0) {
-                      const productList = products.map((p: any) => {
-                        const name = p.name?.pt || p.name?.es || p.name?.en || Object.values(p.name || {})[0] || "Produto";
-                        const price = p.variants?.[0]?.price || "consultar";
-                        const slug = p.handle?.pt || p.handle?.es || p.handle?.en || Object.values(p.handle || {})[0] || "";
-                        const link = storeDomain && slug ? `${storeDomain}/produtos/${slug}` : "";
-                        const categories = (p.categories || []).map((c: any) => c.name?.pt || c.name?.es || Object.values(c.name || {})[0]).join(", ");
-                        return `- ${name} | R$${price}${categories ? ` | ${categories}` : ""}${link ? ` | ${link}` : ""}`;
-                      }).join("\n");
-                      productCatalog = `\n\nCATÁLOGO DE PRODUTOS DA LOJA:\n${productList}\n`;
-                    }
+                  if (allProducts.length > 0) {
+                    const productList = allProducts.map((p: any) => {
+                      const name = p.name?.pt || p.name?.es || p.name?.en || Object.values(p.name || {})[0] || "Produto";
+                      const price = p.variants?.[0]?.price || "consultar";
+                      const link = p.canonical_url || "";
+                      const categories = (p.categories || []).map((c: any) => c.name?.pt || c.name?.es || Object.values(c.name || {})[0]).join(", ");
+                      const tags = p.tags || "";
+                      return `- ${name} | R$${price}${categories ? ` | ${categories}` : ""}${tags ? ` | tags: ${tags}` : ""}${link ? ` | ${link}` : ""}`;
+                    }).join("\n");
+                    productCatalog = `\n\nCATÁLOGO COMPLETO DE PRODUTOS DA LOJA:\n${productList}\n\nIMPORTANTE: Quando o cliente perguntar por um produto, busque no catálogo acima por nome, banda, categoria ou tag. Envie SEMPRE o link completo do produto.\n`;
                   }
                 }
               } catch (catalogError) {
