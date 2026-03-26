@@ -20,9 +20,9 @@ interface BotConfig {
 export default function Bot() {
   const [botActive, setBotActive] = useState(false);
   const [botConfig, setBotConfig] = useState<BotConfig>({
-    system_prompt: "Você é um assistente de atendimento ao cliente da loja. Seja educado, prestativo e responda de forma concisa. Responda em português brasileiro.",
+    system_prompt: "Foque em ajudar com dúvidas sobre produtos, trocas e suporte. Sempre envie o link do produto quando disponível.",
     model: "llama-3.3-70b-versatile",
-    max_tokens: 512,
+    max_tokens: 256,
   });
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);

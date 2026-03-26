@@ -626,9 +626,76 @@ serve(async (req) => {
               console.log("Nuvemshop customer detected, auto-replying...");
 
               const settings = botConfig.value as Record<string, unknown>;
-              const systemPrompt = (settings.system_prompt as string) || "Você é um assistente de atendimento ao cliente.";
+              const userSystemPrompt = (settings.system_prompt as string) || "";
               const model = (settings.model as string) || "llama-3.3-70b-versatile";
               const maxTokens = (settings.max_tokens as number) || 512;
+
+              // Fetch Nuvemshop product catalog for context
+              let productCatalog = "";
+              try {
+                const NUVEMSHOP_ACCESS_TOKEN = Deno.env.get("NUVEMSHOP_ACCESS_TOKEN");
+                const NUVEMSHOP_STORE_ID = Deno.env.get("NUVEMSHOP_STORE_ID");
+
+                if (NUVEMSHOP_ACCESS_TOKEN && NUVEMSHOP_STORE_ID) {
+                  // Get store info for domain
+                  const storeRes = await fetch(
+                    `https://api.nuvemshop.com.br/v1/${NUVEMSHOP_STORE_ID}/store`,
+                    {
+                      headers: {
+                        "Authentication": `bearer ${NUVEMSHOP_ACCESS_TOKEN}`,
+                        "User-Agent": "OmniDesk (support@omnidesk.com)",
+                        "Content-Type": "application/json",
+                      },
+                    }
+                  );
+                  let storeDomain = "";
+                  if (storeRes.ok) {
+                    const storeData = await storeRes.json();
+                    storeDomain = storeData.url_with_protocol || storeData.original_domain || "";
+                  }
+
+                  // Get products (top 50 active)
+                  const productsRes = await fetch(
+                    `https://api.nuvemshop.com.br/v1/${NUVEMSHOP_STORE_ID}/products?per_page=50&published=true`,
+                    {
+                      headers: {
+                        "Authentication": `bearer ${NUVEMSHOP_ACCESS_TOKEN}`,
+                        "User-Agent": "OmniDesk (support@omnidesk.com)",
+                        "Content-Type": "application/json",
+                      },
+                    }
+                  );
+
+                  if (productsRes.ok) {
+                    const products = await productsRes.json();
+                    if (products.length > 0) {
+                      const productList = products.map((p: any) => {
+                        const name = p.name?.pt || p.name?.es || p.name?.en || Object.values(p.name || {})[0] || "Produto";
+                        const price = p.variants?.[0]?.price || "consultar";
+                        const slug = p.handle?.pt || p.handle?.es || p.handle?.en || Object.values(p.handle || {})[0] || "";
+                        const link = storeDomain && slug ? `${storeDomain}/produtos/${slug}` : "";
+                        const categories = (p.categories || []).map((c: any) => c.name?.pt || c.name?.es || Object.values(c.name || {})[0]).join(", ");
+                        return `- ${name} | R$${price}${categories ? ` | ${categories}` : ""}${link ? ` | ${link}` : ""}`;
+                      }).join("\n");
+                      productCatalog = `\n\nCATÁLOGO DE PRODUTOS DA LOJA:\n${productList}\n`;
+                    }
+                  }
+                }
+              } catch (catalogError) {
+                console.error("Error fetching product catalog:", catalogError);
+              }
+
+              // Build enhanced system prompt
+              const systemPrompt = `Você é o atendente virtual da loja. Regras obrigatórias:
+- Respostas CURTAS e DIRETAS (máximo 2-3 frases)
+- Quando o cliente perguntar sobre um produto, envie o LINK direto
+- Para trocas/devoluções: informe que o prazo é de 7 dias após recebimento e peça o número do pedido
+- Para suporte: seja objetivo, resolva rápido
+- Nunca invente informações, se não souber diga que vai encaminhar para a equipe
+- Use emojis com moderação (1-2 por mensagem no máximo)
+- Responda em português brasileiro
+${productCatalog}
+${userSystemPrompt ? `\nINSTRUÇÕES ADICIONAIS DO LOJISTA:\n${userSystemPrompt}` : ""}`;
 
               // Get last 10 messages for context
               const { data: recentMsgs } = await supabase
@@ -658,7 +725,7 @@ serve(async (req) => {
                       { role: "system", content: systemPrompt },
                       ...chatHistory,
                     ],
-                    temperature: 0.7,
+                    temperature: 0.5,
                     max_tokens: maxTokens,
                   }),
                 });
