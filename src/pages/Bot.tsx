@@ -191,6 +191,7 @@ export default function Bot() {
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           {/* Config */}
+          <div className="space-y-6 pb-6">
             <Card className="border-primary/30 bg-primary/5">
               <CardContent className="pt-4 pb-3">
                 <div className="flex items-center gap-2 mb-2">
