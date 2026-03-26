@@ -463,16 +463,16 @@ serve(async (req) => {
         );
       }
 
-      // Find canonical contact for this phone (oldest record wins)
-      let { data: contact } = await supabase
+      // Find or create contact using upsert (unique index on phone prevents duplicates)
+      let contact: any = null;
+      const { data: existingContact } = await supabase
         .from("contacts")
         .select("*")
         .eq("phone", phone)
-        .order("created_at", { ascending: true })
         .limit(1)
         .maybeSingle();
 
-      if (!contact) {
+      if (!existingContact) {
         console.log("Creating new contact:", contactName);
         const { data: newContact, error: contactError } = await supabase
           .from("contacts")
@@ -485,23 +485,31 @@ serve(async (req) => {
           .single();
 
         if (contactError) {
-          console.error("Error creating contact:", contactError);
-          throw contactError;
-        }
-        contact = newContact;
-      } else if (chat.imagePreview && chat.imagePreview !== contact.avatar_url) {
-        console.log("Updating contact avatar:", contactName);
-        const { error: updateError } = await supabase
-          .from("contacts")
-          .update({ avatar_url: chat.imagePreview })
-          .eq("id", contact.id);
-
-        if (updateError) {
-          console.error("Error updating contact avatar:", updateError);
+          // Race condition: another webhook already created it
+          if (contactError.code === "23505") {
+            const { data: raceContact } = await supabase
+              .from("contacts")
+              .select("*")
+              .eq("phone", phone)
+              .limit(1)
+              .maybeSingle();
+            contact = raceContact;
+          } else {
+            console.error("Error creating contact:", contactError);
+            throw contactError;
+          }
         } else {
+          contact = newContact;
+        }
+      } else {
+        contact = existingContact;
+        if (chat.imagePreview && chat.imagePreview !== contact.avatar_url) {
+          await supabase.from("contacts").update({ avatar_url: chat.imagePreview }).eq("id", contact.id);
           contact.avatar_url = chat.imagePreview;
         }
       }
+
+      if (!contact) throw new Error("Failed to resolve contact");
 
       // Find latest open conversation for the canonical contact
       let { data: conversation } = await supabase
