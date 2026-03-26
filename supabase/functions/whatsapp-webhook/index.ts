@@ -76,11 +76,9 @@ async function downloadAndStoreMedia(
   }
 
   try {
-    // Use POST /message/download endpoint with messageId in body
     const downloadUrl = `${UAZAPI_SERVER_URL}/message/download`;
     console.log("Downloading media from:", downloadUrl, "with id:", messageId);
 
-    // UAZAPI v2 expects "id" (lowercase) for the message ID
     const response = await fetch(downloadUrl, {
       method: "POST",
       headers: {
@@ -96,19 +94,15 @@ async function downloadAndStoreMedia(
       return null;
     }
 
-    // Check content type to determine if it's JSON with URL or binary data
     const contentType = response.headers.get("content-type") || "";
     
     if (contentType.includes("application/json")) {
-      // Response contains a URL or base64
       const data = await response.json();
       console.log("Download response:", JSON.stringify(data));
       
-      // UAZAPI v2 returns fileURL (not url or link)
       const mediaDownloadUrl = data.fileURL || data.url || data.link || data.base64;
       
       if (data.base64) {
-        // Convert base64 to binary and upload
         const base64Data = data.base64.replace(/^data:[^;]+;base64,/, "");
         const binaryString = atob(base64Data);
         const bytes = new Uint8Array(binaryString.length);
@@ -123,7 +117,6 @@ async function downloadAndStoreMedia(
         return null;
       }
       
-      // Download from the URL
       const mediaResponse = await fetch(mediaDownloadUrl);
       if (!mediaResponse.ok) {
         console.error(`Failed to download from URL: ${mediaResponse.status}`);
@@ -132,7 +125,6 @@ async function downloadAndStoreMedia(
       const mediaBuffer = await mediaResponse.arrayBuffer();
       return await uploadToStorage(supabase, mediaBuffer, messageId, messageType, mimetype, SUPABASE_URL!);
     } else {
-      // Response is binary data
       const mediaBuffer = await response.arrayBuffer();
       const responseMimetype = contentType.split(";")[0].trim() || mimetype;
       return await uploadToStorage(supabase, mediaBuffer, messageId, messageType, responseMimetype, SUPABASE_URL!);
@@ -143,7 +135,6 @@ async function downloadAndStoreMedia(
   }
 }
 
-// Helper function to upload media to Supabase Storage
 async function uploadToStorage(
   supabase: ReturnType<typeof createClient>,
   mediaBuffer: ArrayBuffer,
@@ -154,7 +145,6 @@ async function uploadToStorage(
 ): Promise<string | null> {
   const contentType = mimetype || "application/octet-stream";
   
-  // Determine file extension based on content type
   const extMap: Record<string, string> = {
     "image/jpeg": "jpg",
     "image/png": "png",
@@ -168,7 +158,6 @@ async function uploadToStorage(
   };
   const ext = extMap[contentType] || "bin";
   
-  // Generate unique filename
   const timestamp = Date.now();
   const folder = messageType === "image" ? "images" :
                  messageType === "video" ? "videos" :
@@ -177,7 +166,6 @@ async function uploadToStorage(
 
   console.log(`Uploading to storage: ${filename} (${contentType})`);
 
-  // Upload to Supabase Storage
   const { error: uploadError } = await supabase.storage
     .from("whatsapp-media")
     .upload(filename, mediaBuffer, {
@@ -190,7 +178,6 @@ async function uploadToStorage(
     return null;
   }
 
-  // Get public URL
   const publicUrl = `${supabaseUrl}/storage/v1/object/public/whatsapp-media/${filename}`;
   console.log("Media stored at:", publicUrl);
   
@@ -224,7 +211,6 @@ serve(async (req) => {
       if (msgType === "reactionmessage") {
         console.log("Processing reaction message");
         
-        // Get the reaction content
         const reactionContent = typeof msg.content === "object" ? msg.content : null;
         const emoji = reactionContent?.text || "";
         const targetMessageId = reactionContent?.key?.ID || reactionContent?.key?.id || "";
@@ -234,8 +220,6 @@ serve(async (req) => {
         if (targetMessageId && emoji) {
           console.log(`Searching for message with whatsapp_message_id: ${targetMessageId}`);
           
-          // Find the message that was reacted to
-          // Use textSearch on the metadata JSON column
           const { data: messages, error: queryError } = await supabase
             .from("messages")
             .select("id, metadata")
@@ -244,7 +228,6 @@ serve(async (req) => {
           if (queryError) {
             console.error("textSearch error:", queryError.message);
             
-            // Fallback: get recent messages and filter manually
             const { data: recentMessages } = await supabase
               .from("messages")
               .select("id, metadata")
@@ -327,13 +310,11 @@ serve(async (req) => {
       }
     }
 
-    // Handle incoming messages (including messages sent from mobile phone)
+    // Handle incoming messages
     if (payload.EventType === "messages" && payload.message && payload.chat) {
       const msg = payload.message;
       const chat = payload.chat;
 
-      // Skip messages sent by API (our system) to avoid duplicates
-      // But process fromMe messages (sent from mobile phone) to mirror them
       if (msg.wasSentByApi) {
         console.log("Skipping API-sent message (already saved locally)");
         return new Response(
@@ -342,7 +323,6 @@ serve(async (req) => {
         );
       }
 
-      // Skip group messages
       if (msg.isGroup) {
         console.log("Skipping group message");
         return new Response(
@@ -351,17 +331,14 @@ serve(async (req) => {
         );
       }
 
-      // Determine if this is an outgoing message from mobile phone
       const isFromMobile = msg.fromMe && !msg.wasSentByApi;
       if (isFromMobile) {
         console.log("Processing message sent from mobile phone (mirroring)");
       }
 
-      // Extract phone number from chatid
       const phone = msg.chatid.replace("@s.whatsapp.net", "").replace("@c.us", "");
       const contactName = msg.senderName || chat.wa_name || chat.name || phone;
 
-      // Parse content - can be string or object
       let mediaUrl: string | null = null;
       let content = "";
       let messageType: "text" | "image" | "audio" | "video" | "document" = "text";
@@ -369,85 +346,53 @@ serve(async (req) => {
       let filename: string | null = null;
       let originalMediaUrl: string | null = null;
 
-      // Check if content is an object (media message)
       if (typeof msg.content === "object" && msg.content !== null) {
         const contentObj = msg.content as UazapiMediaContent;
-        
-        // Store original URL for reference (WhatsApp CDN URL - encrypted)
-        if (contentObj.URL) {
-          originalMediaUrl = contentObj.URL;
-        }
-        
-        // Get mimetype and filename
+        if (contentObj.URL) originalMediaUrl = contentObj.URL;
         mimetype = contentObj.mimetype || null;
         filename = contentObj.filename || null;
-        
-        // Get caption or text
         content = contentObj.caption || contentObj.text || "";
       } else if (typeof msg.content === "string") {
         content = msg.content;
       }
 
-      // Fallback to text field if content is empty
-      if (!content && msg.text) {
-        content = msg.text;
-      }
+      if (!content && msg.text) content = msg.text;
 
-      // Determine message type based on mediaType or messageType
       const msgMediaType = (msg.mediaType || "").toLowerCase();
-      const msgType = (msg.messageType || "").toLowerCase();
+      const msgTypeStr = (msg.messageType || "").toLowerCase();
 
-      if (msgMediaType === "image" || msgType.includes("image")) {
+      if (msgMediaType === "image" || msgTypeStr.includes("image")) {
         messageType = "image";
         if (!content) content = "[Imagem]";
-      } else if (msgMediaType === "audio" || msgType.includes("audio") || msgType.includes("ptt")) {
+      } else if (msgMediaType === "audio" || msgTypeStr.includes("audio") || msgTypeStr.includes("ptt")) {
         messageType = "audio";
         if (!content) content = "[Áudio]";
-      } else if (msgMediaType === "video" || msgType.includes("video")) {
+      } else if (msgMediaType === "video" || msgTypeStr.includes("video")) {
         messageType = "video";
         if (!content) content = "[Vídeo]";
-      } else if (msgMediaType === "document" || msgType.includes("document")) {
+      } else if (msgMediaType === "document" || msgTypeStr.includes("document")) {
         messageType = "document";
         if (!content) content = filename || "[Documento]";
-      } else if (msgType.includes("sticker")) {
+      } else if (msgTypeStr.includes("sticker")) {
         messageType = "image";
         if (!content) content = "[Sticker]";
       }
 
-      // Download and store media in Supabase Storage for permanent access
       if (messageType !== "text" && msg.messageid) {
         console.log(`Downloading ${messageType} media for message ${msg.messageid}`);
-        const storedUrl = await downloadAndStoreMedia(
-          supabase,
-          msg.messageid,
-          messageType,
-          mimetype
-        );
-        
+        const storedUrl = await downloadAndStoreMedia(supabase, msg.messageid, messageType, mimetype);
         if (storedUrl) {
           mediaUrl = storedUrl;
-          console.log("Media stored successfully:", mediaUrl);
-        } else {
-          // Fallback to original WhatsApp URL (may expire after a few hours)
-          if (originalMediaUrl) {
-            mediaUrl = originalMediaUrl;
-            console.log("Using original WhatsApp URL as fallback:", mediaUrl);
-          } else {
-            console.log("No media URL available");
-          }
+        } else if (originalMediaUrl) {
+          mediaUrl = originalMediaUrl;
         }
       }
 
-      // Final fallback for empty content
-      if (!content) {
-        content = "[Mensagem]";
-      }
+      if (!content) content = "[Mensagem]";
 
       console.log(`Processing ${messageType} from ${contactName} (${phone})`);
-      console.log(`Content: ${content.substring(0, 100)}`);
-      console.log(`Media URL: ${mediaUrl || "none"}`);
 
-      // Check for duplicate webhook before touching contact/conversation state
+      // Check for duplicate webhook
       const { data: existingMsg } = await supabase
         .from("messages")
         .select("id")
@@ -463,7 +408,7 @@ serve(async (req) => {
         );
       }
 
-      // Find or create contact using upsert (unique index on phone prevents duplicates)
+      // Find or create contact
       let contact: any = null;
       const { data: existingContact } = await supabase
         .from("contacts")
@@ -476,23 +421,14 @@ serve(async (req) => {
         console.log("Creating new contact:", contactName);
         const { data: newContact, error: contactError } = await supabase
           .from("contacts")
-          .insert({
-            name: contactName,
-            phone,
-            avatar_url: chat.imagePreview || null,
-          })
+          .insert({ name: contactName, phone, avatar_url: chat.imagePreview || null })
           .select()
           .single();
 
         if (contactError) {
-          // Race condition: another webhook already created it
           if (contactError.code === "23505") {
             const { data: raceContact } = await supabase
-              .from("contacts")
-              .select("*")
-              .eq("phone", phone)
-              .limit(1)
-              .maybeSingle();
+              .from("contacts").select("*").eq("phone", phone).limit(1).maybeSingle();
             contact = raceContact;
           } else {
             console.error("Error creating contact:", contactError);
@@ -505,13 +441,12 @@ serve(async (req) => {
         contact = existingContact;
         if (chat.imagePreview && chat.imagePreview !== contact.avatar_url) {
           await supabase.from("contacts").update({ avatar_url: chat.imagePreview }).eq("id", contact.id);
-          contact.avatar_url = chat.imagePreview;
         }
       }
 
       if (!contact) throw new Error("Failed to resolve contact");
 
-      // Find latest open conversation for the canonical contact
+      // Find latest open conversation
       let { data: conversation } = await supabase
         .from("conversations")
         .select("*")
@@ -523,7 +458,6 @@ serve(async (req) => {
         .limit(1)
         .maybeSingle();
 
-      // Create display text for conversation list
       const displayContent = messageType === "text" ? content : 
         messageType === "image" ? "📷 Imagem" :
         messageType === "audio" ? "🎵 Áudio" :
@@ -545,13 +479,9 @@ serve(async (req) => {
           .select()
           .single();
 
-        if (convError) {
-          console.error("Error creating conversation:", convError);
-          throw convError;
-        }
+        if (convError) throw convError;
         conversation = newConv;
       } else {
-        console.log("Updating existing conversation");
         const newUnreadCount = isFromMobile
           ? (conversation.unread_count || 0)
           : (conversation.unread_count || 0) + 1;
@@ -567,7 +497,7 @@ serve(async (req) => {
           .eq("id", conversation.id);
       }
 
-      // Save message - sender_type depends on whether it was sent from mobile or by contact
+      // Save message
       const { error: msgError } = await supabase
         .from("messages")
         .insert({
@@ -590,17 +520,12 @@ serve(async (req) => {
           },
         });
 
-      if (msgError) {
-        console.error("Error saving message:", msgError);
-        throw msgError;
-      }
-
+      if (msgError) throw msgError;
       console.log("Message saved successfully");
 
-      // === AUTO-REPLY BOT (only for incoming messages from Nuvemshop customers) ===
+      // === MENU-BASED AUTO-REPLY BOT ===
       if (!isFromMobile && messageType === "text" && content && content !== "[Mensagem]") {
         try {
-          // Check if bot is active
           const { data: botConfig } = await supabase
             .from("bot_settings")
             .select("is_active, value")
@@ -608,252 +533,92 @@ serve(async (req) => {
             .single();
 
           if (botConfig?.is_active) {
-            // Check if this phone belongs to a Nuvemshop customer
-            // Try multiple phone formats for matching
-            const phoneVariants = [phone];
-            if (phone.startsWith("55")) phoneVariants.push(phone.slice(2));
-            if (!phone.startsWith("55")) phoneVariants.push("55" + phone);
+            const settings = botConfig.value as Record<string, unknown>;
+            const menuItems = (settings.menu_items as Array<{ label: string; response: string }>) || [];
+            const welcomeMessage = (settings.welcome_message as string) || "Olá! Como posso ajudar?";
+            const fallbackMessage = (settings.fallback_message as string) || "Não entendi. Escolha uma opção pelo número.";
 
-            let isNuvemshopCustomer = false;
-            for (const pv of phoneVariants) {
-              const { data: customer } = await supabase
-                .from("imported_customers")
-                .select("id, name")
-                .eq("phone", pv)
-                .eq("source", "nuvemshop")
-                .limit(1)
-                .maybeSingle();
+            if (menuItems.length > 0) {
+              // Check if this phone belongs to a Nuvemshop customer
+              const phoneVariants = [phone];
+              if (phone.startsWith("55")) phoneVariants.push(phone.slice(2));
+              if (!phone.startsWith("55")) phoneVariants.push("55" + phone);
 
-              if (customer) {
-                isNuvemshopCustomer = true;
-                break;
-              }
-            }
-
-            if (isNuvemshopCustomer) {
-              console.log("Nuvemshop customer detected, auto-replying...");
-
-              const settings = botConfig.value as Record<string, unknown>;
-              const userSystemPrompt = (settings.system_prompt as string) || "";
-              const model = (settings.model as string) || "llama-3.3-70b-versatile";
-              const maxTokens = (settings.max_tokens as number) || 512;
-
-              // Fetch Nuvemshop product catalog for context (paginated)
-              let productCatalog = "";
-              try {
-                const NUVEMSHOP_ACCESS_TOKEN = Deno.env.get("NUVEMSHOP_ACCESS_TOKEN");
-                const NUVEMSHOP_STORE_ID = Deno.env.get("NUVEMSHOP_STORE_ID");
-
-                if (NUVEMSHOP_ACCESS_TOKEN && NUVEMSHOP_STORE_ID) {
-                  const headers = {
-                    "Authentication": `bearer ${NUVEMSHOP_ACCESS_TOKEN}`,
-                    "User-Agent": "OmniDesk (support@omnidesk.com)",
-                    "Content-Type": "application/json",
-                  };
-
-                  // Fetch ALL products with pagination (200 per page max)
-                  let allProducts: any[] = [];
-                  let page = 1;
-                  let hasMore = true;
-                  while (hasMore && page <= 10) { // max 10 pages = 2000 products
-                    const productsRes = await fetch(
-                      `https://api.nuvemshop.com.br/v1/${NUVEMSHOP_STORE_ID}/products?per_page=200&page=${page}&published=true`,
-                      { headers }
-                    );
-                    if (productsRes.ok) {
-                      const batch = await productsRes.json();
-                      if (batch.length > 0) {
-                        allProducts = allProducts.concat(batch);
-                        page++;
-                        if (batch.length < 200) hasMore = false;
-                      } else {
-                        hasMore = false;
-                      }
-                    } else {
-                      console.error("Products API error:", productsRes.status);
-                      hasMore = false;
-                    }
-                  }
-
-                  console.log(`Fetched ${allProducts.length} products from Nuvemshop`);
-
-                  if (allProducts.length > 0) {
-                    const productList = allProducts.map((p: any) => {
-                      const name = p.name?.pt || p.name?.es || p.name?.en || Object.values(p.name || {})[0] || "Produto";
-                      const price = p.variants?.[0]?.price || "consultar";
-                      const link = p.canonical_url || "";
-                      const categories = (p.categories || []).map((c: any) => c.name?.pt || c.name?.es || Object.values(c.name || {})[0]).join(", ");
-                      const tags = p.tags || "";
-                      return `- ${name} | R$${price}${categories ? ` | ${categories}` : ""}${tags ? ` | tags: ${tags}` : ""}${link ? ` | ${link}` : ""}`;
-                    }).join("\n");
-                    productCatalog = `\n\nCATÁLOGO COMPLETO DE PRODUTOS DA LOJA:\n${productList}\n\nIMPORTANTE: Quando o cliente perguntar por um produto, busque no catálogo acima por nome, banda, categoria ou tag. Envie SEMPRE o link completo do produto.\n`;
-                  }
-                }
-              } catch (catalogError) {
-                console.error("Error fetching product catalog:", catalogError);
+              let isNuvemshopCustomer = false;
+              for (const pv of phoneVariants) {
+                const { data: customer } = await supabase
+                  .from("imported_customers")
+                  .select("id")
+                  .eq("phone", pv)
+                  .eq("source", "nuvemshop")
+                  .limit(1)
+                  .maybeSingle();
+                if (customer) { isNuvemshopCustomer = true; break; }
               }
 
-              // Build enhanced system prompt
-              const systemPrompt = `Você é o atendente virtual da loja. Regras obrigatórias:
-- Respostas CURTAS e DIRETAS (máximo 2-3 frases)
-- Quando o cliente perguntar sobre um produto, envie o LINK direto
-- Para trocas/devoluções: informe que o prazo é de 7 dias após recebimento e peça o número do pedido
-- Para suporte: seja objetivo, resolva rápido
-- Nunca invente informações, se não souber diga que vai encaminhar para a equipe
-- Use emojis com moderação (1-2 por mensagem no máximo)
-- Responda em português brasileiro
-${productCatalog}
-${userSystemPrompt ? `\nINSTRUÇÕES ADICIONAIS DO LOJISTA:\n${userSystemPrompt}` : ""}`;
+              if (isNuvemshopCustomer) {
+                console.log("Nuvemshop customer detected, processing menu bot...");
 
-              // Get last 10 messages for context
-              const { data: recentMsgs } = await supabase
-                .from("messages")
-                .select("content, sender_type")
-                .eq("conversation_id", conversation.id)
-                .order("created_at", { ascending: false })
-                .limit(10);
+                const trimmed = content.trim();
+                const chosenNumber = parseInt(trimmed, 10);
+                let reply = "";
 
-              const chatHistory = (recentMsgs || []).reverse().map((m: any) => ({
-                role: m.sender_type === "contact" ? "user" : "assistant",
-                content: m.content,
-              }));
-
-              // Call Lovable AI (supports large context for full product catalog)
-              const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-              const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
-
-              let reply = "";
-
-              if (LOVABLE_API_KEY) {
-                // Use Lovable AI (Gemini Flash) - supports large context
-                const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-                  method: "POST",
-                  headers: {
-                    "Authorization": `Bearer ${LOVABLE_API_KEY}`,
-                    "Content-Type": "application/json",
-                  },
-                  body: JSON.stringify({
-                    model: "google/gemini-2.5-flash-lite",
-                    messages: [
-                      { role: "system", content: systemPrompt },
-                      ...chatHistory,
-                    ],
-                    temperature: 0.4,
-                    max_tokens: maxTokens,
-                  }),
-                });
-
-                if (aiRes.ok) {
-                  const aiData = await aiRes.json();
-                  reply = aiData.choices?.[0]?.message?.content || "";
+                if (!isNaN(chosenNumber) && chosenNumber >= 1 && chosenNumber <= menuItems.length) {
+                  // User chose a valid option
+                  reply = menuItems[chosenNumber - 1].response;
+                  console.log(`User chose option ${chosenNumber}: ${menuItems[chosenNumber - 1].label}`);
                 } else {
-                  const errText = await aiRes.text();
-                  console.error("Lovable AI error:", aiRes.status, errText);
-                  
-                  // Fallback to Groq with compressed catalog
-                  if (GROQ_API_KEY) {
-                    // Strip catalog to fit Groq limits
-                    const compactPrompt = systemPrompt.length > 3000 
-                      ? systemPrompt.substring(0, 3000) + "\n[catálogo truncado - diga ao cliente para visitar louder.ink]"
-                      : systemPrompt;
-                      
-                    const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                  // Send welcome menu with options
+                  let menuText = welcomeMessage + "\n\n";
+                  menuItems.forEach((item, i) => {
+                    menuText += `${i + 1} - ${item.label}\n`;
+                  });
+                  reply = menuText.trim();
+                  console.log("Sending welcome menu");
+                }
+
+                if (reply) {
+                  const UAZAPI_SERVER_URL = Deno.env.get("UAZAPI_SERVER_URL");
+                  const UAZAPI_INSTANCE_TOKEN = Deno.env.get("UAZAPI_INSTANCE_TOKEN");
+
+                  if (UAZAPI_SERVER_URL && UAZAPI_INSTANCE_TOKEN) {
+                    const sendRes = await fetch(`${UAZAPI_SERVER_URL}/send/text`, {
                       method: "POST",
                       headers: {
-                        "Authorization": `Bearer ${GROQ_API_KEY}`,
+                        "token": UAZAPI_INSTANCE_TOKEN,
                         "Content-Type": "application/json",
                       },
-                      body: JSON.stringify({
-                        model,
-                        messages: [
-                          { role: "system", content: compactPrompt },
-                          ...chatHistory,
-                        ],
-                        temperature: 0.5,
-                        max_tokens: maxTokens,
-                      }),
+                      body: JSON.stringify({ number: phone, text: reply }),
                     });
-                    if (groqRes.ok) {
-                      const groqData = await groqRes.json();
-                      reply = groqData.choices?.[0]?.message?.content || "";
+
+                    if (sendRes.ok) {
+                      await supabase.from("messages").insert({
+                        conversation_id: conversation.id,
+                        content: reply,
+                        sender_type: "bot",
+                        message_type: "text",
+                        status: "sent",
+                        metadata: { from_bot: true, bot_type: "menu" },
+                      });
+
+                      await supabase.from("conversations").update({
+                        last_message: reply.substring(0, 100),
+                        last_message_at: new Date().toISOString(),
+                      }).eq("id", conversation.id);
+
+                      console.log("Menu bot reply sent successfully");
                     } else {
-                      console.error("Groq fallback error:", await groqRes.text());
+                      console.error("Failed to send bot reply:", await sendRes.text());
                     }
                   }
                 }
-              } else if (GROQ_API_KEY) {
-                // Groq only - compress catalog
-                const compactPrompt = systemPrompt.length > 3000
-                  ? systemPrompt.substring(0, 3000) + "\n[catálogo truncado - diga ao cliente para visitar louder.ink]"
-                  : systemPrompt;
-
-                const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-                  method: "POST",
-                  headers: {
-                    "Authorization": `Bearer ${GROQ_API_KEY}`,
-                    "Content-Type": "application/json",
-                  },
-                  body: JSON.stringify({
-                    model,
-                    messages: [
-                      { role: "system", content: compactPrompt },
-                      ...chatHistory,
-                    ],
-                    temperature: 0.5,
-                    max_tokens: maxTokens,
-                  }),
-                });
-                if (groqRes.ok) {
-                  const groqData = await groqRes.json();
-                  reply = groqData.choices?.[0]?.message?.content || "";
-                } else {
-                  console.error("Groq API error:", await groqRes.text());
-                }
+              } else {
+                console.log("Phone not in Nuvemshop customers, skipping bot");
               }
-
-              if (reply) {
-                // Send via UAZAPI
-                const UAZAPI_SERVER_URL = Deno.env.get("UAZAPI_SERVER_URL");
-                const UAZAPI_INSTANCE_TOKEN = Deno.env.get("UAZAPI_INSTANCE_TOKEN");
-
-                if (UAZAPI_SERVER_URL && UAZAPI_INSTANCE_TOKEN) {
-                  const sendRes = await fetch(`${UAZAPI_SERVER_URL}/send/text`, {
-                    method: "POST",
-                    headers: {
-                      "token": UAZAPI_INSTANCE_TOKEN,
-                      "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({ number: phone, text: reply }),
-                  });
-
-                  if (sendRes.ok) {
-                    await supabase.from("messages").insert({
-                      conversation_id: conversation.id,
-                      content: reply,
-                      sender_type: "agent",
-                      message_type: "text",
-                      status: "sent",
-                      metadata: { from_bot: true, model: LOVABLE_API_KEY ? "gemini-2.5-flash-lite" : model },
-                    });
-
-                    await supabase.from("conversations").update({
-                      last_message: reply,
-                      last_message_at: new Date().toISOString(),
-                    }).eq("id", conversation.id);
-
-                    console.log("Bot reply sent successfully");
-                  } else {
-                    console.error("Failed to send bot reply via UAZAPI:", await sendRes.text());
-                  }
-                }
-              }
-            } else {
-              console.log("Phone not in Nuvemshop customers, skipping bot");
             }
           }
         } catch (botError) {
           console.error("Bot auto-reply error:", botError);
-          // Don't throw - bot errors shouldn't break webhook
         }
       }
     }
