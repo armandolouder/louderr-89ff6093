@@ -24,9 +24,13 @@ interface MenuConfig {
 }
 
 const generateId = () => crypto.randomUUID();
+const RE_NOME = /\{nome\}/g;
+const RE_SAUDACAO = /\{saudacao\}/g;
+const VAR_NOME = "{nome}";
+const VAR_SAUDACAO = "{saudacao}";
 
 const defaultConfig: MenuConfig = {
-  welcome_message: "{saudacao}, {nome}! Como posso ajudar? Escolha uma opção digitando o número:",
+  welcome_message: VAR_SAUDACAO + ", " + VAR_NOME + "! Como posso ajudar? Escolha uma opção digitando o número:",
   fallback_message: "Desculpe, não entendi. Por favor, escolha uma das opções digitando o número correspondente.",
   menu_items: [
     { id: generateId(), label: "Suporte", response: "Para suporte, descreva seu problema que vamos te ajudar!" },
@@ -142,8 +146,8 @@ export default function Bot() {
     const saudacao = hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
     
     let text = config.welcome_message
-      .replace(/\{nome\}/g, "João")
-      .replace(/\{saudacao\}/g, saudacao);
+      .replace(RE_NOME, "João")
+      .replace(RE_SAUDACAO, saudacao);
     text += "\n\n";
     config.menu_items.forEach((item, i) => {
       text += `${i + 1} - ${item.label}\n`;
@@ -156,8 +160,8 @@ export default function Bot() {
     const hour = now.getHours();
     const saudacao = hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
     return response
-      .replace(/\{nome\}/g, "João")
-      .replace(/\{saudacao\}/g, saudacao);
+      .replace(RE_NOME, "João")
+      .replace(RE_SAUDACAO, saudacao);
   };
 
   if (isLoading) {
@@ -187,6 +191,7 @@ export default function Bot() {
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           {/* Config */}
+          <div className="space-y-6 pb-6">
             <Card className="border-primary/30 bg-primary/5">
               <CardContent className="pt-4 pb-3">
                 <div className="flex items-center gap-2 mb-2">
@@ -194,15 +199,15 @@ export default function Bot() {
                   <span className="text-sm font-medium text-foreground">Variáveis disponíveis</span>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <Badge variant="outline" className="font-mono text-xs cursor-pointer hover:bg-primary/10" onClick={() => navigator.clipboard.writeText("{nome}").then(() => toast.success("Copiado!"))}>
-                    {"{nome}"}
+                  <Badge variant="outline" className="font-mono text-xs cursor-pointer hover:bg-primary/10" onClick={() => navigator.clipboard.writeText(VAR_NOME).then(() => toast.success("Copiado!"))}>
+                    &#123;nome&#125;
                   </Badge>
-                  <Badge variant="outline" className="font-mono text-xs cursor-pointer hover:bg-primary/10" onClick={() => navigator.clipboard.writeText("{saudacao}").then(() => toast.success("Copiado!"))}>
-                    {"{saudacao}"}
+                  <Badge variant="outline" className="font-mono text-xs cursor-pointer hover:bg-primary/10" onClick={() => navigator.clipboard.writeText(VAR_SAUDACAO).then(() => toast.success("Copiado!"))}>
+                    &#123;saudacao&#125;
                   </Badge>
                 </div>
                 <p className="text-xs text-muted-foreground mt-2">
-                  Clique para copiar. <strong>{"{nome}"}</strong> = nome do contato, <strong>{"{saudacao}"}</strong> = Bom dia/Boa tarde/Boa noite (automático).
+                  Clique para copiar. <strong>&#123;nome&#125;</strong> = nome do contato, <strong>&#123;saudacao&#125;</strong> = Bom dia/Boa tarde/Boa noite (automático).
                 </p>
               </CardContent>
             </Card>
