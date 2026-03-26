@@ -197,14 +197,14 @@ export default function Bot() {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <Badge variant="outline" className="font-mono text-xs cursor-pointer hover:bg-primary/10" onClick={() => navigator.clipboard.writeText("{nome}").then(() => toast.success("Copiado!"))}>
-                    {"{nome}"}
+                    &#123;nome&#125;
                   </Badge>
                   <Badge variant="outline" className="font-mono text-xs cursor-pointer hover:bg-primary/10" onClick={() => navigator.clipboard.writeText("{saudacao}").then(() => toast.success("Copiado!"))}>
-                    {"{saudacao}"}
+                    &#123;saudacao&#125;
                   </Badge>
                 </div>
                 <p className="text-xs text-muted-foreground mt-2">
-                  Clique para copiar. <strong>{"{nome}"}</strong> = nome do contato, <strong>{"{saudacao}"}</strong> = Bom dia/Boa tarde/Boa noite (automático).
+                  Clique para copiar. <strong>&#123;nome&#125;</strong> = nome do contato, <strong>&#123;saudacao&#125;</strong> = Bom dia/Boa tarde/Boa noite (automático).
                 </p>
               </CardContent>
             </Card>
