@@ -588,6 +588,136 @@ serve(async (req) => {
       }
 
       console.log("Message saved successfully");
+
+      // === AUTO-REPLY BOT (only for incoming messages from Nuvemshop customers) ===
+      if (!isFromMobile && messageType === "text" && content && content !== "[Mensagem]") {
+        try {
+          // Check if bot is active
+          const { data: botConfig } = await supabase
+            .from("bot_settings")
+            .select("is_active, value")
+            .eq("key", "chatbot_nuvemshop")
+            .single();
+
+          if (botConfig?.is_active) {
+            // Check if this phone belongs to a Nuvemshop customer
+            // Try multiple phone formats for matching
+            const phoneVariants = [phone];
+            if (phone.startsWith("55")) phoneVariants.push(phone.slice(2));
+            if (!phone.startsWith("55")) phoneVariants.push("55" + phone);
+
+            let isNuvemshopCustomer = false;
+            for (const pv of phoneVariants) {
+              const { data: customer } = await supabase
+                .from("imported_customers")
+                .select("id, name")
+                .eq("phone", pv)
+                .eq("source", "nuvemshop")
+                .limit(1)
+                .maybeSingle();
+
+              if (customer) {
+                isNuvemshopCustomer = true;
+                break;
+              }
+            }
+
+            if (isNuvemshopCustomer) {
+              console.log("Nuvemshop customer detected, auto-replying...");
+
+              const settings = botConfig.value as Record<string, unknown>;
+              const systemPrompt = (settings.system_prompt as string) || "Você é um assistente de atendimento ao cliente.";
+              const model = (settings.model as string) || "llama-3.3-70b-versatile";
+              const maxTokens = (settings.max_tokens as number) || 512;
+
+              // Get last 10 messages for context
+              const { data: recentMsgs } = await supabase
+                .from("messages")
+                .select("content, sender_type")
+                .eq("conversation_id", conversation.id)
+                .order("created_at", { ascending: false })
+                .limit(10);
+
+              const chatHistory = (recentMsgs || []).reverse().map((m: any) => ({
+                role: m.sender_type === "contact" ? "user" : "assistant",
+                content: m.content,
+              }));
+
+              // Call Groq
+              const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
+              if (GROQ_API_KEY) {
+                const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                  method: "POST",
+                  headers: {
+                    "Authorization": `Bearer ${GROQ_API_KEY}`,
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    model,
+                    messages: [
+                      { role: "system", content: systemPrompt },
+                      ...chatHistory,
+                    ],
+                    temperature: 0.7,
+                    max_tokens: maxTokens,
+                  }),
+                });
+
+                if (groqRes.ok) {
+                  const groqData = await groqRes.json();
+                  const reply = groqData.choices?.[0]?.message?.content;
+
+                  if (reply) {
+                    // Send via UAZAPI
+                    const UAZAPI_SERVER_URL = Deno.env.get("UAZAPI_SERVER_URL");
+                    const UAZAPI_INSTANCE_TOKEN = Deno.env.get("UAZAPI_INSTANCE_TOKEN");
+
+                    if (UAZAPI_SERVER_URL && UAZAPI_INSTANCE_TOKEN) {
+                      const sendRes = await fetch(`${UAZAPI_SERVER_URL}/send/text`, {
+                        method: "POST",
+                        headers: {
+                          "token": UAZAPI_INSTANCE_TOKEN,
+                          "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({ number: phone, text: reply }),
+                      });
+
+                      if (sendRes.ok) {
+                        // Save bot reply as message
+                        await supabase.from("messages").insert({
+                          conversation_id: conversation.id,
+                          content: reply,
+                          sender_type: "agent",
+                          message_type: "text",
+                          status: "sent",
+                          metadata: { from_bot: true, model },
+                        });
+
+                        // Update conversation
+                        await supabase.from("conversations").update({
+                          last_message: reply,
+                          last_message_at: new Date().toISOString(),
+                        }).eq("id", conversation.id);
+
+                        console.log("Bot reply sent successfully");
+                      } else {
+                        console.error("Failed to send bot reply via UAZAPI:", await sendRes.text());
+                      }
+                    }
+                  }
+                } else {
+                  console.error("Groq API error:", await groqRes.text());
+                }
+              }
+            } else {
+              console.log("Phone not in Nuvemshop customers, skipping bot");
+            }
+          }
+        } catch (botError) {
+          console.error("Bot auto-reply error:", botError);
+          // Don't throw - bot errors shouldn't break webhook
+        }
+      }
     }
 
     // Handle message status updates

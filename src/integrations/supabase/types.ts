@@ -136,6 +136,33 @@ export type Database = {
         }
         Relationships: []
       }
+      bot_settings: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          key: string
+          updated_at: string
+          value: Json
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          key: string
+          updated_at?: string
+          value?: Json
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          key?: string
+          updated_at?: string
+          value?: Json
+        }
+        Relationships: []
+      }
       campaign_messages: {
         Row: {
           campaign_id: string
