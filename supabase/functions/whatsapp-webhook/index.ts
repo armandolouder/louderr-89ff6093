@@ -710,9 +710,75 @@ ${userSystemPrompt ? `\nINSTRUÇÕES ADICIONAIS DO LOJISTA:\n${userSystemPrompt}
                 content: m.content,
               }));
 
-              // Call Groq
+              // Call Lovable AI (supports large context for full product catalog)
+              const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
               const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
-              if (GROQ_API_KEY) {
+
+              let reply = "";
+
+              if (LOVABLE_API_KEY) {
+                // Use Lovable AI (Gemini Flash) - supports large context
+                const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+                  method: "POST",
+                  headers: {
+                    "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    model: "google/gemini-2.5-flash-lite",
+                    messages: [
+                      { role: "system", content: systemPrompt },
+                      ...chatHistory,
+                    ],
+                    temperature: 0.4,
+                    max_tokens: maxTokens,
+                  }),
+                });
+
+                if (aiRes.ok) {
+                  const aiData = await aiRes.json();
+                  reply = aiData.choices?.[0]?.message?.content || "";
+                } else {
+                  const errText = await aiRes.text();
+                  console.error("Lovable AI error:", aiRes.status, errText);
+                  
+                  // Fallback to Groq with compressed catalog
+                  if (GROQ_API_KEY) {
+                    // Strip catalog to fit Groq limits
+                    const compactPrompt = systemPrompt.length > 3000 
+                      ? systemPrompt.substring(0, 3000) + "\n[catálogo truncado - diga ao cliente para visitar louder.ink]"
+                      : systemPrompt;
+                      
+                    const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                      method: "POST",
+                      headers: {
+                        "Authorization": `Bearer ${GROQ_API_KEY}`,
+                        "Content-Type": "application/json",
+                      },
+                      body: JSON.stringify({
+                        model,
+                        messages: [
+                          { role: "system", content: compactPrompt },
+                          ...chatHistory,
+                        ],
+                        temperature: 0.5,
+                        max_tokens: maxTokens,
+                      }),
+                    });
+                    if (groqRes.ok) {
+                      const groqData = await groqRes.json();
+                      reply = groqData.choices?.[0]?.message?.content || "";
+                    } else {
+                      console.error("Groq fallback error:", await groqRes.text());
+                    }
+                  }
+                }
+              } else if (GROQ_API_KEY) {
+                // Groq only - compress catalog
+                const compactPrompt = systemPrompt.length > 3000
+                  ? systemPrompt.substring(0, 3000) + "\n[catálogo truncado - diga ao cliente para visitar louder.ink]"
+                  : systemPrompt;
+
                 const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                   method: "POST",
                   headers: {
@@ -722,58 +788,55 @@ ${userSystemPrompt ? `\nINSTRUÇÕES ADICIONAIS DO LOJISTA:\n${userSystemPrompt}
                   body: JSON.stringify({
                     model,
                     messages: [
-                      { role: "system", content: systemPrompt },
+                      { role: "system", content: compactPrompt },
                       ...chatHistory,
                     ],
                     temperature: 0.5,
                     max_tokens: maxTokens,
                   }),
                 });
-
                 if (groqRes.ok) {
                   const groqData = await groqRes.json();
-                  const reply = groqData.choices?.[0]?.message?.content;
-
-                  if (reply) {
-                    // Send via UAZAPI
-                    const UAZAPI_SERVER_URL = Deno.env.get("UAZAPI_SERVER_URL");
-                    const UAZAPI_INSTANCE_TOKEN = Deno.env.get("UAZAPI_INSTANCE_TOKEN");
-
-                    if (UAZAPI_SERVER_URL && UAZAPI_INSTANCE_TOKEN) {
-                      const sendRes = await fetch(`${UAZAPI_SERVER_URL}/send/text`, {
-                        method: "POST",
-                        headers: {
-                          "token": UAZAPI_INSTANCE_TOKEN,
-                          "Content-Type": "application/json",
-                        },
-                        body: JSON.stringify({ number: phone, text: reply }),
-                      });
-
-                      if (sendRes.ok) {
-                        // Save bot reply as message
-                        await supabase.from("messages").insert({
-                          conversation_id: conversation.id,
-                          content: reply,
-                          sender_type: "agent",
-                          message_type: "text",
-                          status: "sent",
-                          metadata: { from_bot: true, model },
-                        });
-
-                        // Update conversation
-                        await supabase.from("conversations").update({
-                          last_message: reply,
-                          last_message_at: new Date().toISOString(),
-                        }).eq("id", conversation.id);
-
-                        console.log("Bot reply sent successfully");
-                      } else {
-                        console.error("Failed to send bot reply via UAZAPI:", await sendRes.text());
-                      }
-                    }
-                  }
+                  reply = groqData.choices?.[0]?.message?.content || "";
                 } else {
                   console.error("Groq API error:", await groqRes.text());
+                }
+              }
+
+              if (reply) {
+                // Send via UAZAPI
+                const UAZAPI_SERVER_URL = Deno.env.get("UAZAPI_SERVER_URL");
+                const UAZAPI_INSTANCE_TOKEN = Deno.env.get("UAZAPI_INSTANCE_TOKEN");
+
+                if (UAZAPI_SERVER_URL && UAZAPI_INSTANCE_TOKEN) {
+                  const sendRes = await fetch(`${UAZAPI_SERVER_URL}/send/text`, {
+                    method: "POST",
+                    headers: {
+                      "token": UAZAPI_INSTANCE_TOKEN,
+                      "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({ number: phone, text: reply }),
+                  });
+
+                  if (sendRes.ok) {
+                    await supabase.from("messages").insert({
+                      conversation_id: conversation.id,
+                      content: reply,
+                      sender_type: "agent",
+                      message_type: "text",
+                      status: "sent",
+                      metadata: { from_bot: true, model: LOVABLE_API_KEY ? "gemini-2.5-flash-lite" : model },
+                    });
+
+                    await supabase.from("conversations").update({
+                      last_message: reply,
+                      last_message_at: new Date().toISOString(),
+                    }).eq("id", conversation.id);
+
+                    console.log("Bot reply sent successfully");
+                  } else {
+                    console.error("Failed to send bot reply via UAZAPI:", await sendRes.text());
+                  }
                 }
               }
             } else {
