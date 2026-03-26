@@ -559,17 +559,26 @@ serve(async (req) => {
               if (isNuvemshopCustomer) {
                 console.log("Nuvemshop customer detected, processing menu bot...");
 
+                // Resolve variables
+                const now = new Date();
+                const brHour = (now.getUTCHours() - 3 + 24) % 24; // UTC-3
+                const saudacao = brHour < 12 ? "Bom dia" : brHour < 18 ? "Boa tarde" : "Boa noite";
+                const customerName = contactName || "cliente";
+
+                const replaceVars = (text: string) =>
+                  text.replace(/\{nome\}/g, customerName).replace(/\{saudacao\}/g, saudacao);
+
                 const trimmed = content.trim();
                 const chosenNumber = parseInt(trimmed, 10);
                 let reply = "";
 
                 if (!isNaN(chosenNumber) && chosenNumber >= 1 && chosenNumber <= menuItems.length) {
                   // User chose a valid option
-                  reply = menuItems[chosenNumber - 1].response;
+                  reply = replaceVars(menuItems[chosenNumber - 1].response);
                   console.log(`User chose option ${chosenNumber}: ${menuItems[chosenNumber - 1].label}`);
                 } else {
                   // Send welcome menu with options
-                  let menuText = welcomeMessage + "\n\n";
+                  let menuText = replaceVars(welcomeMessage) + "\n\n";
                   menuItems.forEach((item, i) => {
                     menuText += `${i + 1} - ${item.label}\n`;
                   });

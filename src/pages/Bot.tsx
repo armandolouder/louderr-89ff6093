@@ -327,7 +327,7 @@ export default function Bot() {
                       </div>
                       <div className="flex justify-start">
                         <div className="bg-[#202c33] text-[#e9edef] rounded-lg rounded-tl-none px-3 py-2 max-w-[85%] text-sm whitespace-pre-line">
-                          {config.menu_items[0]?.response || "..."}
+                          {previewResponse(config.menu_items[0]?.response || "...")}
                         </div>
                       </div>
                     </>
