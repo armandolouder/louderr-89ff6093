@@ -8,6 +8,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import Landing from "./pages/Landing";
 
 const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Bot = lazy(() => import("./pages/Bot"));
 const Inbox = lazy(() => import("./pages/Inbox"));
 const Campaigns = lazy(() => import("./pages/Campaigns"));
 const Customers = lazy(() => import("./pages/Customers"));
