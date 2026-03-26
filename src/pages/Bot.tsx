@@ -29,7 +29,8 @@ const RE_SAUDACAO = /\{saudacao\}/g;
 const VAR_NOME = "{nome}";
 const VAR_SAUDACAO = "{saudacao}";
 
-  welcome_message: "{saudacao}, {nome}! Como posso ajudar? Escolha uma opção digitando o número:",
+const defaultConfig: MenuConfig = {
+  welcome_message: VAR_SAUDACAO + ", " + VAR_NOME + "! Como posso ajudar? Escolha uma opção digitando o número:",
   fallback_message: "Desculpe, não entendi. Por favor, escolha uma das opções digitando o número correspondente.",
   menu_items: [
     { id: generateId(), label: "Suporte", response: "Para suporte, descreva seu problema que vamos te ajudar!" },
