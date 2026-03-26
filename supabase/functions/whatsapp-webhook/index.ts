@@ -803,50 +803,40 @@ ${userSystemPrompt ? `\nINSTRUÇÕES ADICIONAIS DO LOJISTA:\n${userSystemPrompt}
                 }
               }
 
-                if (groqRes.ok) {
-                  const groqData = await groqRes.json();
-                  const reply = groqData.choices?.[0]?.message?.content;
+              if (reply) {
+                // Send via UAZAPI
+                const UAZAPI_SERVER_URL = Deno.env.get("UAZAPI_SERVER_URL");
+                const UAZAPI_INSTANCE_TOKEN = Deno.env.get("UAZAPI_INSTANCE_TOKEN");
 
-                  if (reply) {
-                    // Send via UAZAPI
-                    const UAZAPI_SERVER_URL = Deno.env.get("UAZAPI_SERVER_URL");
-                    const UAZAPI_INSTANCE_TOKEN = Deno.env.get("UAZAPI_INSTANCE_TOKEN");
+                if (UAZAPI_SERVER_URL && UAZAPI_INSTANCE_TOKEN) {
+                  const sendRes = await fetch(`${UAZAPI_SERVER_URL}/send/text`, {
+                    method: "POST",
+                    headers: {
+                      "token": UAZAPI_INSTANCE_TOKEN,
+                      "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({ number: phone, text: reply }),
+                  });
 
-                    if (UAZAPI_SERVER_URL && UAZAPI_INSTANCE_TOKEN) {
-                      const sendRes = await fetch(`${UAZAPI_SERVER_URL}/send/text`, {
-                        method: "POST",
-                        headers: {
-                          "token": UAZAPI_INSTANCE_TOKEN,
-                          "Content-Type": "application/json",
-                        },
-                        body: JSON.stringify({ number: phone, text: reply }),
-                      });
+                  if (sendRes.ok) {
+                    await supabase.from("messages").insert({
+                      conversation_id: conversation.id,
+                      content: reply,
+                      sender_type: "agent",
+                      message_type: "text",
+                      status: "sent",
+                      metadata: { from_bot: true, model: LOVABLE_API_KEY ? "gemini-2.5-flash-lite" : model },
+                    });
 
-                      if (sendRes.ok) {
-                        // Save bot reply as message
-                        await supabase.from("messages").insert({
-                          conversation_id: conversation.id,
-                          content: reply,
-                          sender_type: "agent",
-                          message_type: "text",
-                          status: "sent",
-                          metadata: { from_bot: true, model },
-                        });
+                    await supabase.from("conversations").update({
+                      last_message: reply,
+                      last_message_at: new Date().toISOString(),
+                    }).eq("id", conversation.id);
 
-                        // Update conversation
-                        await supabase.from("conversations").update({
-                          last_message: reply,
-                          last_message_at: new Date().toISOString(),
-                        }).eq("id", conversation.id);
-
-                        console.log("Bot reply sent successfully");
-                      } else {
-                        console.error("Failed to send bot reply via UAZAPI:", await sendRes.text());
-                      }
-                    }
+                    console.log("Bot reply sent successfully");
+                  } else {
+                    console.error("Failed to send bot reply via UAZAPI:", await sendRes.text());
                   }
-                } else {
-                  console.error("Groq API error:", await groqRes.text());
                 }
               }
             } else {
