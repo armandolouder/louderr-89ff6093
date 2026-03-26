@@ -198,10 +198,10 @@ export default function Bot() {
                   <span className="text-sm font-medium text-foreground">Variáveis disponíveis</span>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <Badge variant="outline" className="font-mono text-xs cursor-pointer hover:bg-primary/10" onClick={() => navigator.clipboard.writeText("{nome}").then(() => toast.success("Copiado!"))}>
+                  <Badge variant="outline" className="font-mono text-xs cursor-pointer hover:bg-primary/10" onClick={() => navigator.clipboard.writeText(VAR_NOME).then(() => toast.success("Copiado!"))}>
                     &#123;nome&#125;
                   </Badge>
-                  <Badge variant="outline" className="font-mono text-xs cursor-pointer hover:bg-primary/10" onClick={() => navigator.clipboard.writeText("{saudacao}").then(() => toast.success("Copiado!"))}>
+                  <Badge variant="outline" className="font-mono text-xs cursor-pointer hover:bg-primary/10" onClick={() => navigator.clipboard.writeText(VAR_SAUDACAO).then(() => toast.success("Copiado!"))}>
                     &#123;saudacao&#125;
                   </Badge>
                 </div>
