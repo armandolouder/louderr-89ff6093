@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Bot as BotIcon, MessageSquare, Save, Loader2, BarChart3, Clock, Users } from "lucide-react";
+import { Bot as BotIcon, Save, Loader2, Plus, Trash2, GripVertical, MessageSquare } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,26 +11,37 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-interface BotConfig {
-  system_prompt: string;
-  model: string;
-  max_tokens: number;
+interface MenuItem {
+  id: string;
+  label: string;
+  response: string;
 }
+
+interface MenuConfig {
+  welcome_message: string;
+  fallback_message: string;
+  menu_items: MenuItem[];
+}
+
+const generateId = () => crypto.randomUUID();
+
+const defaultConfig: MenuConfig = {
+  welcome_message: "Olá! Como posso ajudar? Escolha uma opção digitando o número:",
+  fallback_message: "Desculpe, não entendi. Por favor, escolha uma das opções digitando o número correspondente.",
+  menu_items: [
+    { id: generateId(), label: "Suporte", response: "Para suporte, descreva seu problema que vamos te ajudar!" },
+    { id: generateId(), label: "Trocas e Devoluções", response: "Para trocas ou devoluções, envie o número do seu pedido e o motivo." },
+  ],
+};
 
 export default function Bot() {
   const [botActive, setBotActive] = useState(false);
-  const [botConfig, setBotConfig] = useState<BotConfig>({
-    system_prompt: "Foque em ajudar com dúvidas sobre produtos, trocas e suporte. Sempre envie o link do produto quando disponível.",
-    model: "llama-3.3-70b-versatile",
-    max_tokens: 256,
-  });
+  const [config, setConfig] = useState<MenuConfig>(defaultConfig);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [stats, setStats] = useState({ totalReplies: 0, todayReplies: 0, customersReached: 0 });
 
   useEffect(() => {
     fetchBotSettings();
-    fetchStats();
   }, []);
 
   const fetchBotSettings = async () => {
@@ -43,12 +54,12 @@ export default function Bot() {
 
       if (data) {
         setBotActive(data.is_active || false);
-        const val = data.value as any as BotConfig;
-        if (val) {
-          setBotConfig({
-            system_prompt: val.system_prompt || botConfig.system_prompt,
-            model: val.model || botConfig.model,
-            max_tokens: val.max_tokens || botConfig.max_tokens,
+        const val = data.value as any;
+        if (val?.menu_items) {
+          setConfig({
+            welcome_message: val.welcome_message || defaultConfig.welcome_message,
+            fallback_message: val.fallback_message || defaultConfig.fallback_message,
+            menu_items: val.menu_items || defaultConfig.menu_items,
           });
         }
       }
@@ -59,43 +70,13 @@ export default function Bot() {
     }
   };
 
-  const fetchStats = async () => {
-    try {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      const { count: totalCount } = await supabase
-        .from("messages")
-        .select("*", { count: "exact", head: true })
-        .eq("sender_type", "bot");
-
-      const { count: todayCount } = await supabase
-        .from("messages")
-        .select("*", { count: "exact", head: true })
-        .eq("sender_type", "bot")
-        .gte("created_at", today.toISOString());
-
-      setStats({
-        totalReplies: totalCount || 0,
-        todayReplies: todayCount || 0,
-        customersReached: 0,
-      });
-    } catch (error) {
-      console.error("Error fetching stats:", error);
-    }
-  };
-
   const handleToggleBot = async (active: boolean) => {
     setBotActive(active);
     try {
       await supabase
         .from("bot_settings")
-        .update({
-          is_active: active,
-          updated_at: new Date().toISOString(),
-        })
+        .update({ is_active: active, updated_at: new Date().toISOString() })
         .eq("key", "chatbot_nuvemshop");
-
       toast.success(active ? "Bot ativado!" : "Bot desativado!");
     } catch (error) {
       console.error("Error toggling bot:", error);
@@ -104,27 +85,63 @@ export default function Bot() {
   };
 
   const handleSave = async () => {
+    if (config.menu_items.length === 0) {
+      toast.error("Adicione pelo menos uma opção ao menu.");
+      return;
+    }
     setIsSaving(true);
     try {
       const { error } = await supabase
         .from("bot_settings")
         .update({
           is_active: botActive,
-          value: botConfig as any,
+          value: config as any,
           updated_at: new Date().toISOString(),
         })
         .eq("key", "chatbot_nuvemshop");
 
       if (error) {
-        toast.error("Erro ao salvar configurações do bot");
+        toast.error("Erro ao salvar configurações");
       } else {
         toast.success("Configurações salvas!");
       }
-    } catch (error) {
+    } catch {
       toast.error("Erro ao salvar");
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const addItem = () => {
+    setConfig(prev => ({
+      ...prev,
+      menu_items: [...prev.menu_items, { id: generateId(), label: "", response: "" }],
+    }));
+  };
+
+  const removeItem = (id: string) => {
+    setConfig(prev => ({
+      ...prev,
+      menu_items: prev.menu_items.filter(item => item.id !== id),
+    }));
+  };
+
+  const updateItem = (id: string, field: keyof MenuItem, value: string) => {
+    setConfig(prev => ({
+      ...prev,
+      menu_items: prev.menu_items.map(item =>
+        item.id === id ? { ...item, [field]: value } : item
+      ),
+    }));
+  };
+
+  // Build preview text
+  const previewText = () => {
+    let text = config.welcome_message + "\n\n";
+    config.menu_items.forEach((item, i) => {
+      text += `${i + 1} - ${item.label}\n`;
+    });
+    return text;
   };
 
   if (isLoading) {
@@ -137,10 +154,11 @@ export default function Bot() {
 
   return (
     <div className="p-6 space-y-6 max-w-5xl mx-auto">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Bot de Respostas</h1>
-          <p className="text-muted-foreground">Responde automaticamente clientes da Nuvemshop via WhatsApp</p>
+          <h1 className="text-2xl font-bold text-foreground">Bot de Menu</h1>
+          <p className="text-muted-foreground">Crie um menu interativo de perguntas e respostas para o WhatsApp</p>
         </div>
         <div className="flex items-center gap-3">
           <Badge variant={botActive ? "default" : "secondary"} className={botActive ? "bg-green-600" : ""}>
@@ -150,110 +168,139 @@ export default function Bot() {
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <BarChart3 className="w-5 h-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-foreground">{stats.totalReplies}</p>
-              <p className="text-xs text-muted-foreground">Respostas totais</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <Clock className="w-5 h-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-foreground">{stats.todayReplies}</p>
-              <p className="text-xs text-muted-foreground">Respostas hoje</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <Users className="w-5 h-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-foreground">Nuvemshop</p>
-              <p className="text-xs text-muted-foreground">Apenas clientes da loja</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Config */}
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <BotIcon className="w-5 h-5 text-primary" />
+                <CardTitle>Mensagens</CardTitle>
+              </div>
+              <CardDescription>Configure a mensagem de boas-vindas e a de erro</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>Mensagem de boas-vindas</Label>
+                <Textarea
+                  value={config.welcome_message}
+                  onChange={e => setConfig(prev => ({ ...prev, welcome_message: e.target.value }))}
+                  placeholder="Olá! Como posso ajudar?"
+                  rows={3}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Mensagem de opção inválida</Label>
+                <Input
+                  value={config.fallback_message}
+                  onChange={e => setConfig(prev => ({ ...prev, fallback_message: e.target.value }))}
+                  placeholder="Não entendi, escolha uma opção..."
+                />
+              </div>
+            </CardContent>
+          </Card>
 
-      {/* Config */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <BotIcon className="w-5 h-5 text-primary" />
-            <CardTitle>Configurações do Bot</CardTitle>
-          </div>
-          <CardDescription>
-            Personalize o comportamento e a personalidade do bot de atendimento
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-5">
-          <div className="flex items-center gap-2 text-sm">
-            <MessageSquare className="w-4 h-4 text-muted-foreground" />
-            <span className="text-muted-foreground">
-              {botActive ? (
-                <span className="text-green-500 font-medium">Ativo — respondendo clientes Nuvemshop automaticamente</span>
-              ) : (
-                "Desativado — nenhuma resposta automática será enviada"
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Opções do Menu</CardTitle>
+                  <CardDescription>Adicione as opções que o cliente pode escolher</CardDescription>
+                </div>
+                <Button size="sm" variant="outline" onClick={addItem}>
+                  <Plus className="w-4 h-4 mr-1" /> Adicionar
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {config.menu_items.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  Nenhuma opção adicionada. Clique em "Adicionar" para começar.
+                </p>
               )}
-            </span>
-          </div>
+              {config.menu_items.map((item, index) => (
+                <div key={item.id} className="border rounded-lg p-4 space-y-3 bg-muted/30">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <GripVertical className="w-4 h-4 text-muted-foreground" />
+                      <Badge variant="outline" className="text-xs">{index + 1}</Badge>
+                    </div>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-7 w-7 text-destructive hover:text-destructive"
+                      onClick={() => removeItem(item.id)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Nome da opção</Label>
+                    <Input
+                      value={item.label}
+                      onChange={e => updateItem(item.id, "label", e.target.value)}
+                      placeholder="Ex: Suporte, Trocas, Dúvidas..."
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Resposta automática</Label>
+                    <Textarea
+                      value={item.response}
+                      onChange={e => updateItem(item.id, "response", e.target.value)}
+                      placeholder="Mensagem que será enviada quando o cliente escolher esta opção..."
+                      rows={2}
+                    />
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
 
-          <Separator />
-
-          <div className="space-y-2">
-            <Label htmlFor="system-prompt">Prompt do Sistema (personalidade do bot)</Label>
-            <Textarea
-              id="system-prompt"
-              value={botConfig.system_prompt}
-              onChange={(e) => setBotConfig({ ...botConfig, system_prompt: e.target.value })}
-              placeholder="Defina a personalidade e instruções do bot..."
-              rows={5}
-            />
-            <p className="text-xs text-muted-foreground">
-              Descreva como o bot deve se comportar, qual tom usar e quaisquer instruções específicas.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="model">Modelo IA</Label>
-              <Input
-                id="model"
-                value={botConfig.model}
-                onChange={(e) => setBotConfig({ ...botConfig, model: e.target.value })}
-              />
-              <p className="text-xs text-muted-foreground">Modelo usado via Groq API</p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="max-tokens">Max Tokens</Label>
-              <Input
-                id="max-tokens"
-                type="number"
-                value={botConfig.max_tokens}
-                onChange={(e) => setBotConfig({ ...botConfig, max_tokens: parseInt(e.target.value) || 512 })}
-              />
-              <p className="text-xs text-muted-foreground">Limite de tokens por resposta</p>
-            </div>
-          </div>
-
-          <Button onClick={handleSave} disabled={isSaving}>
+          <Button onClick={handleSave} disabled={isSaving} className="w-full">
             {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
             Salvar Configurações
           </Button>
-        </CardContent>
-      </Card>
+        </div>
+
+        {/* Preview */}
+        <div>
+          <Card className="sticky top-6">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <MessageSquare className="w-5 h-5 text-primary" />
+                <CardTitle>Pré-visualização</CardTitle>
+              </div>
+              <CardDescription>Assim ficará a conversa no WhatsApp</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="bg-[#0b141a] rounded-xl p-4 space-y-3 min-h-[300px]">
+                {/* Bot welcome */}
+                <div className="flex justify-start">
+                  <div className="bg-[#202c33] text-[#e9edef] rounded-lg rounded-tl-none px-3 py-2 max-w-[85%] text-sm whitespace-pre-line">
+                    {previewText()}
+                  </div>
+                </div>
+
+                {/* User reply simulation */}
+                {config.menu_items.length > 0 && (
+                  <>
+                    <div className="flex justify-end">
+                      <div className="bg-[#005c4b] text-[#e9edef] rounded-lg rounded-tr-none px-3 py-2 max-w-[85%] text-sm">
+                        1
+                      </div>
+                    </div>
+                    <div className="flex justify-start">
+                      <div className="bg-[#202c33] text-[#e9edef] rounded-lg rounded-tl-none px-3 py-2 max-w-[85%] text-sm whitespace-pre-line">
+                        {config.menu_items[0]?.response || "..."}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }
