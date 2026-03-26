@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Bot as BotIcon, Save, Loader2, Plus, Trash2, GripVertical, MessageSquare } from "lucide-react";
+import { Bot as BotIcon, Save, Loader2, Plus, Trash2, GripVertical, MessageSquare, Variable } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,7 +26,7 @@ interface MenuConfig {
 const generateId = () => crypto.randomUUID();
 
 const defaultConfig: MenuConfig = {
-  welcome_message: "Olá! Como posso ajudar? Escolha uma opção digitando o número:",
+  welcome_message: "{saudacao}, {nome}! Como posso ajudar? Escolha uma opção digitando o número:",
   fallback_message: "Desculpe, não entendi. Por favor, escolha uma das opções digitando o número correspondente.",
   menu_items: [
     { id: generateId(), label: "Suporte", response: "Para suporte, descreva seu problema que vamos te ajudar!" },
@@ -135,13 +135,29 @@ export default function Bot() {
     }));
   };
 
-  // Build preview text
+  // Build preview text with sample variable replacements
   const previewText = () => {
-    let text = config.welcome_message + "\n\n";
+    const now = new Date();
+    const hour = now.getHours();
+    const saudacao = hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
+    
+    let text = config.welcome_message
+      .replace(/\{nome\}/g, "João")
+      .replace(/\{saudacao\}/g, saudacao);
+    text += "\n\n";
     config.menu_items.forEach((item, i) => {
       text += `${i + 1} - ${item.label}\n`;
     });
     return text;
+  };
+
+  const previewResponse = (response: string) => {
+    const now = new Date();
+    const hour = now.getHours();
+    const saudacao = hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
+    return response
+      .replace(/\{nome\}/g, "João")
+      .replace(/\{saudacao\}/g, saudacao);
   };
 
   if (isLoading) {
