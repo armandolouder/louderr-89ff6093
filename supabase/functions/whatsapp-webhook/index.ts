@@ -447,12 +447,30 @@ serve(async (req) => {
       console.log(`Content: ${content.substring(0, 100)}`);
       console.log(`Media URL: ${mediaUrl || "none"}`);
 
-      // Find or create contact
+      // Check for duplicate webhook before touching contact/conversation state
+      const { data: existingMsg } = await supabase
+        .from("messages")
+        .select("id")
+        .eq("metadata->whatsapp_message_id", msg.messageid)
+        .limit(1)
+        .maybeSingle();
+
+      if (existingMsg) {
+        console.log("Duplicate message, skipping");
+        return new Response(
+          JSON.stringify({ success: true, skipped: true, reason: "duplicate" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Find canonical contact for this phone (oldest record wins)
       let { data: contact } = await supabase
         .from("contacts")
         .select("*")
         .eq("phone", phone)
-        .single();
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
 
       if (!contact) {
         console.log("Creating new contact:", contactName);
@@ -460,7 +478,7 @@ serve(async (req) => {
           .from("contacts")
           .insert({
             name: contactName,
-            phone: phone,
+            phone,
             avatar_url: chat.imagePreview || null,
           })
           .select()
@@ -471,33 +489,31 @@ serve(async (req) => {
           throw contactError;
         }
         contact = newContact;
-      } else {
-        // Update avatar_url if we have a new one (WhatsApp avatar URLs expire)
-        if (chat.imagePreview && chat.imagePreview !== contact.avatar_url) {
-          console.log("Updating contact avatar:", contactName);
-          const { error: updateError } = await supabase
-            .from("contacts")
-            .update({ avatar_url: chat.imagePreview })
-            .eq("id", contact.id);
-          
-          if (updateError) {
-            console.error("Error updating contact avatar:", updateError);
-          } else {
-            contact.avatar_url = chat.imagePreview;
-          }
+      } else if (chat.imagePreview && chat.imagePreview !== contact.avatar_url) {
+        console.log("Updating contact avatar:", contactName);
+        const { error: updateError } = await supabase
+          .from("contacts")
+          .update({ avatar_url: chat.imagePreview })
+          .eq("id", contact.id);
+
+        if (updateError) {
+          console.error("Error updating contact avatar:", updateError);
+        } else {
+          contact.avatar_url = chat.imagePreview;
         }
       }
 
-      // Find open conversation or create new one
+      // Find latest open conversation for the canonical contact
       let { data: conversation } = await supabase
         .from("conversations")
         .select("*")
         .eq("contact_id", contact.id)
         .eq("channel", "whatsapp")
         .neq("status", "finalizado")
+        .order("last_message_at", { ascending: false, nullsFirst: false })
         .order("created_at", { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
       // Create display text for conversation list
       const displayContent = messageType === "text" ? content : 
@@ -516,7 +532,7 @@ serve(async (req) => {
             status: "novo",
             last_message: displayContent,
             last_message_at: new Date().toISOString(),
-            unread_count: isFromMobile ? 0 : 1, // Don't count as unread if sent from mobile
+            unread_count: isFromMobile ? 0 : 1,
           })
           .select()
           .single();
@@ -528,11 +544,10 @@ serve(async (req) => {
         conversation = newConv;
       } else {
         console.log("Updating existing conversation");
-        // Only increment unread_count for incoming messages (not from mobile)
-        const newUnreadCount = isFromMobile 
-          ? (conversation.unread_count || 0) 
+        const newUnreadCount = isFromMobile
+          ? (conversation.unread_count || 0)
           : (conversation.unread_count || 0) + 1;
-        
+
         await supabase
           .from("conversations")
           .update({
@@ -542,21 +557,6 @@ serve(async (req) => {
             status: conversation.status === "finalizado" ? "novo" : conversation.status,
           })
           .eq("id", conversation.id);
-      }
-
-      // Check for duplicate message
-      const { data: existingMsg } = await supabase
-        .from("messages")
-        .select("id")
-        .eq("metadata->whatsapp_message_id", msg.messageid)
-        .single();
-
-      if (existingMsg) {
-        console.log("Duplicate message, skipping");
-        return new Response(
-          JSON.stringify({ success: true, skipped: true, reason: "duplicate" }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
       }
 
       // Save message - sender_type depends on whether it was sent from mobile or by contact
