@@ -18,6 +18,7 @@ const SalesDashboard = lazy(() => import("./pages/SalesDashboard"));
 const AbandonedCheckouts = lazy(() => import("./pages/AbandonedCheckouts"));
 const RecoveryDashboard = lazy(() => import("./pages/RecoveryDashboard"));
 const Automations = lazy(() => import("./pages/Automations"));
+const RFMMatrixPage = lazy(() => import("./pages/RFMMatrix"));
 const Auth = lazy(() => import("./pages/Auth"));
 const Install = lazy(() => import("./pages/Install"));
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -40,6 +41,7 @@ const App = () => (
               <Route path="/inbox" element={<Inbox />} />
               <Route path="/campaigns" element={<Campaigns />} />
               <Route path="/customers" element={<Customers />} />
+              <Route path="/rfm" element={<RFMMatrixPage />} />
               <Route path="/bot" element={<Bot />} />
               <Route path="/crm" element={<Dashboard />} />
               <Route path="/apis" element={<Api />} />

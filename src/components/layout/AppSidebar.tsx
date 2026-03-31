@@ -14,6 +14,7 @@ import {
   ShoppingCart,
   Workflow,
   Rocket,
+  Grid3X3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,7 @@ const navigation = [
   { name: "Atendimentos", href: "/inbox", icon: MessageSquare },
   { name: "Painel de Vendas", href: "/sales", icon: TrendingUp },
   { name: "Clientes", href: "/customers", icon: Users },
+  { name: "Matriz RFM", href: "/rfm", icon: Grid3X3 },
   { name: "Campanhas", href: "/campaigns", icon: Megaphone },
   { name: "Carrinhos", href: "/abandoned-checkouts", icon: ShoppingCart },
   { name: "Recovery Engine", href: "/recovery", icon: Rocket },
