@@ -324,10 +324,15 @@ export function RFMMatrix() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-0">
+              <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Nome</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>WhatsApp</TableHead>
+                      <TableHead>Produto Favorito</TableHead>
+                      <TableHead>Região</TableHead>
                       <TableHead className="text-center">R</TableHead>
                       <TableHead className="text-center">F</TableHead>
                       <TableHead className="text-center">M</TableHead>
@@ -336,20 +341,31 @@ export function RFMMatrix() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredCustomers.slice(0, 30).map((c) => (
+                    {filteredCustomers.slice(0, 50).map((c) => (
                       <TableRow key={c.id}>
-                        <TableCell className="font-medium">{c.name}</TableCell>
+                        <TableCell className="font-medium whitespace-nowrap">{c.name}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground max-w-[180px] truncate">{c.email || "—"}</TableCell>
+                        <TableCell className="text-xs whitespace-nowrap">
+                          {c.phone ? (
+                            <a href={`https://wa.me/${c.phone}`} target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:underline">
+                              {c.phone}
+                            </a>
+                          ) : "—"}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground max-w-[160px] truncate">{c.favorite_product || c.favorite_category || "—"}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{c.city && c.state ? `${c.city}/${c.state}` : c.region || c.state || "—"}</TableCell>
                         <TableCell className="text-center"><Badge variant="outline" className="text-xs">{c.rfm_recency}</Badge></TableCell>
                         <TableCell className="text-center"><Badge variant="outline" className="text-xs">{c.rfm_frequency}</Badge></TableCell>
                         <TableCell className="text-center"><Badge variant="outline" className="text-xs">{c.rfm_monetary}</Badge></TableCell>
-                        <TableCell className="text-right">R$ {Number(c.total_spent || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</TableCell>
+                        <TableCell className="text-right whitespace-nowrap">R$ {Number(c.total_spent || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</TableCell>
                         <TableCell className="text-right">{c.order_count}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
-                {filteredCustomers.length > 30 && (
-                  <p className="text-xs text-muted-foreground text-center py-3">Mostrando 30 de {filteredCustomers.length} clientes</p>
+              </div>
+                {filteredCustomers.length > 50 && (
+                  <p className="text-xs text-muted-foreground text-center py-3">Mostrando 50 de {filteredCustomers.length} clientes</p>
                 )}
               </CardContent>
             </Card>
