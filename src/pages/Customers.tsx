@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileSpreadsheet, Users, BarChart3 } from "lucide-react";
+import { FileSpreadsheet, Users, BarChart3, Grid3X3 } from "lucide-react";
 import { ImportWizard } from "@/components/campaigns/ImportWizard";
 import { ClustersDashboard } from "@/components/campaigns/ClustersDashboard";
 import { SendLogs } from "@/components/campaigns/SendLogs";
+import { RFMMatrix } from "@/components/customers/RFMMatrix";
 
 export default function Customers() {
   const [activeTab, setActiveTab] = useState("import");
