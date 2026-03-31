@@ -20,7 +20,7 @@ export default function Customers() {
 
       <div className="flex-1 p-4 md:p-6 overflow-auto">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full">
-          <TabsList className="grid w-full grid-cols-3 mb-6">
+          <TabsList className="grid w-full grid-cols-4 mb-6">
             <TabsTrigger value="import" className="flex items-center gap-2">
               <FileSpreadsheet className="w-4 h-4" />
               <span className="hidden sm:inline">Importar</span>
@@ -28,6 +28,10 @@ export default function Customers() {
             <TabsTrigger value="clusters" className="flex items-center gap-2">
               <Users className="w-4 h-4" />
               <span className="hidden sm:inline">Clusters</span>
+            </TabsTrigger>
+            <TabsTrigger value="rfm" className="flex items-center gap-2">
+              <Grid3X3 className="w-4 h-4" />
+              <span className="hidden sm:inline">Matriz RFM</span>
             </TabsTrigger>
             <TabsTrigger value="logs" className="flex items-center gap-2">
               <BarChart3 className="w-4 h-4" />
@@ -41,6 +45,10 @@ export default function Customers() {
 
           <TabsContent value="clusters" className="mt-0">
             <ClustersDashboard />
+          </TabsContent>
+
+          <TabsContent value="rfm" className="mt-0">
+            <RFMMatrix />
           </TabsContent>
 
           <TabsContent value="logs" className="mt-0">
