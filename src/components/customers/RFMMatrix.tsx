@@ -11,6 +11,8 @@ import { toast } from "sonner";
 interface RFMCustomer {
   id: string;
   name: string;
+  email: string | null;
+  phone: string | null;
   rfm_recency: number;
   rfm_frequency: number;
   rfm_monetary: number;
@@ -18,6 +20,11 @@ interface RFMCustomer {
   total_spent: number;
   order_count: number;
   last_purchase_at: string | null;
+  favorite_product: string | null;
+  favorite_category: string | null;
+  region: string | null;
+  state: string | null;
+  city: string | null;
 }
 
 type Segment = {
