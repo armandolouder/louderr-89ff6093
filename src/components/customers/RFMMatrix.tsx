@@ -68,7 +68,7 @@ export function RFMMatrix() {
     setLoading(true);
     const { data } = await supabase
       .from("imported_customers")
-      .select("id, name, rfm_recency, rfm_frequency, rfm_monetary, rfm_score, total_spent, order_count, last_purchase_at")
+      .select("id, name, email, phone, rfm_recency, rfm_frequency, rfm_monetary, rfm_score, total_spent, order_count, last_purchase_at, favorite_product, favorite_category, region, state, city")
       .not("rfm_score", "is", null)
       .order("total_spent", { ascending: false });
     setCustomers((data as RFMCustomer[]) || []);
