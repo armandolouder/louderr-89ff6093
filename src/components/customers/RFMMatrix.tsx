@@ -5,7 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Users, TrendingUp, AlertTriangle, Star, Heart, ShoppingBag, Ghost, Loader2, RefreshCw, CloudDownload } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { Users, TrendingUp, Loader2, RefreshCw, CloudDownload, MessageCircle, Mail, MapPin, ShoppingBag, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 
 interface RFMCustomer {
@@ -57,12 +58,26 @@ const CELL_COLORS: Record<string, string> = {
   "Promissores": "bg-emerald-500",
 };
 
+const SEGMENT_RGBA: Record<string, string> = {
+  "Campeões": "rgba(234,179,8,",
+  "Clientes Fiéis": "rgba(244,63,94,",
+  "Potencial Alto": "rgba(59,130,246,",
+  "Alto Valor": "rgba(168,85,247,",
+  "Em Risco": "rgba(249,115,22,",
+  "Hibernando": "rgba(107,114,128,",
+  "Perdidos": "rgba(239,68,68,",
+  "Promissores": "rgba(16,185,129,",
+};
+
 export function RFMMatrix() {
   const [customers, setCustomers] = useState<RFMCustomer[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [syncProgress, setSyncProgress] = useState<{ total: number; synced: number; status: string } | null>(null);
   const [selectedSegment, setSelectedSegment] = useState<string | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<RFMCustomer | null>(null);
+  const [customerOrders, setCustomerOrders] = useState<any[]>([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -77,6 +92,39 @@ export function RFMMatrix() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
+  const openCustomerDetail = async (customer: RFMCustomer) => {
+    setSelectedCustomer(customer);
+    setLoadingOrders(true);
+    setCustomerOrders([]);
+
+    // Fetch orders for this customer from nuvemshop_orders
+    if (customer.phone) {
+      const phone = customer.phone;
+      const lastDigits = phone.slice(-8);
+      const { data: orders } = await supabase
+        .from("nuvemshop_orders")
+        .select("*")
+        .or(`customer_phone.eq.${phone},customer_phone.like.%${lastDigits}%`)
+        .order("order_date", { ascending: false })
+        .limit(20);
+      setCustomerOrders(orders || []);
+    } else if (customer.email) {
+      const { data: orders } = await supabase
+        .from("nuvemshop_orders")
+        .select("*")
+        .eq("customer_email", customer.email)
+        .order("order_date", { ascending: false })
+        .limit(20);
+      setCustomerOrders(orders || []);
+    }
+    setLoadingOrders(false);
+  };
+
+  const sendWhatsApp = (phone: string, name: string) => {
+    const message = encodeURIComponent(`Olá ${name}! `);
+    window.open(`https://wa.me/${phone}?text=${message}`, "_blank");
+  };
+
   const startSync = async () => {
     setSyncing(true);
     setSyncProgress({ total: 0, synced: 0, status: "Iniciando..." });
@@ -84,10 +132,7 @@ export function RFMMatrix() {
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
       const response = await fetch(
         `https://${projectId}.supabase.co/functions/v1/sync-nuvemshop-customers`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-        }
+        { method: "POST", headers: { "Content-Type": "application/json" } }
       );
       const result = await response.json();
 
@@ -97,10 +142,9 @@ export function RFMMatrix() {
         return;
       }
 
-      toast.info("Sincronização iniciada! Buscando todos os clientes da Nuvemshop...");
+      toast.info("Sincronização iniciada! Importando 100 clientes por vez...");
       const jobId = result.job_id;
 
-      // Poll for progress
       const poll = setInterval(async () => {
         try {
           const statusRes = await fetch(
@@ -111,7 +155,11 @@ export function RFMMatrix() {
           setSyncProgress({
             total: statusData.total_rows || 0,
             synced: statusData.valid_rows || 0,
-            status: statusData.status === "completed" ? "Concluído!" : statusData.status === "failed" ? `Erro: ${statusData.error_message}` : `Sincronizando... ${statusData.valid_rows || 0}/${statusData.total_rows || "?"}`,
+            status: statusData.status === "completed"
+              ? "Concluído!"
+              : statusData.status === "failed"
+              ? `Erro: ${statusData.error_message}`
+              : `Importando... ${statusData.valid_rows || 0}/${statusData.total_rows || "?"} clientes`,
           });
 
           if (statusData.status === "completed") {
@@ -127,7 +175,7 @@ export function RFMMatrix() {
         } catch {
           // continue polling
         }
-      }, 5000);
+      }, 4000);
     } catch (error) {
       toast.error("Erro de conexão ao iniciar sincronização");
       setSyncing(false);
@@ -183,7 +231,7 @@ export function RFMMatrix() {
               Sincronizar Nuvemshop
             </h3>
             <p className="text-xs text-muted-foreground mt-1">
-              Busca todos os clientes e pedidos da Nuvemshop e calcula os scores RFM automaticamente.
+              Importa 100 clientes por vez e calcula os scores RFM automaticamente.
               {customers.length > 0 && ` Atualmente ${customers.length} clientes com RFM.`}
             </p>
             {syncProgress && syncing && (
@@ -246,7 +294,7 @@ export function RFMMatrix() {
                 Matriz RFM — Recência × Frequência
               </CardTitle>
               <p className="text-xs text-muted-foreground">
-                Cada célula mostra quantos clientes possuem aquela combinação. A intensidade da cor indica a concentração.
+                Cada célula mostra quantos clientes possuem aquela combinação. Clique para ver os clientes.
               </p>
             </CardHeader>
             <CardContent>
@@ -264,35 +312,38 @@ export function RFMMatrix() {
                     {matrix.map((row, ri) => (
                       <tr key={ri}>
                         <td className="p-2 text-right text-xs font-medium text-muted-foreground">R={5 - ri}</td>
-                        {row.map((cell, ci) => (
-                          <td key={ci} className="p-1">
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <div
-                                  className={`rounded-lg p-3 text-center cursor-pointer transition-all hover:scale-105 border ${
-                                    cell.count > 0 ? "border-white/10" : "bg-muted/30 border-transparent"
-                                  }`}
-                                  style={{
-                                    backgroundColor: cell.count > 0
-                                      ? `${CELL_COLORS[cell.segment.label]?.replace("bg-", "").includes("yellow") ? "rgba(234,179,8," : CELL_COLORS[cell.segment.label]?.includes("rose") ? "rgba(244,63,94," : CELL_COLORS[cell.segment.label]?.includes("blue") ? "rgba(59,130,246," : CELL_COLORS[cell.segment.label]?.includes("purple") ? "rgba(168,85,247," : CELL_COLORS[cell.segment.label]?.includes("orange") ? "rgba(249,115,22," : CELL_COLORS[cell.segment.label]?.includes("red") ? "rgba(239,68,68," : CELL_COLORS[cell.segment.label]?.includes("emerald") ? "rgba(16,185,129," : "rgba(107,114,128,"}${0.15 + (cell.count / maxCellCount) * 0.45})`
-                                      : undefined,
-                                  }}
-                                  onClick={() => {
-                                    if (cell.count > 0) setSelectedSegment(selectedSegment === cell.segment.label ? null : cell.segment.label);
-                                  }}
-                                >
-                                  <div className="text-lg font-bold text-foreground">{cell.count || "—"}</div>
-                                  {cell.count > 0 && <div className="text-[10px] text-muted-foreground mt-0.5">{cell.segment.emoji}</div>}
-                                </div>
-                              </TooltipTrigger>
-                              <TooltipContent side="top" className="max-w-xs">
-                                <p className="font-semibold">{cell.segment.emoji} {cell.segment.label}</p>
-                                <p className="text-xs">{cell.segment.description}</p>
-                                <p className="text-xs mt-1">R={cell.r}, F={cell.f} — {cell.count} clientes</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </td>
-                        ))}
+                        {row.map((cell, ci) => {
+                          const rgba = SEGMENT_RGBA[cell.segment.label] || "rgba(107,114,128,";
+                          return (
+                            <td key={ci} className="p-1">
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <div
+                                    className={`rounded-lg p-3 text-center cursor-pointer transition-all hover:scale-105 border ${
+                                      cell.count > 0 ? "border-white/10" : "bg-muted/30 border-transparent"
+                                    }`}
+                                    style={{
+                                      backgroundColor: cell.count > 0
+                                        ? `${rgba}${0.15 + (cell.count / maxCellCount) * 0.45})`
+                                        : undefined,
+                                    }}
+                                    onClick={() => {
+                                      if (cell.count > 0) setSelectedSegment(selectedSegment === cell.segment.label ? null : cell.segment.label);
+                                    }}
+                                  >
+                                    <div className="text-lg font-bold text-foreground">{cell.count || "—"}</div>
+                                    {cell.count > 0 && <div className="text-[10px] text-muted-foreground mt-0.5">{cell.segment.emoji}</div>}
+                                  </div>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="max-w-xs">
+                                  <p className="font-semibold">{cell.segment.emoji} {cell.segment.label}</p>
+                                  <p className="text-xs">{cell.segment.description}</p>
+                                  <p className="text-xs mt-1">R={cell.r}, F={cell.f} — {cell.count} clientes</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </td>
+                          );
+                        })}
                       </tr>
                     ))}
                   </tbody>
@@ -324,54 +375,251 @@ export function RFMMatrix() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Nome</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>WhatsApp</TableHead>
-                      <TableHead>Produto Favorito</TableHead>
-                      <TableHead>Região</TableHead>
-                      <TableHead className="text-center">R</TableHead>
-                      <TableHead className="text-center">F</TableHead>
-                      <TableHead className="text-center">M</TableHead>
-                      <TableHead className="text-right">Total Gasto</TableHead>
-                      <TableHead className="text-right">Pedidos</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredCustomers.slice(0, 50).map((c) => (
-                      <TableRow key={c.id}>
-                        <TableCell className="font-medium whitespace-nowrap">{c.name}</TableCell>
-                        <TableCell className="text-xs text-muted-foreground max-w-[180px] truncate">{c.email || "—"}</TableCell>
-                        <TableCell className="text-xs whitespace-nowrap">
-                          {c.phone ? (
-                            <a href={`https://wa.me/${c.phone}`} target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:underline">
-                              {c.phone}
-                            </a>
-                          ) : "—"}
-                        </TableCell>
-                        <TableCell className="text-xs text-muted-foreground max-w-[160px] truncate">{c.favorite_product || c.favorite_category || "—"}</TableCell>
-                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{c.city && c.state ? `${c.city}/${c.state}` : c.region || c.state || "—"}</TableCell>
-                        <TableCell className="text-center"><Badge variant="outline" className="text-xs">{c.rfm_recency}</Badge></TableCell>
-                        <TableCell className="text-center"><Badge variant="outline" className="text-xs">{c.rfm_frequency}</Badge></TableCell>
-                        <TableCell className="text-center"><Badge variant="outline" className="text-xs">{c.rfm_monetary}</Badge></TableCell>
-                        <TableCell className="text-right whitespace-nowrap">R$ {Number(c.total_spent || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</TableCell>
-                        <TableCell className="text-right">{c.order_count}</TableCell>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Nome</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>WhatsApp</TableHead>
+                        <TableHead>Produto Favorito</TableHead>
+                        <TableHead>Localização</TableHead>
+                        <TableHead className="text-center">R</TableHead>
+                        <TableHead className="text-center">F</TableHead>
+                        <TableHead className="text-center">M</TableHead>
+                        <TableHead className="text-right">Total Gasto</TableHead>
+                        <TableHead className="text-right">Pedidos</TableHead>
+                        <TableHead className="text-center">Ações</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-                {filteredCustomers.length > 50 && (
-                  <p className="text-xs text-muted-foreground text-center py-3">Mostrando 50 de {filteredCustomers.length} clientes</p>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredCustomers.slice(0, 100).map((c) => (
+                        <TableRow
+                          key={c.id}
+                          className="cursor-pointer hover:bg-accent/50"
+                          onClick={() => openCustomerDetail(c)}
+                        >
+                          <TableCell className="font-medium whitespace-nowrap">{c.name}</TableCell>
+                          <TableCell className="text-xs text-muted-foreground max-w-[180px] truncate">{c.email || "—"}</TableCell>
+                          <TableCell className="text-xs whitespace-nowrap">
+                            {c.phone ? (
+                              <a
+                                href={`https://wa.me/${c.phone}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-emerald-400 hover:underline"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {c.phone}
+                              </a>
+                            ) : "—"}
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground max-w-[160px] truncate">{c.favorite_product || c.favorite_category || "—"}</TableCell>
+                          <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{c.city && c.state ? `${c.city}/${c.state}` : c.region || c.state || "—"}</TableCell>
+                          <TableCell className="text-center"><Badge variant="outline" className="text-xs">{c.rfm_recency}</Badge></TableCell>
+                          <TableCell className="text-center"><Badge variant="outline" className="text-xs">{c.rfm_frequency}</Badge></TableCell>
+                          <TableCell className="text-center"><Badge variant="outline" className="text-xs">{c.rfm_monetary}</Badge></TableCell>
+                          <TableCell className="text-right whitespace-nowrap">R$ {Number(c.total_spent || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</TableCell>
+                          <TableCell className="text-right">{c.order_count}</TableCell>
+                          <TableCell className="text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              {c.phone && (
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-7 w-7 text-emerald-400 hover:text-emerald-300"
+                                  onClick={(e) => { e.stopPropagation(); sendWhatsApp(c.phone!, c.name); }}
+                                >
+                                  <MessageCircle className="w-3.5 h-3.5" />
+                                </Button>
+                              )}
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-7 w-7"
+                                onClick={(e) => { e.stopPropagation(); openCustomerDetail(c); }}
+                              >
+                                <ExternalLink className="w-3.5 h-3.5" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                {filteredCustomers.length > 100 && (
+                  <p className="text-xs text-muted-foreground text-center py-3">Mostrando 100 de {filteredCustomers.length} clientes</p>
                 )}
               </CardContent>
             </Card>
           )}
         </>
       )}
+
+      {/* Customer Detail Sheet */}
+      <Sheet open={!!selectedCustomer} onOpenChange={(open) => { if (!open) setSelectedCustomer(null); }}>
+        <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+          {selectedCustomer && (
+            <>
+              <SheetHeader>
+                <SheetTitle className="flex items-center gap-2">
+                  {selectedCustomer.name}
+                  {(() => {
+                    const seg = getSegment(selectedCustomer.rfm_recency, selectedCustomer.rfm_frequency, selectedCustomer.rfm_monetary);
+                    return <Badge className="text-xs">{seg.emoji} {seg.label}</Badge>;
+                  })()}
+                </SheetTitle>
+                <SheetDescription>
+                  RFM: R={selectedCustomer.rfm_recency} F={selectedCustomer.rfm_frequency} M={selectedCustomer.rfm_monetary}
+                </SheetDescription>
+              </SheetHeader>
+
+              <div className="mt-6 space-y-5">
+                {/* Contact info */}
+                <div className="space-y-3">
+                  <h4 className="text-sm font-semibold text-foreground">Contato</h4>
+                  {selectedCustomer.email && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <Mail className="w-4 h-4 text-muted-foreground" />
+                      <a href={`mailto:${selectedCustomer.email}`} className="text-primary hover:underline">
+                        {selectedCustomer.email}
+                      </a>
+                    </div>
+                  )}
+                  {selectedCustomer.phone && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <MessageCircle className="w-4 h-4 text-emerald-400" />
+                      <a
+                        href={`https://wa.me/${selectedCustomer.phone}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-emerald-400 hover:underline"
+                      >
+                        {selectedCustomer.phone}
+                      </a>
+                    </div>
+                  )}
+                  {(selectedCustomer.city || selectedCustomer.state || selectedCustomer.region) && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <MapPin className="w-4 h-4" />
+                      {[selectedCustomer.city, selectedCustomer.state, selectedCustomer.region].filter(Boolean).join(", ")}
+                    </div>
+                  )}
+                </div>
+
+                {/* Stats */}
+                <div className="grid grid-cols-3 gap-3">
+                  <Card>
+                    <CardContent className="p-3 text-center">
+                      <div className="text-lg font-bold text-foreground">
+                        R$ {Number(selectedCustomer.total_spent || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                      </div>
+                      <div className="text-[10px] text-muted-foreground">Total Gasto</div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-3 text-center">
+                      <div className="text-lg font-bold text-foreground">{selectedCustomer.order_count}</div>
+                      <div className="text-[10px] text-muted-foreground">Pedidos</div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-3 text-center">
+                      <div className="text-lg font-bold text-foreground">
+                        {selectedCustomer.last_purchase_at
+                          ? new Date(selectedCustomer.last_purchase_at).toLocaleDateString("pt-BR")
+                          : "—"}
+                      </div>
+                      <div className="text-[10px] text-muted-foreground">Última Compra</div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Favorite product */}
+                {(selectedCustomer.favorite_product || selectedCustomer.favorite_category) && (
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                      <ShoppingBag className="w-4 h-4" />
+                      Preferências
+                    </h4>
+                    {selectedCustomer.favorite_product && (
+                      <p className="text-sm text-muted-foreground">Produto: {selectedCustomer.favorite_product}</p>
+                    )}
+                    {selectedCustomer.favorite_category && (
+                      <p className="text-sm text-muted-foreground">Categoria: {selectedCustomer.favorite_category}</p>
+                    )}
+                  </div>
+                )}
+
+                {/* Orders */}
+                <div className="space-y-2">
+                  <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <ShoppingBag className="w-4 h-4" />
+                    Pedidos Recentes
+                  </h4>
+                  {loadingOrders ? (
+                    <div className="flex items-center gap-2 py-4 text-muted-foreground text-sm">
+                      <Loader2 className="w-4 h-4 animate-spin" /> Carregando pedidos...
+                    </div>
+                  ) : customerOrders.length === 0 ? (
+                    <p className="text-sm text-muted-foreground py-2">Nenhum pedido encontrado localmente.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {customerOrders.map((order: any) => (
+                        <Card key={order.id} className="border-border/50">
+                          <CardContent className="p-3">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <span className="text-sm font-medium text-foreground">
+                                  #{order.order_number || "—"}
+                                </span>
+                                <span className="text-xs text-muted-foreground ml-2">
+                                  {order.order_date ? new Date(order.order_date).toLocaleDateString("pt-BR") : ""}
+                                </span>
+                              </div>
+                              <span className="text-sm font-semibold text-foreground">
+                                R$ {Number(order.total || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                              </span>
+                            </div>
+                            {order.products && Array.isArray(order.products) && order.products.length > 0 && (
+                              <div className="mt-1.5 text-xs text-muted-foreground">
+                                {order.products.slice(0, 3).map((p: any, i: number) => (
+                                  <span key={i}>{i > 0 ? ", " : ""}{p.name || p.product_name || "Produto"}</span>
+                                ))}
+                                {order.products.length > 3 && <span> +{order.products.length - 3}</span>}
+                              </div>
+                            )}
+                            <div className="mt-1 flex gap-2">
+                              {order.status && (
+                                <Badge variant="outline" className="text-[10px]">{order.status}</Badge>
+                              )}
+                              {order.payment_status && (
+                                <Badge variant="outline" className="text-[10px]">{order.payment_status}</Badge>
+                              )}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Action buttons */}
+                {selectedCustomer.phone && (
+                  <Button
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+                    onClick={() => sendWhatsApp(selectedCustomer.phone!, selectedCustomer.name)}
+                  >
+                    <MessageCircle className="w-4 h-4 mr-2" />
+                    Enviar WhatsApp
+                  </Button>
+                )}
+              </div>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
