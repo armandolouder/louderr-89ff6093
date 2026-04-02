@@ -310,7 +310,6 @@ export function RFMMatrix() {
                         <TableHead>Nome</TableHead>
                         <TableHead>Email</TableHead>
                         <TableHead>WhatsApp</TableHead>
-                        <TableHead>Produto Favorito</TableHead>
                         <TableHead>UF</TableHead>
                         <TableHead className="text-right">Total Gasto</TableHead>
                         <TableHead className="text-right">Pedidos</TableHead>
