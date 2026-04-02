@@ -49,14 +49,23 @@ export function NuvemshopConfig({ status, onStatusChange }: NuvemshopConfigProps
     }
   };
 
+  const stopSync = () => {
+    abortRef.current = true;
+    toast.info("Parando sincronização após a página atual...");
+  };
+
   const syncOrders = async () => {
     setSyncing(true);
+    abortRef.current = false;
+    setSyncProgress({ synced: 0, page: 0, status: "Iniciando..." });
     try {
       let page = 1;
       let totalSynced = 0;
       let hasMore = true;
 
-      while (hasMore) {
+      while (hasMore && !abortRef.current) {
+        setSyncProgress({ synced: totalSynced, page, status: `Importando página ${page}...` });
+
         const response = await fetch(
           `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/nuvemshop-sync?page=${page}&per_page=50`,
           {
@@ -76,16 +85,23 @@ export function NuvemshopConfig({ status, onStatusChange }: NuvemshopConfigProps
         hasMore = result.has_more || false;
         page++;
 
-        if (page > 20) break; // Safety limit
+        setSyncProgress({ synced: totalSynced, page: page - 1, status: hasMore ? `${totalSynced} pedidos importados...` : "Concluído!" });
+
+        if (page > 100) break;
       }
 
-      toast.success(`${totalSynced} pedidos sincronizados!`);
+      if (abortRef.current) {
+        toast.info(`Sincronização pausada. ${totalSynced} pedidos importados até agora.`);
+      } else {
+        toast.success(`${totalSynced} pedidos sincronizados!`);
+      }
       fetchRecentOrders();
     } catch (err: any) {
       console.error("Sync error:", err);
       toast.error(err.message || "Erro ao sincronizar pedidos");
     } finally {
       setSyncing(false);
+      abortRef.current = false;
     }
   };
 
