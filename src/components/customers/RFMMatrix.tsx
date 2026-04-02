@@ -76,12 +76,40 @@ export function RFMMatrix() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [syncProgress, setSyncProgress] = useState<{ total: number; synced: number; status: string } | null>(null);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const activeJobRef = useRef<string | null>(null);
+  const requestInFlightRef = useRef(false);
+  const stopRequestedRef = useRef(false);
   const [selectedSegment, setSelectedSegment] = useState<string | null>(null);
   const [selectedCustomer, setSelectedCustomer] = useState<RFMCustomer | null>(null);
   const [customerOrders, setCustomerOrders] = useState<any[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
   const navigate = useNavigate();
+  const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+
+  const clearSyncTimer = () => {
+    if (pollRef.current) {
+      clearTimeout(pollRef.current);
+      pollRef.current = null;
+    }
+  };
+
+  const updateSyncProgress = useCallback((statusData: any) => {
+    setSyncProgress({
+      total: statusData.total_rows || 0,
+      synced: statusData.valid_rows || 0,
+      status:
+        statusData.status === "completed"
+          ? "Concluído!"
+          : statusData.status === "cancelled"
+          ? "Sincronização cancelada"
+          : statusData.status === "finalizing"
+          ? "Calculando RFM..."
+          : statusData.status === "failed"
+          ? `Erro: ${statusData.error_message || "Falha na sincronização"}`
+          : `Importando... ${statusData.valid_rows || 0}/${statusData.total_rows || "?"} clientes`,
+    });
+  }, []);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -95,6 +123,12 @@ export function RFMMatrix() {
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  useEffect(() => {
+    return () => {
+      clearSyncTimer();
+    };
+  }, []);
 
   const openCustomerDetail = async (customer: RFMCustomer) => {
     setSelectedCustomer(customer);
@@ -130,70 +164,152 @@ export function RFMMatrix() {
     navigate(`/campaigns?tab=individual&phone=${phone}&msg=${msg}`);
   };
 
-  const stopSync = () => {
-    if (pollRef.current) {
-      clearInterval(pollRef.current);
-      pollRef.current = null;
+  const continueSync = useCallback(async (jobId: string) => {
+    if (requestInFlightRef.current || activeJobRef.current !== jobId) return;
+
+    requestInFlightRef.current = true;
+
+    try {
+      const response = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/sync-nuvemshop-customers?job_id=${jobId}`,
+        { method: "POST", headers: { "Content-Type": "application/json" } }
+      );
+      const statusData = await response.json();
+
+      if (!response.ok || !statusData.success) {
+        throw new Error(statusData.error || "Erro ao continuar sincronização");
+      }
+
+      if (activeJobRef.current !== jobId) return;
+
+      updateSyncProgress(statusData);
+
+      if (statusData.status === "completed") {
+        clearSyncTimer();
+        activeJobRef.current = null;
+        setSyncing(false);
+        toast.success(`Sincronização concluída! ${statusData.valid_rows || 0} clientes importados.`);
+        fetchData();
+        return;
+      }
+
+      if (statusData.status === "failed") {
+        clearSyncTimer();
+        activeJobRef.current = null;
+        setSyncing(false);
+        toast.error(statusData.error_message || "Falha na sincronização");
+        return;
+      }
+
+      if (statusData.status === "cancelled") {
+        clearSyncTimer();
+        activeJobRef.current = null;
+        setSyncing(false);
+        if (!stopRequestedRef.current) {
+          toast.info("Sincronização cancelada.");
+        }
+        return;
+      }
+
+      pollRef.current = setTimeout(() => {
+        void continueSync(jobId);
+      }, 1200);
+    } catch (error) {
+      if (activeJobRef.current === jobId) {
+        clearSyncTimer();
+        activeJobRef.current = null;
+        setSyncing(false);
+        toast.error(error instanceof Error ? error.message : "Erro ao sincronizar clientes");
+      }
+    } finally {
+      requestInFlightRef.current = false;
     }
+  }, [fetchData, projectId, updateSyncProgress]);
+
+  const stopSync = async () => {
+    stopRequestedRef.current = true;
+    clearSyncTimer();
+
+    const jobId = activeJobRef.current;
+    activeJobRef.current = null;
     setSyncing(false);
+
+    if (jobId) {
+      try {
+        await fetch(
+          `https://${projectId}.supabase.co/functions/v1/sync-nuvemshop-customers?job_id=${jobId}&action=cancel`,
+          { method: "POST", headers: { "Content-Type": "application/json" } }
+        );
+      } catch {
+        // Ignore cancel network errors and stop locally.
+      }
+    }
+
     toast.info(`Sincronização parada. ${syncProgress?.synced || 0} clientes importados até agora.`);
   };
 
   const startSync = async () => {
+    clearSyncTimer();
+    stopRequestedRef.current = false;
+    requestInFlightRef.current = false;
+    activeJobRef.current = null;
     setSyncing(true);
     setSyncProgress({ total: 0, synced: 0, status: "Iniciando..." });
+
     try {
-      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
       const response = await fetch(
         `https://${projectId}.supabase.co/functions/v1/sync-nuvemshop-customers`,
         { method: "POST", headers: { "Content-Type": "application/json" } }
       );
       const result = await response.json();
 
-      if (!result.success) {
+      if (!response.ok || !result.success || !result.job_id) {
         toast.error(result.error || "Erro ao iniciar sincronização");
         setSyncing(false);
         return;
       }
 
-      toast.info("Sincronização iniciada! Importando 100 clientes por vez...");
-      const jobId = result.job_id;
+      activeJobRef.current = result.job_id;
+      updateSyncProgress(result);
 
-      pollRef.current = setInterval(async () => {
+      if (stopRequestedRef.current) {
         try {
-          const statusRes = await fetch(
-            `https://${projectId}.supabase.co/functions/v1/sync-nuvemshop-customers?job_id=${jobId}`
+          await fetch(
+            `https://${projectId}.supabase.co/functions/v1/sync-nuvemshop-customers?job_id=${result.job_id}&action=cancel`,
+            { method: "POST", headers: { "Content-Type": "application/json" } }
           );
-          const statusData = await statusRes.json();
-
-          setSyncProgress({
-            total: statusData.total_rows || 0,
-            synced: statusData.valid_rows || 0,
-            status: statusData.status === "completed"
-              ? "Concluído!"
-              : statusData.status === "failed"
-              ? `Erro: ${statusData.error_message}`
-              : `Importando... ${statusData.valid_rows || 0}/${statusData.total_rows || "?"} clientes`,
-          });
-
-          if (statusData.status === "completed") {
-            clearInterval(pollRef.current!);
-            pollRef.current = null;
-            toast.success(`Sincronização concluída! ${statusData.valid_rows} clientes com RFM calculado.`);
-            setSyncing(false);
-            fetchData();
-          } else if (statusData.status === "failed") {
-            clearInterval(pollRef.current!);
-            pollRef.current = null;
-            toast.error(statusData.error_message || "Falha na sincronização");
-            setSyncing(false);
-          }
         } catch {
-          // continue polling
+          // Ignore cancel network errors and stop locally.
         }
-      }, 4000);
+
+        activeJobRef.current = null;
+        setSyncing(false);
+        toast.info(`Sincronização parada. ${result.valid_rows || 0} clientes importados até agora.`);
+        return;
+      }
+
+      if (result.status === "completed") {
+        activeJobRef.current = null;
+        setSyncing(false);
+        toast.success(`Sincronização concluída! ${result.valid_rows || 0} clientes importados.`);
+        fetchData();
+        return;
+      }
+
+      if (result.status === "failed") {
+        activeJobRef.current = null;
+        setSyncing(false);
+        toast.error(result.error_message || "Falha na sincronização");
+        return;
+      }
+
+      toast.info("Sincronização iniciada! Processando clientes em lotes de 100...");
+
+      pollRef.current = setTimeout(() => {
+        void continueSync(result.job_id);
+      }, 1200);
     } catch (error) {
-      toast.error("Erro de conexão ao iniciar sincronização");
+      toast.error(error instanceof Error ? error.message : "Erro de conexão ao iniciar sincronização");
       setSyncing(false);
     }
   };
@@ -248,8 +364,8 @@ export function RFMMatrix() {
                 Sincronizar Nuvemshop
               </h3>
               <p className="text-xs text-muted-foreground mt-1">
-                Importa 100 clientes por vez e calcula os scores RFM automaticamente.
-                {customers.length > 0 && ` Atualmente ${customers.length} clientes com RFM.`}
+                Importa clientes da Nuvemshop em lotes de 100 e calcula RFM para quem já tem pedidos.
+                {customers.length > 0 && ` Atualmente ${customers.length} clientes aparecem na matriz.`}
               </p>
             </div>
             <div className="flex gap-2 shrink-0">
