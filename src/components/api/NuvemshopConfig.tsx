@@ -207,22 +207,49 @@ export function NuvemshopConfig({ status, onStatusChange }: NuvemshopConfigProps
             Busque pedidos diretamente da API da Nuvemshop
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <Button onClick={syncOrders} disabled={syncing} className="w-full">
-            {syncing ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Sincronizando...
-              </>
-            ) : (
-              <>
-                <Download className="w-4 h-4 mr-2" />
-                Sincronizar Pedidos da API
-              </>
+        <CardContent className="space-y-3">
+          <div className="flex gap-2">
+            <Button onClick={syncOrders} disabled={syncing} className="flex-1">
+              {syncing ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Sincronizando...
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4 mr-2" />
+                  Sincronizar Pedidos da API
+                </>
+              )}
+            </Button>
+            {syncing && (
+              <Button variant="destructive" onClick={stopSync} size="icon">
+                <Square className="w-4 h-4" />
+              </Button>
             )}
-          </Button>
-          <p className="text-xs text-muted-foreground mt-2">
-            Busca todos os pedidos da sua loja e salva no banco de dados.
+          </div>
+
+          {syncing && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>{syncProgress.status}</span>
+                <span>Página {syncProgress.page}</span>
+              </div>
+              <Progress value={syncProgress.page > 0 ? Math.min((syncProgress.page / 20) * 100, 95) : 0} className="h-2" />
+              <p className="text-xs text-muted-foreground">
+                {syncProgress.synced} pedidos importados
+              </p>
+            </div>
+          )}
+
+          {!syncing && syncProgress.synced > 0 && (
+            <p className="text-xs text-primary">
+              ✓ Última sincronização: {syncProgress.synced} pedidos importados
+            </p>
+          )}
+
+          <p className="text-xs text-muted-foreground">
+            Busca pedidos da sua loja e salva no banco de dados. Você pode parar e retomar a qualquer momento.
           </p>
         </CardContent>
       </Card>
