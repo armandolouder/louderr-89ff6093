@@ -137,26 +137,34 @@ export function RFMMatrix() {
     setLoadingOrders(true);
     setCustomerOrders([]);
 
-    // Fetch orders for this customer from nuvemshop_orders
+    let orders: any[] = [];
+
+    // Try phone search first (multiple formats)
     if (customer.phone) {
       const phone = customer.phone;
       const lastDigits = phone.slice(-8);
-      const { data: orders } = await supabase
+      const phoneWithPlus = phone.startsWith("+") ? phone : `+${phone}`;
+      const { data } = await supabase
         .from("nuvemshop_orders")
         .select("*")
-        .or(`customer_phone.eq.${phone},customer_phone.like.%${lastDigits}%`)
+        .or(`customer_phone.eq.${phone},customer_phone.eq.${phoneWithPlus},customer_phone.like.%${lastDigits}%`)
         .order("order_date", { ascending: false })
         .limit(20);
-      setCustomerOrders(orders || []);
-    } else if (customer.email) {
-      const { data: orders } = await supabase
+      orders = data || [];
+    }
+
+    // Fallback to email if no orders found by phone
+    if (orders.length === 0 && customer.email) {
+      const { data } = await supabase
         .from("nuvemshop_orders")
         .select("*")
         .eq("customer_email", customer.email)
         .order("order_date", { ascending: false })
         .limit(20);
-      setCustomerOrders(orders || []);
+      orders = data || [];
     }
+
+    setCustomerOrders(orders);
     setLoadingOrders(false);
   };
 
