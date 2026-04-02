@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
-import { Users, TrendingUp, Loader2, RefreshCw, CloudDownload, MessageCircle, Mail, MapPin, ShoppingBag, ExternalLink } from "lucide-react";
+import { Users, TrendingUp, Loader2, RefreshCw, CloudDownload, MessageCircle, Mail, MapPin, ShoppingBag, ExternalLink, Square } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 
 interface RFMCustomer {
