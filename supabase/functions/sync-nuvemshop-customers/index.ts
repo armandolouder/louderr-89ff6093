@@ -47,16 +47,11 @@ function getRegion(province: string | null | undefined): string | null {
   return null;
 }
 
-async function fetchAllCustomers(accessToken: string, storeId: string): Promise<NuvemshopCustomer[]> {
-  const allCustomers: NuvemshopCustomer[] = [];
-  let page = 1;
-  const perPage = 200;
-  const maxPages = 100;
+async function fetchCustomersPage(accessToken: string, storeId: string, page: number, perPage: number): Promise<NuvemshopCustomer[]> {
+  const url = `${API_BASE}/${storeId}/customers?page=${page}&per_page=${perPage}`;
+  console.log(`Fetching page ${page}...`);
 
-  while (page <= maxPages) {
-    const url = `${API_BASE}/${storeId}/customers?page=${page}&per_page=${perPage}`;
-    console.log(`Fetching customers page ${page}...`);
-
+  for (let attempt = 0; attempt < 3; attempt++) {
     const response = await fetch(url, {
       headers: {
         Authentication: `bearer ${accessToken.trim()}`,
@@ -65,66 +60,55 @@ async function fetchAllCustomers(accessToken: string, storeId: string): Promise<
       },
     });
 
-    if (!response.ok) {
-      if (response.status === 429) {
-        console.log("Rate limited, waiting 3s...");
-        await new Promise((r) => setTimeout(r, 3000));
-        continue;
-      }
-      break;
+    if (response.status === 429) {
+      console.log("Rate limited, waiting 3s...");
+      await new Promise((r) => setTimeout(r, 3000));
+      continue;
     }
 
-    const customers: NuvemshopCustomer[] = await response.json();
-    console.log(`Page ${page}: ${customers.length} customers`);
-    if (!customers.length) break;
-    allCustomers.push(...customers);
-    if (customers.length < perPage) break;
-    page++;
-    await new Promise((r) => setTimeout(r, 500));
-  }
+    if (!response.ok) {
+      console.error(`Page ${page} failed: ${response.status}`);
+      return [];
+    }
 
-  return allCustomers;
+    return await response.json();
+  }
+  return [];
 }
 
 async function upsertCustomerBatch(supabase: any, customers: any[]) {
   let synced = 0, errors = 0;
-  
-  // Process in batches of 50
-  const batchSize = 50;
-  for (let i = 0; i < customers.length; i += batchSize) {
-    const batch = customers.slice(i, i + batchSize);
-    
-    for (const customer of batch) {
-      try {
-        if (customer.phone) {
-          const { data: existing } = await supabase
-            .from("imported_customers").select("id")
-            .eq("phone", customer.phone).maybeSingle();
-          if (existing) {
-            await supabase.from("imported_customers").update(customer).eq("id", existing.id);
-            synced++;
-            continue;
-          }
+
+  for (const customer of customers) {
+    try {
+      if (customer.phone) {
+        const { data: existing } = await supabase
+          .from("imported_customers").select("id")
+          .eq("phone", customer.phone).maybeSingle();
+        if (existing) {
+          await supabase.from("imported_customers").update(customer).eq("id", existing.id);
+          synced++;
+          continue;
         }
-        if (customer.email) {
-          const { data: existing } = await supabase
-            .from("imported_customers").select("id")
-            .eq("email", customer.email).maybeSingle();
-          if (existing) {
-            await supabase.from("imported_customers").update(customer).eq("id", existing.id);
-            synced++;
-            continue;
-          }
-        }
-        const { error } = await supabase.from("imported_customers").insert(customer);
-        if (error) errors++;
-        else synced++;
-      } catch (e) {
-        errors++;
       }
+      if (customer.email) {
+        const { data: existing } = await supabase
+          .from("imported_customers").select("id")
+          .eq("email", customer.email).maybeSingle();
+        if (existing) {
+          await supabase.from("imported_customers").update(customer).eq("id", existing.id);
+          synced++;
+          continue;
+        }
+      }
+      const { error } = await supabase.from("imported_customers").insert(customer);
+      if (error) errors++;
+      else synced++;
+    } catch (e) {
+      errors++;
     }
   }
-  
+
   return { synced, errors };
 }
 
@@ -168,7 +152,6 @@ async function calculateRFMScores(supabase: any) {
     scoreMap.set(s.id, { r: s.daysSince_q, f: s.orderCount_q, m: s.totalSpent_q });
   });
 
-  // Batch update RFM scores
   const updates: Promise<any>[] = [];
   for (const customer of customers) {
     const scores = scoreMap.get(customer.id);
@@ -181,8 +164,7 @@ async function calculateRFMScores(supabase: any) {
         rfm_score: `${scores.r}${scores.f}${scores.m}`,
       }).eq("id", customer.id)
     );
-    
-    // Execute in batches of 20 concurrent
+
     if (updates.length >= 20) {
       await Promise.all(updates);
       updates.length = 0;
@@ -193,68 +175,91 @@ async function calculateRFMScores(supabase: any) {
   console.log(`RFM scores updated for ${customers.length} customers`);
 }
 
+// Process a single chunk: fetch 100 customers from API, upsert, update progress
+async function processChunk(
+  supabase: any,
+  accessToken: string,
+  storeId: string,
+  page: number,
+  jobId: string,
+  cumulativeSynced: number,
+  cumulativeErrors: number,
+  cumulativeTotal: number
+): Promise<{ synced: number; errors: number; total: number; hasMore: boolean }> {
+  const perPage = 100;
+  const customers = await fetchCustomersPage(accessToken, storeId, page, perPage);
+
+  if (!customers.length) {
+    return { synced: cumulativeSynced, errors: cumulativeErrors, total: cumulativeTotal, hasMore: false };
+  }
+
+  const customerRecords = customers
+    .map((c) => {
+      const phone = cleanPhone(c.phone);
+      const email = c.email || null;
+      if (!phone && !email) return null;
+
+      return {
+        phone,
+        email,
+        name: c.name || "Cliente",
+        source: "nuvemshop",
+        total_spent: parseFloat(c.total_spent || "0"),
+        order_count: c.orders_count || 0,
+        city: c.billing_city || null,
+        state: c.billing_province || null,
+        region: getRegion(c.billing_province),
+        metadata: { nuvemshop_customer_id: c.id },
+      };
+    })
+    .filter(Boolean);
+
+  const { synced, errors } = await upsertCustomerBatch(supabase, customerRecords);
+  const newSynced = cumulativeSynced + synced;
+  const newErrors = cumulativeErrors + errors;
+  const newTotal = cumulativeTotal + customers.length;
+
+  // Update progress
+  await supabase.from("import_batches").update({
+    total_rows: newTotal,
+    valid_rows: newSynced,
+    invalid_rows: newErrors,
+    status: "processing",
+  }).eq("id", jobId);
+
+  console.log(`Page ${page}: ${customers.length} fetched, ${synced} synced, ${errors} errors | Total: ${newSynced}/${newTotal}`);
+
+  const hasMore = customers.length >= perPage;
+  return { synced: newSynced, errors: newErrors, total: newTotal, hasMore };
+}
+
 async function processSync(supabase: any, jobId: string) {
   try {
     const accessToken = Deno.env.get("NUVEMSHOP_ACCESS_TOKEN")!;
     const storeId = Deno.env.get("NUVEMSHOP_STORE_ID")!;
 
-    console.log("Fetching all customers from Nuvemshop...");
-    const customers = await fetchAllCustomers(accessToken, storeId);
-    console.log(`Total customers fetched: ${customers.length}`);
+    let page = 1;
+    let synced = 0, errors = 0, total = 0;
+    const maxPages = 200; // safety limit
 
-    if (!customers.length) {
+    while (page <= maxPages) {
+      const result = await processChunk(supabase, accessToken, storeId, page, jobId, synced, errors, total);
+      synced = result.synced;
+      errors = result.errors;
+      total = result.total;
+
+      if (!result.hasMore) break;
+      page++;
+      // Small delay between pages to avoid rate limiting
+      await new Promise((r) => setTimeout(r, 300));
+    }
+
+    if (total === 0) {
       await supabase.from("import_batches").update({
         status: "failed",
         error_message: "Nenhum cliente encontrado na Nuvemshop",
       }).eq("id", jobId);
       return;
-    }
-
-    // Prepare customer data using info from customer API directly (no per-customer order API calls)
-    const customerRecords = customers
-      .map((c) => {
-        const phone = cleanPhone(c.phone);
-        const email = c.email || null;
-        if (!phone && !email) return null;
-
-        return {
-          phone,
-          email,
-          name: c.name || "Cliente",
-          source: "nuvemshop",
-          total_spent: parseFloat(c.total_spent || "0"),
-          order_count: c.orders_count || 0,
-          city: c.billing_city || null,
-          state: c.billing_province || null,
-          region: getRegion(c.billing_province),
-          metadata: { nuvemshop_customer_id: c.id },
-        };
-      })
-      .filter(Boolean);
-
-    console.log(`Processing ${customerRecords.length} valid customers...`);
-
-    // Update progress
-    await supabase.from("import_batches").update({
-      total_rows: customers.length,
-      status: "processing",
-    }).eq("id", jobId);
-
-    // Upsert in batches with progress updates
-    let totalSynced = 0, totalErrors = 0;
-    const chunkSize = 100;
-    
-    for (let i = 0; i < customerRecords.length; i += chunkSize) {
-      const chunk = customerRecords.slice(i, i + chunkSize);
-      const { synced, errors } = await upsertCustomerBatch(supabase, chunk);
-      totalSynced += synced;
-      totalErrors += errors;
-
-      await supabase.from("import_batches").update({
-        valid_rows: totalSynced,
-        invalid_rows: totalErrors,
-      }).eq("id", jobId);
-      console.log(`Progress: ${totalSynced}/${customerRecords.length} synced, ${totalErrors} errors`);
     }
 
     // Enrich from local nuvemshop_orders for purchase dates
@@ -270,7 +275,7 @@ async function processSync(supabase: any, jobId: string) {
     if (customersNoDates?.length) {
       console.log(`Enriching ${customersNoDates.length} customers from local orders...`);
       const enrichUpdates: Promise<any>[] = [];
-      
+
       for (const cust of customersNoDates) {
         const { data: orders } = await supabase
           .from("nuvemshop_orders")
@@ -288,7 +293,7 @@ async function processSync(supabase: any, jobId: string) {
             }).eq("id", cust.id)
           );
         }
-        
+
         if (enrichUpdates.length >= 20) {
           await Promise.all(enrichUpdates);
           enrichUpdates.length = 0;
@@ -303,12 +308,12 @@ async function processSync(supabase: any, jobId: string) {
     await supabase.from("import_batches").update({
       status: "completed",
       completed_at: new Date().toISOString(),
-      total_rows: customers.length,
-      valid_rows: totalSynced,
-      invalid_rows: totalErrors,
+      total_rows: total,
+      valid_rows: synced,
+      invalid_rows: errors,
     }).eq("id", jobId);
 
-    console.log(`Sync complete: ${totalSynced} synced, ${totalErrors} errors out of ${customers.length} total`);
+    console.log(`Sync complete: ${synced} synced, ${errors} errors out of ${total} total`);
   } catch (error) {
     console.error("Sync error:", error);
     await supabase.from("import_batches").update({
@@ -373,7 +378,7 @@ Deno.serve(async (req) => {
       JSON.stringify({
         success: true,
         job_id: job.id,
-        message: "Sincronização completa de clientes Nuvemshop iniciada com cálculo RFM. Aguarde...",
+        message: "Sincronização iniciada (100 por vez). Aguarde...",
         status: "processing",
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
