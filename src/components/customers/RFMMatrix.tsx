@@ -172,7 +172,7 @@ export function RFMMatrix() {
 
     try {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/sync-nuvemshop-customers?job_id=${jobId}`,
+        `${supabaseUrl}/functions/v1/sync-nuvemshop-customers?job_id=${jobId}`,
         { method: "POST", headers: { "Content-Type": "application/json" } }
       );
       const statusData = await response.json();
@@ -225,7 +225,7 @@ export function RFMMatrix() {
     } finally {
       requestInFlightRef.current = false;
     }
-  }, [fetchData, projectId, updateSyncProgress]);
+  }, [fetchData, supabaseUrl, supabaseAnonKey, updateSyncProgress]);
 
   const stopSync = async () => {
     stopRequestedRef.current = true;
@@ -238,7 +238,7 @@ export function RFMMatrix() {
     if (jobId) {
       try {
         await fetch(
-          `https://${projectId}.supabase.co/functions/v1/sync-nuvemshop-customers?job_id=${jobId}&action=cancel`,
+          `${supabaseUrl}/functions/v1/sync-nuvemshop-customers?job_id=${jobId}&action=cancel`,
           { method: "POST", headers: { "Content-Type": "application/json" } }
         );
       } catch {
@@ -259,7 +259,7 @@ export function RFMMatrix() {
 
     try {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/sync-nuvemshop-customers`,
+        `${supabaseUrl}/functions/v1/sync-nuvemshop-customers`,
         { method: "POST", headers: { "Content-Type": "application/json" } }
       );
       const result = await response.json();
@@ -276,7 +276,7 @@ export function RFMMatrix() {
       if (stopRequestedRef.current) {
         try {
           await fetch(
-            `https://${projectId}.supabase.co/functions/v1/sync-nuvemshop-customers?job_id=${result.job_id}&action=cancel`,
+            `${supabaseUrl}/functions/v1/sync-nuvemshop-customers?job_id=${result.job_id}&action=cancel`,
             { method: "POST", headers: { "Content-Type": "application/json" } }
           );
         } catch {
