@@ -79,6 +79,7 @@ export function RFMMatrix() {
   const [selectedCustomer, setSelectedCustomer] = useState<RFMCustomer | null>(null);
   const [customerOrders, setCustomerOrders] = useState<any[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
+  const navigate = useNavigate();
 
   const fetchData = useCallback(async () => {
     setLoading(true);
