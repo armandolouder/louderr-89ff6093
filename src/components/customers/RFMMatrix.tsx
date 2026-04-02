@@ -604,7 +604,7 @@ export function RFMMatrix() {
                 {selectedCustomer.phone && (
                   <Button
                     className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
-                    onClick={() => sendWhatsApp(selectedCustomer.phone!, selectedCustomer.name)}
+                    onClick={() => sendWhatsApp(selectedCustomer.phone!)}
                   >
                     <MessageCircle className="w-4 h-4 mr-2" />
                     Enviar WhatsApp
