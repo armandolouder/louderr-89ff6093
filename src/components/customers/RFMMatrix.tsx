@@ -173,7 +173,7 @@ export function RFMMatrix() {
     try {
       const response = await fetch(
         `${supabaseUrl}/functions/v1/sync-nuvemshop-customers?job_id=${jobId}`,
-        { method: "POST", headers: { "Content-Type": "application/json" } }
+        { method: "POST", headers: { "Content-Type": "application/json", "apikey": supabaseAnonKey } }
       );
       const statusData = await response.json();
 
@@ -239,7 +239,7 @@ export function RFMMatrix() {
       try {
         await fetch(
           `${supabaseUrl}/functions/v1/sync-nuvemshop-customers?job_id=${jobId}&action=cancel`,
-          { method: "POST", headers: { "Content-Type": "application/json" } }
+          { method: "POST", headers: { "Content-Type": "application/json", "apikey": supabaseAnonKey } }
         );
       } catch {
         // Ignore cancel network errors and stop locally.
@@ -260,7 +260,7 @@ export function RFMMatrix() {
     try {
       const response = await fetch(
         `${supabaseUrl}/functions/v1/sync-nuvemshop-customers`,
-        { method: "POST", headers: { "Content-Type": "application/json" } }
+        { method: "POST", headers: { "Content-Type": "application/json", "apikey": supabaseAnonKey } }
       );
       const result = await response.json();
 
@@ -277,7 +277,7 @@ export function RFMMatrix() {
         try {
           await fetch(
             `${supabaseUrl}/functions/v1/sync-nuvemshop-customers?job_id=${result.job_id}&action=cancel`,
-            { method: "POST", headers: { "Content-Type": "application/json" } }
+            { method: "POST", headers: { "Content-Type": "application/json", "apikey": supabaseAnonKey } }
           );
         } catch {
           // Ignore cancel network errors and stop locally.
