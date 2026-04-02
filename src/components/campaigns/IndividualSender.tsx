@@ -307,7 +307,27 @@ export function IndividualSender({ initialPhone, initialMessage }: { initialPhon
               </div>
 
               <div className="space-y-2">
-                <Label>Mensagem</Label>
+                <div className="flex items-center justify-between">
+                  <Label>Mensagem</Label>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button size="sm" variant="outline" disabled={improvingAI} className="h-7 gap-1.5 text-xs">
+                        {improvingAI ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                        IA
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handleAI("generate")}>
+                        <Sparkles className="w-4 h-4 mr-2" />
+                        Gerar mensagem
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleAI("improve")} disabled={!content.trim()}>
+                        <Wand2 className="w-4 h-4 mr-2" />
+                        Melhorar texto
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
                 <Textarea placeholder="Digite sua mensagem..." value={content} onChange={(e) => setContent(e.target.value)} rows={4} />
               </div>
 
