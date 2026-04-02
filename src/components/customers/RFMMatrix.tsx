@@ -29,6 +29,9 @@ interface RFMCustomer {
   region: string | null;
   state: string | null;
   city: string | null;
+  metadata: {
+    nuvemshop_customer_id?: number | string;
+  } | null;
 }
 
 type Segment = {
@@ -125,7 +128,7 @@ export function RFMMatrix() {
       while (true) {
         const { data, error } = await supabase
           .from("imported_customers")
-          .select("id, name, email, phone, rfm_recency, rfm_frequency, rfm_monetary, rfm_score, total_spent, order_count, last_purchase_at, favorite_product, favorite_category, region, state, city")
+          .select("id, name, email, phone, rfm_recency, rfm_frequency, rfm_monetary, rfm_score, total_spent, order_count, last_purchase_at, favorite_product, favorite_category, region, state, city, metadata")
           .not("rfm_score", "is", null)
           .order("total_spent", { ascending: false })
           .order("id", { ascending: true })
@@ -157,14 +160,9 @@ export function RFMMatrix() {
     };
   }, []);
 
-  const openCustomerDetail = async (customer: RFMCustomer) => {
-    setSelectedCustomer(customer);
-    setLoadingOrders(true);
-    setCustomerOrders([]);
-
+  const fetchCustomerOrdersFromDatabase = useCallback(async (customer: RFMCustomer) => {
     let orders: any[] = [];
 
-    // Try phone search first (multiple formats)
     if (customer.phone) {
       const phone = customer.phone;
       const lastDigits = phone.slice(-8);
@@ -179,7 +177,6 @@ export function RFMMatrix() {
       orders = data || [];
     }
 
-    // Fallback to email if no orders found by phone
     if (orders.length === 0 && customer.email) {
       const { data } = await supabase
         .from("nuvemshop_orders")
@@ -188,6 +185,60 @@ export function RFMMatrix() {
         .order("order_date", { ascending: false })
         .limit(20);
       orders = data || [];
+    }
+
+    return orders;
+  }, []);
+
+  const syncCustomerOrdersOnDemand = useCallback(async (customer: RFMCustomer) => {
+    const rawCustomerId = customer.metadata?.nuvemshop_customer_id;
+    const numericCustomerId = rawCustomerId !== undefined && rawCustomerId !== null
+      ? Number(rawCustomerId)
+      : NaN;
+
+    const body: Record<string, unknown> = {
+      perPage: 10,
+    };
+
+    if (Number.isFinite(numericCustomerId) && numericCustomerId > 0) {
+      body.customerIds = [numericCustomerId];
+    } else if (customer.email) {
+      body.q = customer.email;
+    } else if (customer.name) {
+      body.q = customer.name;
+    } else {
+      return;
+    }
+
+    const { data, error } = await supabase.functions.invoke("nuvemshop-sync", {
+      body,
+    });
+
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
+  }, []);
+
+  const openCustomerDetail = async (customer: RFMCustomer) => {
+    setSelectedCustomer(customer);
+    setLoadingOrders(true);
+    setCustomerOrders([]);
+
+    let orders: any[] = [];
+
+    try {
+      orders = await fetchCustomerOrdersFromDatabase(customer);
+
+      const shouldFetchOrdersFromNuvemshop =
+        orders.length === 0 &&
+        (Number(customer.order_count || 0) > 0 || Number(customer.total_spent || 0) > 0);
+
+      if (shouldFetchOrdersFromNuvemshop) {
+        await syncCustomerOrdersOnDemand(customer);
+        orders = await fetchCustomerOrdersFromDatabase(customer);
+      }
+    } catch (error) {
+      console.error("Error fetching customer orders:", error);
+      toast.error("Não foi possível carregar os pedidos deste cliente");
     }
 
     setCustomerOrders(orders);
