@@ -275,7 +275,7 @@ async function processSync(supabase: any, jobId: string) {
       .is("first_purchase_at", null)
       .not("phone", "is", null)
       .eq("source", "nuvemshop")
-      .limit(1000);
+      .limit(5000);
 
     if (customersNoDates?.length) {
       console.log(`Enriching ${customersNoDates.length} customers from local orders...`);
