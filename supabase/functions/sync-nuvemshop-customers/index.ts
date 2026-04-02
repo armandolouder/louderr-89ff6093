@@ -199,6 +199,8 @@ async function processChunk(
       const email = c.email || null;
       if (!phone && !email) return null;
 
+      const hasOrders = (c.orders_count || 0) > 0;
+
       return {
         phone,
         email,
@@ -209,6 +211,9 @@ async function processChunk(
         city: c.billing_city || null,
         state: c.billing_province || null,
         region: getRegion(c.billing_province),
+        // Use API dates as proxy for purchase dates when customer has orders
+        first_purchase_at: hasOrders ? c.created_at : null,
+        last_purchase_at: hasOrders ? c.updated_at : null,
         metadata: { nuvemshop_customer_id: c.id },
       };
     })
@@ -270,7 +275,7 @@ async function processSync(supabase: any, jobId: string) {
       .is("first_purchase_at", null)
       .not("phone", "is", null)
       .eq("source", "nuvemshop")
-      .limit(1000);
+      .limit(5000);
 
     if (customersNoDates?.length) {
       console.log(`Enriching ${customersNoDates.length} customers from local orders...`);
