@@ -338,7 +338,6 @@ export function RFMMatrix() {
                               </a>
                             ) : "—"}
                           </TableCell>
-                          <TableCell className="text-xs text-muted-foreground max-w-[160px] truncate">{c.favorite_product || c.favorite_category || "—"}</TableCell>
                           <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{c.state || "—"}</TableCell>
                           <TableCell className="text-right whitespace-nowrap">R$ {Number(c.total_spent || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</TableCell>
                           <TableCell className="text-right">{c.order_count}</TableCell>
