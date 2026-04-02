@@ -48,7 +48,7 @@ export default function Campaigns() {
           </TabsContent>
 
           <TabsContent value="individual" className="mt-0">
-            <IndividualSender initialPhone={phoneParam || undefined} />
+            <IndividualSender initialPhone={phoneParam || undefined} initialMessage={msgParam || undefined} />
           </TabsContent>
 
           <TabsContent value="carousel" className="mt-0">
