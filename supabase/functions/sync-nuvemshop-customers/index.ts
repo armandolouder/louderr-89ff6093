@@ -174,82 +174,13 @@ async function upsertCustomerBatch(supabase: any, customers: any[]) {
 }
 
 async function calculateRFMScores(supabase: any) {
-  console.log("Calculating RFM scores...");
-
-  const { data: customers, error } = await supabase
-    .from("imported_customers")
-    .select("id, last_purchase_at, order_count, total_spent")
-    .not("last_purchase_at", "is", null)
-    .gt("order_count", 0);
-
-  if (error) throw error;
-
-  if (!customers?.length) {
-    console.log("No customers with purchase data for RFM");
-    return;
+  console.log("Calculating RFM scores via SQL function...");
+  const { error } = await supabase.rpc("calculate_rfm_scores");
+  if (error) {
+    console.error("RFM calculation error:", error);
+    throw error;
   }
-
-  const now = Date.now();
-  const enriched = customers.map((customer: any) => ({
-    ...customer,
-    daysSince: Math.floor((now - new Date(customer.last_purchase_at).getTime()) / 86400000),
-    totalSpent: Number(customer.total_spent || 0),
-    orderCount: customer.order_count || 0,
-  }));
-
-  const assignQuintile = (rows: any[], key: string, ascending: boolean) => {
-    const sorted = [...rows].sort((a, b) => ascending ? a[key] - b[key] : b[key] - a[key]);
-    const size = Math.max(1, Math.ceil(sorted.length / 5));
-
-    sorted.forEach((row, index) => {
-      row[`${key}_q`] = Math.min(5, Math.floor(index / size) + 1);
-    });
-
-    return sorted;
-  };
-
-  let scored = assignQuintile(enriched, "daysSince", false);
-  scored = assignQuintile(scored, "orderCount", true);
-  scored = assignQuintile(scored, "totalSpent", true);
-
-  const scoreMap = new Map<string, { r: number; f: number; m: number }>();
-  scored.forEach((row: any) => {
-    scoreMap.set(row.id, {
-      r: row.daysSince_q,
-      f: row.orderCount_q,
-      m: row.totalSpent_q,
-    });
-  });
-
-  const updates: Promise<any>[] = [];
-
-  for (const customer of customers) {
-    const scores = scoreMap.get(customer.id);
-    if (!scores) continue;
-
-    updates.push(
-      supabase
-        .from("imported_customers")
-        .update({
-          rfm_recency: scores.r,
-          rfm_frequency: scores.f,
-          rfm_monetary: scores.m,
-          rfm_score: `${scores.r}${scores.f}${scores.m}`,
-        })
-        .eq("id", customer.id),
-    );
-
-    if (updates.length >= 20) {
-      await Promise.all(updates);
-      updates.length = 0;
-    }
-  }
-
-  if (updates.length) {
-    await Promise.all(updates);
-  }
-
-  console.log(`RFM scores updated for ${customers.length} customers`);
+  console.log("RFM scores updated successfully");
 }
 
 async function finalizeJob(
@@ -272,62 +203,7 @@ async function finalizeJob(
     })
     .eq("id", jobId);
 
-  console.log("Enriching from local orders...");
-
-  const { data: customersNoDates, error: customersError } = await supabase
-    .from("imported_customers")
-    .select("id, phone, email")
-    .is("first_purchase_at", null)
-    .eq("source", "nuvemshop")
-    .limit(5000);
-
-  if (customersError) throw customersError;
-
-  if (customersNoDates?.length) {
-    const enrichUpdates: Promise<any>[] = [];
-
-    for (const customer of customersNoDates) {
-      let query = supabase
-        .from("nuvemshop_orders")
-        .select("order_date, total")
-        .order("order_date", { ascending: true });
-
-      if (customer.phone) {
-        query = query.or(`customer_phone.eq.${customer.phone},customer_phone.like.%${customer.phone.slice(-8)}%`);
-      } else if (customer.email) {
-        query = query.eq("customer_email", customer.email);
-      } else {
-        continue;
-      }
-
-      const { data: orders, error: ordersError } = await query;
-      if (ordersError) throw ordersError;
-
-      if (orders?.length) {
-        enrichUpdates.push(
-          supabase
-            .from("imported_customers")
-            .update({
-              first_purchase_at: orders[0].order_date,
-              last_purchase_at: orders[orders.length - 1].order_date,
-              total_spent: orders.reduce((sum: number, order: any) => sum + (Number(order.total) || 0), 0),
-              order_count: orders.length,
-            })
-            .eq("id", customer.id),
-        );
-      }
-
-      if (enrichUpdates.length >= 20) {
-        await Promise.all(enrichUpdates);
-        enrichUpdates.length = 0;
-      }
-    }
-
-    if (enrichUpdates.length) {
-      await Promise.all(enrichUpdates);
-    }
-  }
-
+  // Use fast SQL function for RFM calculation
   await calculateRFMScores(supabase);
 
   await supabase
