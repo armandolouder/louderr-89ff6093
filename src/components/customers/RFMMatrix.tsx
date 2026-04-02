@@ -666,7 +666,9 @@ export function RFMMatrix() {
                   <Card>
                     <CardContent className="p-3 text-center">
                       <div className="text-lg font-bold text-foreground">
-                        {selectedCustomer.last_purchase_at
+                        {customerOrders.length > 0 && customerOrders[0].order_date
+                          ? new Date(customerOrders[0].order_date).toLocaleDateString("pt-BR")
+                          : selectedCustomer.last_purchase_at && !isToday(new Date(selectedCustomer.last_purchase_at))
                           ? new Date(selectedCustomer.last_purchase_at).toLocaleDateString("pt-BR")
                           : "—"}
                       </div>
