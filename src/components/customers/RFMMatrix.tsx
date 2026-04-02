@@ -130,6 +130,15 @@ export function RFMMatrix() {
     navigate(`/campaigns?tab=individual&phone=${phone}&msg=${msg}`);
   };
 
+  const stopSync = () => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+    setSyncing(false);
+    toast.info(`Sincronização parada. ${syncProgress?.synced || 0} clientes importados até agora.`);
+  };
+
   const startSync = async () => {
     setSyncing(true);
     setSyncProgress({ total: 0, synced: 0, status: "Iniciando..." });
@@ -150,7 +159,7 @@ export function RFMMatrix() {
       toast.info("Sincronização iniciada! Importando 100 clientes por vez...");
       const jobId = result.job_id;
 
-      const poll = setInterval(async () => {
+      pollRef.current = setInterval(async () => {
         try {
           const statusRes = await fetch(
             `https://${projectId}.supabase.co/functions/v1/sync-nuvemshop-customers?job_id=${jobId}`
@@ -168,12 +177,14 @@ export function RFMMatrix() {
           });
 
           if (statusData.status === "completed") {
-            clearInterval(poll);
+            clearInterval(pollRef.current!);
+            pollRef.current = null;
             toast.success(`Sincronização concluída! ${statusData.valid_rows} clientes com RFM calculado.`);
             setSyncing(false);
             fetchData();
           } else if (statusData.status === "failed") {
-            clearInterval(poll);
+            clearInterval(pollRef.current!);
+            pollRef.current = null;
             toast.error(statusData.error_message || "Falha na sincronização");
             setSyncing(false);
           }
