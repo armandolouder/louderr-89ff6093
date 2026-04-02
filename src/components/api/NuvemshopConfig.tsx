@@ -17,6 +17,8 @@ export function NuvemshopConfig({ status, onStatusChange }: NuvemshopConfigProps
   const [recentOrders, setRecentOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [syncProgress, setSyncProgress] = useState({ synced: 0, page: 0, status: "" });
+  const abortRef = useRef(false);
 
   const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/nuvemshop-webhook`;
 
