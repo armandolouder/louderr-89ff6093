@@ -20,6 +20,7 @@ interface NuvemshopCustomer {
   billing_province?: string;
   created_at: string;
   updated_at: string;
+  last_order_id?: number;
 }
 
 const STATE_TO_REGION: Record<string, string> = {
@@ -85,62 +86,51 @@ async function fetchAllCustomers(accessToken: string, storeId: string): Promise<
   return allCustomers;
 }
 
-async function fetchCustomerOrdersFromAPI(accessToken: string, storeId: string, customerId: number) {
-  const url = `${API_BASE}/${storeId}/orders?customer_id=${customerId}&per_page=200`;
-  const response = await fetch(url, {
-    headers: {
-      Authentication: `bearer ${accessToken.trim()}`,
-      "User-Agent": "LOUDER.ink (allvisualweb@gmail.com)",
-      "Content-Type": "application/json",
-    },
-  });
-
-  if (!response.ok) return { totalSpent: 0, orderCount: 0, firstPurchase: null as string | null, lastPurchase: null as string | null };
-
-  const orders = await response.json();
-  let totalSpent = 0, orderCount = 0;
-  let firstPurchase: string | null = null, lastPurchase: string | null = null;
-
-  for (const order of orders) {
-    if (order.status === "cancelled") continue;
-    totalSpent += parseFloat(order.total || "0");
-    orderCount++;
-    const date = order.created_at;
-    if (date) {
-      if (!firstPurchase || date < firstPurchase) firstPurchase = date;
-      if (!lastPurchase || date > lastPurchase) lastPurchase = date;
+async function upsertCustomerBatch(supabase: any, customers: any[]) {
+  let synced = 0, errors = 0;
+  
+  // Process in batches of 50
+  const batchSize = 50;
+  for (let i = 0; i < customers.length; i += batchSize) {
+    const batch = customers.slice(i, i + batchSize);
+    
+    for (const customer of batch) {
+      try {
+        if (customer.phone) {
+          const { data: existing } = await supabase
+            .from("imported_customers").select("id")
+            .eq("phone", customer.phone).maybeSingle();
+          if (existing) {
+            await supabase.from("imported_customers").update(customer).eq("id", existing.id);
+            synced++;
+            continue;
+          }
+        }
+        if (customer.email) {
+          const { data: existing } = await supabase
+            .from("imported_customers").select("id")
+            .eq("email", customer.email).maybeSingle();
+          if (existing) {
+            await supabase.from("imported_customers").update(customer).eq("id", existing.id);
+            synced++;
+            continue;
+          }
+        }
+        const { error } = await supabase.from("imported_customers").insert(customer);
+        if (error) errors++;
+        else synced++;
+      } catch (e) {
+        errors++;
+      }
     }
   }
-  return { totalSpent, orderCount, firstPurchase, lastPurchase };
-}
-
-async function upsertCustomer(supabase: any, customer: any) {
-  if (customer.phone) {
-    const { data: existing } = await supabase
-      .from("imported_customers").select("id")
-      .eq("phone", customer.phone).maybeSingle();
-    if (existing) {
-      await supabase.from("imported_customers").update(customer).eq("id", existing.id);
-      return "updated";
-    }
-  }
-  if (customer.email) {
-    const { data: existing } = await supabase
-      .from("imported_customers").select("id")
-      .eq("email", customer.email).maybeSingle();
-    if (existing) {
-      await supabase.from("imported_customers").update(customer).eq("id", existing.id);
-      return "updated";
-    }
-  }
-  const { error } = await supabase.from("imported_customers").insert(customer);
-  return error ? "error" : "inserted";
+  
+  return { synced, errors };
 }
 
 async function calculateRFMScores(supabase: any) {
   console.log("Calculating RFM scores...");
 
-  // Get all customers with purchase data
   const { data: customers } = await supabase
     .from("imported_customers")
     .select("id, last_purchase_at, order_count, total_spent")
@@ -152,7 +142,6 @@ async function calculateRFMScores(supabase: any) {
     return;
   }
 
-  // Calculate days since last purchase for each
   const now = Date.now();
   const enriched = customers.map((c: any) => ({
     ...c,
@@ -161,7 +150,6 @@ async function calculateRFMScores(supabase: any) {
     orderCount: c.order_count || 0,
   }));
 
-  // Sort and assign quintiles
   const assignQuintile = (arr: any[], key: string, ascending: boolean) => {
     const sorted = [...arr].sort((a, b) => ascending ? a[key] - b[key] : b[key] - a[key]);
     const size = Math.ceil(sorted.length / 5);
@@ -171,31 +159,38 @@ async function calculateRFMScores(supabase: any) {
     return sorted;
   };
 
-  // R: lower days = higher score, so sort descending (most recent = quintile 5)
-  let scored = assignQuintile(enriched, "daysSince", false); // descending: highest days first = quintile 1
-  scored = assignQuintile(scored, "orderCount", true);       // ascending: lowest first = quintile 1
-  scored = assignQuintile(scored, "totalSpent", true);       // ascending: lowest first = quintile 1
+  let scored = assignQuintile(enriched, "daysSince", false);
+  scored = assignQuintile(scored, "orderCount", true);
+  scored = assignQuintile(scored, "totalSpent", true);
 
-  // Build lookup
   const scoreMap = new Map<string, { r: number; f: number; m: number }>();
   scored.forEach((s: any) => {
     scoreMap.set(s.id, { r: s.daysSince_q, f: s.orderCount_q, m: s.totalSpent_q });
   });
 
-  // Batch update
-  let updated = 0;
+  // Batch update RFM scores
+  const updates: Promise<any>[] = [];
   for (const customer of customers) {
     const scores = scoreMap.get(customer.id);
     if (!scores) continue;
-    await supabase.from("imported_customers").update({
-      rfm_recency: scores.r,
-      rfm_frequency: scores.f,
-      rfm_monetary: scores.m,
-      rfm_score: `${scores.r}${scores.f}${scores.m}`,
-    }).eq("id", customer.id);
-    updated++;
+    updates.push(
+      supabase.from("imported_customers").update({
+        rfm_recency: scores.r,
+        rfm_frequency: scores.f,
+        rfm_monetary: scores.m,
+        rfm_score: `${scores.r}${scores.f}${scores.m}`,
+      }).eq("id", customer.id)
+    );
+    
+    // Execute in batches of 20 concurrent
+    if (updates.length >= 20) {
+      await Promise.all(updates);
+      updates.length = 0;
+    }
   }
-  console.log(`RFM scores updated for ${updated} customers`);
+  if (updates.length) await Promise.all(updates);
+
+  console.log(`RFM scores updated for ${customers.length} customers`);
 }
 
 async function processSync(supabase: any, jobId: string) {
@@ -215,55 +210,54 @@ async function processSync(supabase: any, jobId: string) {
       return;
     }
 
-    let synced = 0, errors = 0;
-
-    // Process each customer - fetch their orders from API for accurate data
-    for (let i = 0; i < customers.length; i++) {
-      const c = customers[i];
-      try {
+    // Prepare customer data using info from customer API directly (no per-customer order API calls)
+    const customerRecords = customers
+      .map((c) => {
         const phone = cleanPhone(c.phone);
         const email = c.email || null;
-        if (!phone && !email) continue;
+        if (!phone && !email) return null;
 
-        // Fetch orders directly from Nuvemshop API
-        const orderData = await fetchCustomerOrdersFromAPI(accessToken, storeId, c.id);
-
-        const customerData = {
+        return {
           phone,
           email,
           name: c.name || "Cliente",
           source: "nuvemshop",
-          total_spent: orderData.totalSpent || parseFloat(c.total_spent || "0"),
-          order_count: orderData.orderCount || c.orders_count || 0,
-          first_purchase_at: orderData.firstPurchase,
-          last_purchase_at: orderData.lastPurchase,
+          total_spent: parseFloat(c.total_spent || "0"),
+          order_count: c.orders_count || 0,
           city: c.billing_city || null,
           state: c.billing_province || null,
           region: getRegion(c.billing_province),
           metadata: { nuvemshop_customer_id: c.id },
         };
+      })
+      .filter(Boolean);
 
-        const result = await upsertCustomer(supabase, customerData);
-        if (result === "error") errors++;
-        else synced++;
+    console.log(`Processing ${customerRecords.length} valid customers...`);
 
-        // Rate limit protection
-        if ((i + 1) % 10 === 0) {
-          await new Promise((r) => setTimeout(r, 1000));
-          await supabase.from("import_batches").update({
-            valid_rows: synced,
-            invalid_rows: errors,
-            total_rows: customers.length,
-          }).eq("id", jobId);
-          console.log(`Progress: ${synced}/${customers.length} synced, ${errors} errors`);
-        }
-      } catch (e) {
-        console.error(`Error processing customer ${c.name}:`, e);
-        errors++;
-      }
+    // Update progress
+    await supabase.from("import_batches").update({
+      total_rows: customers.length,
+      status: "processing",
+    }).eq("id", jobId);
+
+    // Upsert in batches with progress updates
+    let totalSynced = 0, totalErrors = 0;
+    const chunkSize = 100;
+    
+    for (let i = 0; i < customerRecords.length; i += chunkSize) {
+      const chunk = customerRecords.slice(i, i + chunkSize);
+      const { synced, errors } = await upsertCustomerBatch(supabase, chunk);
+      totalSynced += synced;
+      totalErrors += errors;
+
+      await supabase.from("import_batches").update({
+        valid_rows: totalSynced,
+        invalid_rows: totalErrors,
+      }).eq("id", jobId);
+      console.log(`Progress: ${totalSynced}/${customerRecords.length} synced, ${totalErrors} errors`);
     }
 
-    // Enrich from local nuvemshop_orders for any missing dates
+    // Enrich from local nuvemshop_orders for purchase dates
     console.log("Enriching from local orders...");
     const { data: customersNoDates } = await supabase
       .from("imported_customers")
@@ -274,6 +268,9 @@ async function processSync(supabase: any, jobId: string) {
       .limit(1000);
 
     if (customersNoDates?.length) {
+      console.log(`Enriching ${customersNoDates.length} customers from local orders...`);
+      const enrichUpdates: Promise<any>[] = [];
+      
       for (const cust of customersNoDates) {
         const { data: orders } = await supabase
           .from("nuvemshop_orders")
@@ -282,14 +279,22 @@ async function processSync(supabase: any, jobId: string) {
           .order("order_date", { ascending: true });
 
         if (orders?.length) {
-          await supabase.from("imported_customers").update({
-            first_purchase_at: orders[0].order_date,
-            last_purchase_at: orders[orders.length - 1].order_date,
-            total_spent: orders.reduce((sum: number, o: any) => sum + (parseFloat(o.total) || 0), 0),
-            order_count: orders.length,
-          }).eq("id", cust.id);
+          enrichUpdates.push(
+            supabase.from("imported_customers").update({
+              first_purchase_at: orders[0].order_date,
+              last_purchase_at: orders[orders.length - 1].order_date,
+              total_spent: orders.reduce((sum: number, o: any) => sum + (parseFloat(o.total) || 0), 0),
+              order_count: orders.length,
+            }).eq("id", cust.id)
+          );
+        }
+        
+        if (enrichUpdates.length >= 20) {
+          await Promise.all(enrichUpdates);
+          enrichUpdates.length = 0;
         }
       }
+      if (enrichUpdates.length) await Promise.all(enrichUpdates);
     }
 
     // Calculate RFM scores
@@ -299,11 +304,11 @@ async function processSync(supabase: any, jobId: string) {
       status: "completed",
       completed_at: new Date().toISOString(),
       total_rows: customers.length,
-      valid_rows: synced,
-      invalid_rows: errors,
+      valid_rows: totalSynced,
+      invalid_rows: totalErrors,
     }).eq("id", jobId);
 
-    console.log(`Sync complete: ${synced} synced, ${errors} errors out of ${customers.length} total`);
+    console.log(`Sync complete: ${totalSynced} synced, ${totalErrors} errors out of ${customers.length} total`);
   } catch (error) {
     console.error("Sync error:", error);
     await supabase.from("import_batches").update({
