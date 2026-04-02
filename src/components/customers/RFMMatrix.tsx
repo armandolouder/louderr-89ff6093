@@ -456,21 +456,6 @@ export function RFMMatrix() {
                   </Card>
                 </div>
 
-                {/* Favorite product */}
-                {(selectedCustomer.favorite_product || selectedCustomer.favorite_category) && (
-                  <div className="space-y-2">
-                    <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                      <ShoppingBag className="w-4 h-4" />
-                      Preferências
-                    </h4>
-                    {selectedCustomer.favorite_product && (
-                      <p className="text-sm text-muted-foreground">Produto: {selectedCustomer.favorite_product}</p>
-                    )}
-                    {selectedCustomer.favorite_category && (
-                      <p className="text-sm text-muted-foreground">Categoria: {selectedCustomer.favorite_category}</p>
-                    )}
-                  </div>
-                )}
 
                 {/* Orders */}
                 <div className="space-y-2">
