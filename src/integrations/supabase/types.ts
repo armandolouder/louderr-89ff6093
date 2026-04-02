@@ -1190,7 +1190,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      calculate_rfm_scores: { Args: never; Returns: undefined }
     }
     Enums: {
       [_ in never]: never
