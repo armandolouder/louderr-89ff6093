@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
-import { Copy, CheckCircle, ExternalLink, ShoppingBag, RefreshCw, Download, Loader2 } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Copy, CheckCircle, ExternalLink, ShoppingBag, RefreshCw, Download, Loader2, Square } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
