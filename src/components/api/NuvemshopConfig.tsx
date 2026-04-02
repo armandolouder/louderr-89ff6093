@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
-import { Copy, CheckCircle, ExternalLink, ShoppingBag, RefreshCw, Download, Loader2 } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Copy, CheckCircle, ExternalLink, ShoppingBag, RefreshCw, Download, Loader2, Square } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +17,8 @@ export function NuvemshopConfig({ status, onStatusChange }: NuvemshopConfigProps
   const [recentOrders, setRecentOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [syncProgress, setSyncProgress] = useState({ synced: 0, page: 0, status: "" });
+  const abortRef = useRef(false);
 
   const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/nuvemshop-webhook`;
 
@@ -46,14 +49,23 @@ export function NuvemshopConfig({ status, onStatusChange }: NuvemshopConfigProps
     }
   };
 
+  const stopSync = () => {
+    abortRef.current = true;
+    toast.info("Parando sincronização após a página atual...");
+  };
+
   const syncOrders = async () => {
     setSyncing(true);
+    abortRef.current = false;
+    setSyncProgress({ synced: 0, page: 0, status: "Iniciando..." });
     try {
       let page = 1;
       let totalSynced = 0;
       let hasMore = true;
 
-      while (hasMore) {
+      while (hasMore && !abortRef.current) {
+        setSyncProgress({ synced: totalSynced, page, status: `Importando página ${page}...` });
+
         const response = await fetch(
           `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/nuvemshop-sync?page=${page}&per_page=50`,
           {
@@ -73,16 +85,23 @@ export function NuvemshopConfig({ status, onStatusChange }: NuvemshopConfigProps
         hasMore = result.has_more || false;
         page++;
 
-        if (page > 20) break; // Safety limit
+        setSyncProgress({ synced: totalSynced, page: page - 1, status: hasMore ? `${totalSynced} pedidos importados...` : "Concluído!" });
+
+        if (page > 100) break;
       }
 
-      toast.success(`${totalSynced} pedidos sincronizados!`);
+      if (abortRef.current) {
+        toast.info(`Sincronização pausada. ${totalSynced} pedidos importados até agora.`);
+      } else {
+        toast.success(`${totalSynced} pedidos sincronizados!`);
+      }
       fetchRecentOrders();
     } catch (err: any) {
       console.error("Sync error:", err);
       toast.error(err.message || "Erro ao sincronizar pedidos");
     } finally {
       setSyncing(false);
+      abortRef.current = false;
     }
   };
 
@@ -188,22 +207,49 @@ export function NuvemshopConfig({ status, onStatusChange }: NuvemshopConfigProps
             Busque pedidos diretamente da API da Nuvemshop
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <Button onClick={syncOrders} disabled={syncing} className="w-full">
-            {syncing ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Sincronizando...
-              </>
-            ) : (
-              <>
-                <Download className="w-4 h-4 mr-2" />
-                Sincronizar Pedidos da API
-              </>
+        <CardContent className="space-y-3">
+          <div className="flex gap-2">
+            <Button onClick={syncOrders} disabled={syncing} className="flex-1">
+              {syncing ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Sincronizando...
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4 mr-2" />
+                  Sincronizar Pedidos da API
+                </>
+              )}
+            </Button>
+            {syncing && (
+              <Button variant="destructive" onClick={stopSync} size="icon">
+                <Square className="w-4 h-4" />
+              </Button>
             )}
-          </Button>
-          <p className="text-xs text-muted-foreground mt-2">
-            Busca todos os pedidos da sua loja e salva no banco de dados.
+          </div>
+
+          {syncing && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>{syncProgress.status}</span>
+                <span>Página {syncProgress.page}</span>
+              </div>
+              <Progress value={syncProgress.page > 0 ? Math.min((syncProgress.page / 20) * 100, 95) : 0} className="h-2" />
+              <p className="text-xs text-muted-foreground">
+                {syncProgress.synced} pedidos importados
+              </p>
+            </div>
+          )}
+
+          {!syncing && syncProgress.synced > 0 && (
+            <p className="text-xs text-primary">
+              ✓ Última sincronização: {syncProgress.synced} pedidos importados
+            </p>
+          )}
+
+          <p className="text-xs text-muted-foreground">
+            Busca pedidos da sua loja e salva no banco de dados. Você pode parar e retomar a qualquer momento.
           </p>
         </CardContent>
       </Card>
