@@ -693,7 +693,7 @@ export function RFMMatrix() {
                     <p className="text-sm text-muted-foreground py-2">Nenhum pedido encontrado. Sincronize os pedidos na página de APIs → Nuvemshop para ver o histórico.</p>
                   ) : (
                     <div className="space-y-2">
-                      {customerOrders.map((order: any) => (
+                      {customerOrders.slice(0, 2).map((order: any) => (
                         <Card key={order.id} className="border-border/50">
                           <CardContent className="p-3">
                             <div className="flex items-center justify-between">
