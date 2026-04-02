@@ -240,27 +240,54 @@ export function RFMMatrix() {
     <div className="space-y-6">
       {/* Sync header */}
       <Card className="border-primary/20">
-        <CardContent className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div>
-            <h3 className="font-semibold text-foreground flex items-center gap-2">
-              <CloudDownload className="w-5 h-5 text-primary" />
-              Sincronizar Nuvemshop
-            </h3>
-            <p className="text-xs text-muted-foreground mt-1">
-              Importa 100 clientes por vez e calcula os scores RFM automaticamente.
-              {customers.length > 0 && ` Atualmente ${customers.length} clientes com RFM.`}
-            </p>
-            {syncProgress && syncing && (
-              <div className="mt-2 flex items-center gap-2 text-sm">
-                <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                <span className="text-muted-foreground">{syncProgress.status}</span>
-              </div>
-            )}
+        <CardContent className="p-4 space-y-3">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <h3 className="font-semibold text-foreground flex items-center gap-2">
+                <CloudDownload className="w-5 h-5 text-primary" />
+                Sincronizar Nuvemshop
+              </h3>
+              <p className="text-xs text-muted-foreground mt-1">
+                Importa 100 clientes por vez e calcula os scores RFM automaticamente.
+                {customers.length > 0 && ` Atualmente ${customers.length} clientes com RFM.`}
+              </p>
+            </div>
+            <div className="flex gap-2 shrink-0">
+              <Button onClick={startSync} disabled={syncing}>
+                {syncing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+                {syncing ? "Sincronizando..." : "Sincronizar Tudo"}
+              </Button>
+              {syncing && (
+                <Button variant="destructive" onClick={stopSync} size="icon" title="Parar sincronização">
+                  <Square className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
           </div>
-          <Button onClick={startSync} disabled={syncing} className="shrink-0">
-            {syncing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <RefreshCw className="w-4 h-4 mr-2" />}
-            {syncing ? "Sincronizando..." : "Sincronizar Tudo"}
-          </Button>
+
+          {syncProgress && syncing && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span className="flex items-center gap-2">
+                  <Loader2 className="w-3 h-3 animate-spin text-primary" />
+                  {syncProgress.status}
+                </span>
+                {syncProgress.total > 0 && (
+                  <span>{Math.round((syncProgress.synced / syncProgress.total) * 100)}%</span>
+                )}
+              </div>
+              <Progress
+                value={syncProgress.total > 0 ? (syncProgress.synced / syncProgress.total) * 100 : 5}
+                className="h-2"
+              />
+            </div>
+          )}
+
+          {!syncing && syncProgress && syncProgress.synced > 0 && (
+            <p className="text-xs text-primary">
+              ✓ Última sincronização: {syncProgress.synced} clientes importados
+            </p>
+          )}
         </CardContent>
       </Card>
 
