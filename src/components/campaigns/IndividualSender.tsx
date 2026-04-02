@@ -178,9 +178,9 @@ function SavedMessageDialog({
   );
 }
 
-export function IndividualSender({ initialPhone }: { initialPhone?: string }) {
+export function IndividualSender({ initialPhone, initialMessage }: { initialPhone?: string; initialMessage?: string }) {
   const [phone, setPhone] = useState(initialPhone || "");
-  const [content, setContent] = useState("");
+  const [content, setContent] = useState(initialMessage || "");
   const [mediaUrl, setMediaUrl] = useState("");
   const [sending, setSending] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
