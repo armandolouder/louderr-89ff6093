@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { isToday } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -666,7 +667,9 @@ export function RFMMatrix() {
                   <Card>
                     <CardContent className="p-3 text-center">
                       <div className="text-lg font-bold text-foreground">
-                        {selectedCustomer.last_purchase_at
+                        {customerOrders.length > 0 && customerOrders[0].order_date
+                          ? new Date(customerOrders[0].order_date).toLocaleDateString("pt-BR")
+                          : selectedCustomer.last_purchase_at && !isToday(new Date(selectedCustomer.last_purchase_at))
                           ? new Date(selectedCustomer.last_purchase_at).toLocaleDateString("pt-BR")
                           : "—"}
                       </div>
@@ -690,7 +693,7 @@ export function RFMMatrix() {
                     <p className="text-sm text-muted-foreground py-2">Nenhum pedido encontrado. Sincronize os pedidos na página de APIs → Nuvemshop para ver o histórico.</p>
                   ) : (
                     <div className="space-y-2">
-                      {customerOrders.map((order: any) => (
+                      {customerOrders.slice(0, 2).map((order: any) => (
                         <Card key={order.id} className="border-border/50">
                           <CardContent className="p-3">
                             <div className="flex items-center justify-between">
