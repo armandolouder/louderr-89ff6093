@@ -316,40 +316,57 @@ export function RFMMatrix() {
     }
   };
 
+  const REGIONS = ["Sudeste", "Sul", "Nordeste", "Norte", "Centro-Oeste"];
+
+  const regionCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    customers.forEach((c) => {
+      const r = c.region || "Sem região";
+      counts[r] = (counts[r] || 0) + 1;
+    });
+    return counts;
+  }, [customers]);
+
+  const regionFilteredCustomers = useMemo(() => {
+    if (!selectedRegion) return customers;
+    if (selectedRegion === "Sem região") return customers.filter((c) => !c.region);
+    return customers.filter((c) => c.region === selectedRegion);
+  }, [customers, selectedRegion]);
+
   const segmentMap = useMemo(() => {
     const map: Record<string, RFMCustomer[]> = {};
-    customers.forEach((c) => {
+    regionFilteredCustomers.forEach((c) => {
       const seg = getSegment(c.rfm_recency, c.rfm_frequency, c.rfm_monetary);
       if (!map[seg.label]) map[seg.label] = [];
       map[seg.label].push(c);
     });
     return map;
-  }, [customers]);
+  }, [regionFilteredCustomers]);
 
   const matrix = useMemo(() => {
     const grid: { r: number; f: number; count: number; segment: Segment; avgMonetary: number }[][] = [];
     for (let r = 5; r >= 1; r--) {
       const row: typeof grid[0] = [];
       for (let f = 1; f <= 5; f++) {
-        const matching = customers.filter((c) => c.rfm_recency === r && c.rfm_frequency === f);
+        const matching = regionFilteredCustomers.filter((c) => c.rfm_recency === r && c.rfm_frequency === f);
         const avgM = matching.length ? matching.reduce((s, c) => s + c.rfm_monetary, 0) / matching.length : 3;
         row.push({ r, f, count: matching.length, segment: getSegment(r, f, Math.round(avgM)), avgMonetary: avgM });
       }
       grid.push(row);
     }
     return grid;
-  }, [customers]);
+  }, [regionFilteredCustomers]);
 
   const segments = useMemo(() => {
     const unique = new Map<string, { segment: Segment; count: number; totalSpent: number }>();
-    customers.forEach((c) => {
+    regionFilteredCustomers.forEach((c) => {
       const seg = getSegment(c.rfm_recency, c.rfm_frequency, c.rfm_monetary);
       const existing = unique.get(seg.label);
       if (existing) { existing.count++; existing.totalSpent += Number(c.total_spent || 0); }
       else unique.set(seg.label, { segment: seg, count: 1, totalSpent: Number(c.total_spent || 0) });
     });
     return Array.from(unique.values()).sort((a, b) => b.count - a.count);
-  }, [customers]);
+  }, [regionFilteredCustomers]);
 
   const maxCellCount = useMemo(() => Math.max(1, ...matrix.flat().map((c) => c.count)), [matrix]);
   const filteredCustomers = selectedSegment ? segmentMap[selectedSegment] || [] : [];
