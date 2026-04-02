@@ -42,6 +42,15 @@ type Segment = {
   description: string;
 };
 
+type SyncProgress = {
+  total: number;
+  synced: number;
+  status: string;
+  phase?: "customers" | "orders";
+  customersSynced?: number;
+  ordersSynced?: number;
+};
+
 const getSegment = (r: number, f: number, m: number): Segment => {
   if (r >= 4 && f >= 4 && m >= 4) return { label: "Campeões", emoji: "🏆", color: "text-yellow-300", bgColor: "bg-yellow-500/20 border-yellow-500/40", description: "Compram frequentemente, gastam muito e compraram recentemente" };
   if (r >= 4 && f >= 3) return { label: "Clientes Fiéis", emoji: "❤️", color: "text-rose-300", bgColor: "bg-rose-500/20 border-rose-500/40", description: "Compram com frequência e recentemente" };
@@ -79,7 +88,7 @@ export function RFMMatrix() {
   const [customers, setCustomers] = useState<RFMCustomer[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
-  const [syncProgress, setSyncProgress] = useState<{ total: number; synced: number; status: string } | null>(null);
+  const [syncProgress, setSyncProgress] = useState<SyncProgress | null>(null);
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const activeJobRef = useRef<string | null>(null);
   const requestInFlightRef = useRef(false);
@@ -101,12 +110,15 @@ export function RFMMatrix() {
   };
 
   const updateSyncProgress = useCallback((statusData: any) => {
-    setSyncProgress({
+    setSyncProgress((previous) => ({
       total: statusData.total_rows || 0,
       synced: statusData.valid_rows || 0,
+      phase: "customers",
+      customersSynced: statusData.valid_rows || 0,
+      ordersSynced: previous?.ordersSynced || 0,
       status:
         statusData.status === "completed"
-          ? "Concluído!"
+          ? "Clientes concluídos!"
           : statusData.status === "cancelled"
           ? "Sincronização cancelada"
           : statusData.status === "finalizing"
@@ -114,7 +126,7 @@ export function RFMMatrix() {
           : statusData.status === "failed"
           ? `Erro: ${statusData.error_message || "Falha na sincronização"}`
           : `Importando... ${statusData.valid_rows || 0}/${statusData.total_rows || "?"} clientes`,
-    });
+    }));
   }, []);
 
   const fetchData = useCallback(async () => {
@@ -181,7 +193,7 @@ export function RFMMatrix() {
       const { data } = await supabase
         .from("nuvemshop_orders")
         .select("*")
-        .eq("customer_email", customer.email)
+        .ilike("customer_email", customer.email)
         .order("order_date", { ascending: false })
         .limit(20);
       orders = data || [];
@@ -189,6 +201,95 @@ export function RFMMatrix() {
 
     return orders;
   }, []);
+
+  const syncAllOrders = async () => {
+    const pageSize = 200;
+    const maxPages = 100;
+    let page = 1;
+    let totalSynced = 0;
+    let hasMore = true;
+
+    while (hasMore && !stopRequestedRef.current && page <= maxPages) {
+      setSyncProgress((previous) => ({
+        total: Math.max(previous?.total || pageSize, pageSize),
+        synced: totalSynced,
+        phase: "orders",
+        customersSynced: previous?.customersSynced || 0,
+        ordersSynced: totalSynced,
+        status: `Sincronizando pedidos... página ${page}`,
+      }));
+
+      const { data, error } = await supabase.functions.invoke("nuvemshop-sync", {
+        body: { page, perPage: pageSize },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      totalSynced += Number(data?.synced || 0);
+      hasMore = Boolean(data?.has_more);
+
+      setSyncProgress((previous) => ({
+        total: totalSynced + (hasMore ? pageSize : 0),
+        synced: totalSynced,
+        phase: "orders",
+        customersSynced: previous?.customersSynced || 0,
+        ordersSynced: totalSynced,
+        status: hasMore
+          ? `Sincronizando pedidos... ${totalSynced} importados`
+          : `Pedidos sincronizados: ${totalSynced}`,
+      }));
+
+      page += 1;
+    }
+
+    if (hasMore && page > maxPages) {
+      throw new Error("A sincronização de pedidos excedeu o limite seguro de páginas.");
+    }
+
+    return totalSynced;
+  };
+
+  const finishSync = async (customerCount: number) => {
+    if (stopRequestedRef.current) {
+      setSyncing(false);
+      return;
+    }
+
+    const customersSynced = Number(customerCount || 0);
+    const ordersSynced = await syncAllOrders();
+
+    if (stopRequestedRef.current) {
+      setSyncing(false);
+      setSyncProgress({
+        total: 0,
+        synced: customersSynced,
+        phase: "orders",
+        customersSynced,
+        ordersSynced,
+        status: `Sincronização parada. ${customersSynced} clientes e ${ordersSynced} pedidos importados.`,
+      });
+      return;
+    }
+
+    setSyncProgress({
+      total: 0,
+      synced: customersSynced,
+      phase: "orders",
+      customersSynced,
+      ordersSynced,
+      status: "Concluído!",
+    });
+
+    if (selectedCustomer) {
+      const refreshedOrders = await fetchCustomerOrdersFromDatabase(selectedCustomer);
+      setCustomerOrders(refreshedOrders);
+    }
+
+    await fetchData();
+    setSyncing(false);
+    toast.success(`Sincronização concluída! ${customersSynced} clientes e ${ordersSynced} pedidos importados.`);
+  };
 
   const syncCustomerOrdersOnDemand = useCallback(async (customer: RFMCustomer) => {
     const rawCustomerId = customer.metadata?.nuvemshop_customer_id;
@@ -274,9 +375,7 @@ export function RFMMatrix() {
       if (statusData.status === "completed") {
         clearSyncTimer();
         activeJobRef.current = null;
-        setSyncing(false);
-        toast.success(`Sincronização concluída! ${statusData.valid_rows || 0} clientes importados.`);
-        fetchData();
+        await finishSync(statusData.valid_rows || 0);
         return;
       }
 
@@ -332,7 +431,12 @@ export function RFMMatrix() {
       }
     }
 
-    toast.info(`Sincronização parada. ${syncProgress?.synced || 0} clientes importados até agora.`);
+    if (syncProgress?.phase === "orders") {
+      toast.info(`Sincronização parada. ${syncProgress.ordersSynced || 0} pedidos importados até agora.`);
+      return;
+    }
+
+    toast.info(`Sincronização parada. ${syncProgress?.customersSynced || syncProgress?.synced || 0} clientes importados até agora.`);
   };
 
   const startSync = async () => {
@@ -341,7 +445,7 @@ export function RFMMatrix() {
     requestInFlightRef.current = false;
     activeJobRef.current = null;
     setSyncing(true);
-    setSyncProgress({ total: 0, synced: 0, status: "Iniciando..." });
+    setSyncProgress({ total: 0, synced: 0, status: "Iniciando...", phase: "customers", customersSynced: 0, ordersSynced: 0 });
 
     try {
       const response = await fetch(
@@ -377,9 +481,7 @@ export function RFMMatrix() {
 
       if (result.status === "completed") {
         activeJobRef.current = null;
-        setSyncing(false);
-        toast.success(`Sincronização concluída! ${result.valid_rows || 0} clientes importados.`);
-        fetchData();
+        await finishSync(result.valid_rows || 0);
         return;
       }
 
@@ -468,7 +570,7 @@ export function RFMMatrix() {
                 Sincronizar Nuvemshop
               </h3>
               <p className="text-xs text-muted-foreground mt-1">
-                Importa clientes da Nuvemshop em lotes de 100 e calcula RFM para quem já tem pedidos.
+                Importa clientes, sincroniza o histórico de pedidos e recalcula a matriz RFM.
                 {customers.length > 0 && ` Atualmente ${customers.length} clientes aparecem na matriz.`}
               </p>
             </div>
@@ -503,9 +605,10 @@ export function RFMMatrix() {
             </div>
           )}
 
-          {!syncing && syncProgress && syncProgress.synced > 0 && (
+          {!syncing && syncProgress && (syncProgress.customersSynced || syncProgress.synced) > 0 && (
             <p className="text-xs text-primary">
-              ✓ Última sincronização: {syncProgress.synced} clientes importados
+              ✓ Última sincronização: {syncProgress.customersSynced || syncProgress.synced || 0} clientes
+              {syncProgress.ordersSynced ? ` e ${syncProgress.ordersSynced} pedidos` : ""} importados
             </p>
           )}
         </CardContent>
@@ -766,7 +869,7 @@ export function RFMMatrix() {
                       <Loader2 className="w-4 h-4 animate-spin" /> Carregando pedidos...
                     </div>
                   ) : customerOrders.length === 0 ? (
-                    <p className="text-sm text-muted-foreground py-2">Nenhum pedido encontrado. Sincronize os pedidos na página de APIs → Nuvemshop para ver o histórico.</p>
+                    <p className="text-sm text-muted-foreground py-2">Nenhum pedido encontrado para este cliente ainda. Use “Sincronizar Tudo” para atualizar clientes e histórico de pedidos.</p>
                   ) : (
                     <div className="space-y-2">
                       {customerOrders.slice(0, 2).map((order: any) => (
