@@ -30,12 +30,22 @@ interface JobState {
 }
 
 const STATE_TO_REGION: Record<string, string> = {
+  // Siglas
   AC: "Norte", AP: "Norte", AM: "Norte", PA: "Norte", RO: "Norte", RR: "Norte", TO: "Norte",
   AL: "Nordeste", BA: "Nordeste", CE: "Nordeste", MA: "Nordeste", PB: "Nordeste",
   PE: "Nordeste", PI: "Nordeste", RN: "Nordeste", SE: "Nordeste",
   DF: "Centro-Oeste", GO: "Centro-Oeste", MT: "Centro-Oeste", MS: "Centro-Oeste",
   ES: "Sudeste", MG: "Sudeste", RJ: "Sudeste", SP: "Sudeste",
   PR: "Sul", RS: "Sul", SC: "Sul",
+};
+
+const STATE_NAME_TO_REGION: Record<string, string> = {
+  "acre": "Norte", "amapá": "Norte", "amazonas": "Norte", "pará": "Norte", "rondônia": "Norte", "roraima": "Norte", "tocantins": "Norte",
+  "alagoas": "Nordeste", "bahia": "Nordeste", "ceará": "Nordeste", "maranhão": "Nordeste", "paraíba": "Nordeste",
+  "pernambuco": "Nordeste", "piauí": "Nordeste", "rio grande do norte": "Nordeste", "sergipe": "Nordeste",
+  "distrito federal": "Centro-Oeste", "goiás": "Centro-Oeste", "mato grosso": "Centro-Oeste", "mato grosso do sul": "Centro-Oeste",
+  "espírito santo": "Sudeste", "minas gerais": "Sudeste", "rio de janeiro": "Sudeste", "são paulo": "Sudeste",
+  "paraná": "Sul", "rio grande do sul": "Sul", "santa catarina": "Sul",
 };
 
 function jsonResponse(payload: Record<string, unknown>, status = 200) {
@@ -53,8 +63,11 @@ function cleanPhone(phone: string | null | undefined): string | null {
 
 function getRegion(province: string | null | undefined): string | null {
   if (!province) return null;
-  const upper = province.trim().toUpperCase();
+  const trimmed = province.trim();
+  const upper = trimmed.toUpperCase();
   if (STATE_TO_REGION[upper]) return STATE_TO_REGION[upper];
+  const lower = trimmed.toLowerCase();
+  if (STATE_NAME_TO_REGION[lower]) return STATE_NAME_TO_REGION[lower];
   const match = upper.match(/\b([A-Z]{2})$/);
   if (match && STATE_TO_REGION[match[1]]) return STATE_TO_REGION[match[1]];
   return null;
