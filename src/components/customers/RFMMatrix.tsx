@@ -76,6 +76,7 @@ export function RFMMatrix() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [syncProgress, setSyncProgress] = useState<{ total: number; synced: number; status: string } | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [selectedSegment, setSelectedSegment] = useState<string | null>(null);
   const [selectedCustomer, setSelectedCustomer] = useState<RFMCustomer | null>(null);
   const [customerOrders, setCustomerOrders] = useState<any[]>([]);
