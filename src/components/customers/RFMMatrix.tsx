@@ -121,9 +121,8 @@ export function RFMMatrix() {
     setLoadingOrders(false);
   };
 
-  const sendWhatsApp = (phone: string, name: string) => {
-    const message = encodeURIComponent(`Olá ${name}! `);
-    window.open(`https://wa.me/${phone}?text=${message}`, "_blank");
+  const sendWhatsApp = (phone: string) => {
+    navigate(`/campaigns?tab=individual&phone=${phone}`);
   };
 
   const startSync = async () => {
