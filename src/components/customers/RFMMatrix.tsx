@@ -122,8 +122,10 @@ export function RFMMatrix() {
     setLoadingOrders(false);
   };
 
-  const sendWhatsApp = (phone: string) => {
-    navigate(`/campaigns?tab=individual&phone=${phone}`);
+  const sendWhatsApp = (phone: string, name: string) => {
+    const firstName = name.split(" ")[0];
+    const msg = encodeURIComponent(`Olá ${firstName}! `);
+    navigate(`/campaigns?tab=individual&phone=${phone}&msg=${msg}`);
   };
 
   const startSync = async () => {
@@ -423,7 +425,7 @@ export function RFMMatrix() {
                                   size="icon"
                                   variant="ghost"
                                   className="h-7 w-7 text-emerald-400 hover:text-emerald-300"
-                                  onClick={(e) => { e.stopPropagation(); sendWhatsApp(c.phone!); }}
+                                  onClick={(e) => { e.stopPropagation(); sendWhatsApp(c.phone!, c.name); }}
                                 >
                                   <MessageCircle className="w-3.5 h-3.5" />
                                 </Button>
@@ -604,7 +606,7 @@ export function RFMMatrix() {
                 {selectedCustomer.phone && (
                   <Button
                     className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
-                    onClick={() => sendWhatsApp(selectedCustomer.phone!)}
+                    onClick={() => sendWhatsApp(selectedCustomer.phone!, selectedCustomer.name)}
                   >
                     <MessageCircle className="w-4 h-4 mr-2" />
                     Enviar WhatsApp

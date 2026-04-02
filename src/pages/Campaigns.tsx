@@ -10,6 +10,7 @@ export default function Campaigns() {
   const [searchParams] = useSearchParams();
   const tabParam = searchParams.get("tab");
   const phoneParam = searchParams.get("phone");
+  const msgParam = searchParams.get("msg");
   const [activeTab, setActiveTab] = useState(tabParam || "campaigns");
 
   useEffect(() => {
@@ -47,7 +48,7 @@ export default function Campaigns() {
           </TabsContent>
 
           <TabsContent value="individual" className="mt-0">
-            <IndividualSender initialPhone={phoneParam || undefined} />
+            <IndividualSender initialPhone={phoneParam || undefined} initialMessage={msgParam || undefined} />
           </TabsContent>
 
           <TabsContent value="carousel" className="mt-0">
