@@ -687,7 +687,7 @@ export function RFMMatrix() {
                       <Loader2 className="w-4 h-4 animate-spin" /> Carregando pedidos...
                     </div>
                   ) : customerOrders.length === 0 ? (
-                    <p className="text-sm text-muted-foreground py-2">Nenhum pedido encontrado localmente.</p>
+                    <p className="text-sm text-muted-foreground py-2">Nenhum pedido encontrado. Sincronize os pedidos na página de APIs → Nuvemshop para ver o histórico.</p>
                   ) : (
                     <div className="space-y-2">
                       {customerOrders.map((order: any) => (
