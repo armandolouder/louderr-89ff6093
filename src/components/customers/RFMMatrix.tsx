@@ -169,10 +169,11 @@ export function RFMMatrix() {
       const phone = customer.phone;
       const lastDigits = phone.slice(-8);
       const phoneWithPlus = phone.startsWith("+") ? phone : `+${phone}`;
+      const phoneWithoutPlus = phone.startsWith("+") ? phone.slice(1) : phone;
       const { data } = await supabase
         .from("nuvemshop_orders")
         .select("*")
-        .or(`customer_phone.eq.${phone},customer_phone.eq.${phoneWithPlus},customer_phone.like.%${lastDigits}%`)
+        .or(`customer_phone.eq.${phone},customer_phone.eq.${phoneWithPlus},customer_phone.eq.${phoneWithoutPlus},customer_phone.like.%${lastDigits}%`)
         .order("order_date", { ascending: false })
         .limit(20);
       orders = data || [];
