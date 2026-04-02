@@ -2,11 +2,12 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 const API_BASE = "https://api.tiendanube.com/v1";
+const SYNC_FILENAME = "nuvemshop_customers_sync";
+const CHUNK_SIZE = 100;
 
 interface NuvemshopCustomer {
   id: number;
@@ -23,6 +24,11 @@ interface NuvemshopCustomer {
   last_order_id?: number;
 }
 
+interface JobState {
+  next_page?: number;
+  phase?: "sync" | "finalizing" | "completed" | "cancelled";
+}
+
 const STATE_TO_REGION: Record<string, string> = {
   AC: "Norte", AP: "Norte", AM: "Norte", PA: "Norte", RO: "Norte", RR: "Norte", TO: "Norte",
   AL: "Nordeste", BA: "Nordeste", CE: "Nordeste", MA: "Nordeste", PB: "Nordeste",
@@ -31,6 +37,13 @@ const STATE_TO_REGION: Record<string, string> = {
   ES: "Sudeste", MG: "Sudeste", RJ: "Sudeste", SP: "Sudeste",
   PR: "Sul", RS: "Sul", SC: "Sul",
 };
+
+function jsonResponse(payload: Record<string, unknown>, status = 200) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
 
 function cleanPhone(phone: string | null | undefined): string | null {
   if (!phone) return null;
@@ -47,7 +60,37 @@ function getRegion(province: string | null | undefined): string | null {
   return null;
 }
 
-async function fetchCustomersPage(accessToken: string, storeId: string, page: number, perPage: number): Promise<NuvemshopCustomer[]> {
+function parseJobState(value: unknown): JobState {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+
+  const state = value as Record<string, unknown>;
+  return {
+    next_page: typeof state.next_page === "number" ? state.next_page : undefined,
+    phase: typeof state.phase === "string" ? (state.phase as JobState["phase"]) : undefined,
+  };
+}
+
+function isValidUuid(value: string | null): value is string {
+  return !!value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+async function fetchJob(supabase: any, jobId: string) {
+  const { data, error } = await supabase
+    .from("import_batches")
+    .select("id, status, error_message, total_rows, valid_rows, invalid_rows, completed_at, column_mapping")
+    .eq("id", jobId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
+async function fetchCustomersPage(
+  accessToken: string,
+  storeId: string,
+  page: number,
+  perPage: number,
+): Promise<NuvemshopCustomer[]> {
   const url = `${API_BASE}/${storeId}/customers?page=${page}&per_page=${perPage}`;
   console.log(`Fetching page ${page}...`);
 
@@ -62,50 +105,68 @@ async function fetchCustomersPage(accessToken: string, storeId: string, page: nu
 
     if (response.status === 429) {
       console.log("Rate limited, waiting 3s...");
-      await new Promise((r) => setTimeout(r, 3000));
+      await new Promise((resolve) => setTimeout(resolve, 3000));
       continue;
     }
 
     if (!response.ok) {
-      console.error(`Page ${page} failed: ${response.status}`);
-      return [];
+      const details = await response.text();
+      throw new Error(`Erro ao buscar página ${page}: ${response.status} ${details}`);
     }
 
     return await response.json();
   }
-  return [];
+
+  throw new Error(`Limite de tentativas excedido ao buscar página ${page}`);
 }
 
 async function upsertCustomerBatch(supabase: any, customers: any[]) {
-  let synced = 0, errors = 0;
+  let synced = 0;
+  let errors = 0;
 
   for (const customer of customers) {
     try {
+      let existingId: string | null = null;
+
       if (customer.phone) {
-        const { data: existing } = await supabase
-          .from("imported_customers").select("id")
-          .eq("phone", customer.phone).maybeSingle();
-        if (existing) {
-          await supabase.from("imported_customers").update(customer).eq("id", existing.id);
-          synced++;
-          continue;
-        }
+        const { data, error } = await supabase
+          .from("imported_customers")
+          .select("id")
+          .eq("phone", customer.phone)
+          .maybeSingle();
+
+        if (error) throw error;
+        existingId = data?.id ?? null;
       }
-      if (customer.email) {
-        const { data: existing } = await supabase
-          .from("imported_customers").select("id")
-          .eq("email", customer.email).maybeSingle();
-        if (existing) {
-          await supabase.from("imported_customers").update(customer).eq("id", existing.id);
-          synced++;
-          continue;
-        }
+
+      if (!existingId && customer.email) {
+        const { data, error } = await supabase
+          .from("imported_customers")
+          .select("id")
+          .eq("email", customer.email)
+          .maybeSingle();
+
+        if (error) throw error;
+        existingId = data?.id ?? null;
       }
+
+      if (existingId) {
+        const { error } = await supabase
+          .from("imported_customers")
+          .update(customer)
+          .eq("id", existingId);
+
+        if (error) throw error;
+        synced++;
+        continue;
+      }
+
       const { error } = await supabase.from("imported_customers").insert(customer);
-      if (error) errors++;
-      else synced++;
-    } catch (e) {
+      if (error) throw error;
+      synced++;
+    } catch (error) {
       errors++;
+      console.error("Upsert customer error:", error, customer?.email ?? customer?.phone ?? "unknown");
     }
   }
 
@@ -115,11 +176,13 @@ async function upsertCustomerBatch(supabase: any, customers: any[]) {
 async function calculateRFMScores(supabase: any) {
   console.log("Calculating RFM scores...");
 
-  const { data: customers } = await supabase
+  const { data: customers, error } = await supabase
     .from("imported_customers")
     .select("id, last_purchase_at, order_count, total_spent")
     .not("last_purchase_at", "is", null)
     .gt("order_count", 0);
+
+  if (error) throw error;
 
   if (!customers?.length) {
     console.log("No customers with purchase data for RFM");
@@ -127,19 +190,21 @@ async function calculateRFMScores(supabase: any) {
   }
 
   const now = Date.now();
-  const enriched = customers.map((c: any) => ({
-    ...c,
-    daysSince: Math.floor((now - new Date(c.last_purchase_at).getTime()) / 86400000),
-    totalSpent: parseFloat(c.total_spent) || 0,
-    orderCount: c.order_count || 0,
+  const enriched = customers.map((customer: any) => ({
+    ...customer,
+    daysSince: Math.floor((now - new Date(customer.last_purchase_at).getTime()) / 86400000),
+    totalSpent: Number(customer.total_spent || 0),
+    orderCount: customer.order_count || 0,
   }));
 
-  const assignQuintile = (arr: any[], key: string, ascending: boolean) => {
-    const sorted = [...arr].sort((a, b) => ascending ? a[key] - b[key] : b[key] - a[key]);
-    const size = Math.ceil(sorted.length / 5);
-    sorted.forEach((item, i) => {
-      item[`${key}_q`] = Math.min(5, Math.floor(i / size) + 1);
+  const assignQuintile = (rows: any[], key: string, ascending: boolean) => {
+    const sorted = [...rows].sort((a, b) => ascending ? a[key] - b[key] : b[key] - a[key]);
+    const size = Math.max(1, Math.ceil(sorted.length / 5));
+
+    sorted.forEach((row, index) => {
+      row[`${key}_q`] = Math.min(5, Math.floor(index / size) + 1);
     });
+
     return sorted;
   };
 
@@ -148,21 +213,30 @@ async function calculateRFMScores(supabase: any) {
   scored = assignQuintile(scored, "totalSpent", true);
 
   const scoreMap = new Map<string, { r: number; f: number; m: number }>();
-  scored.forEach((s: any) => {
-    scoreMap.set(s.id, { r: s.daysSince_q, f: s.orderCount_q, m: s.totalSpent_q });
+  scored.forEach((row: any) => {
+    scoreMap.set(row.id, {
+      r: row.daysSince_q,
+      f: row.orderCount_q,
+      m: row.totalSpent_q,
+    });
   });
 
   const updates: Promise<any>[] = [];
+
   for (const customer of customers) {
     const scores = scoreMap.get(customer.id);
     if (!scores) continue;
+
     updates.push(
-      supabase.from("imported_customers").update({
-        rfm_recency: scores.r,
-        rfm_frequency: scores.f,
-        rfm_monetary: scores.m,
-        rfm_score: `${scores.r}${scores.f}${scores.m}`,
-      }).eq("id", customer.id)
+      supabase
+        .from("imported_customers")
+        .update({
+          rfm_recency: scores.r,
+          rfm_frequency: scores.f,
+          rfm_monetary: scores.m,
+          rfm_score: `${scores.r}${scores.f}${scores.m}`,
+        })
+        .eq("id", customer.id),
     );
 
     if (updates.length >= 20) {
@@ -170,162 +244,230 @@ async function calculateRFMScores(supabase: any) {
       updates.length = 0;
     }
   }
-  if (updates.length) await Promise.all(updates);
+
+  if (updates.length) {
+    await Promise.all(updates);
+  }
 
   console.log(`RFM scores updated for ${customers.length} customers`);
 }
 
-// Process a single chunk: fetch 100 customers from API, upsert, update progress
-async function processChunk(
+async function finalizeJob(
   supabase: any,
-  accessToken: string,
-  storeId: string,
-  page: number,
   jobId: string,
-  cumulativeSynced: number,
-  cumulativeErrors: number,
-  cumulativeTotal: number
-): Promise<{ synced: number; errors: number; total: number; hasMore: boolean }> {
-  const perPage = 100;
-  const customers = await fetchCustomersPage(accessToken, storeId, page, perPage);
+  totals: { synced: number; errors: number; total: number },
+) {
+  const job = await fetchJob(supabase, jobId);
+  const state = parseJobState(job?.column_mapping);
+
+  await supabase
+    .from("import_batches")
+    .update({
+      status: "finalizing",
+      total_rows: totals.total,
+      valid_rows: totals.synced,
+      invalid_rows: totals.errors,
+      error_message: null,
+      column_mapping: { ...state, phase: "finalizing" },
+    })
+    .eq("id", jobId);
+
+  console.log("Enriching from local orders...");
+
+  const { data: customersNoDates, error: customersError } = await supabase
+    .from("imported_customers")
+    .select("id, phone, email")
+    .is("first_purchase_at", null)
+    .eq("source", "nuvemshop")
+    .limit(5000);
+
+  if (customersError) throw customersError;
+
+  if (customersNoDates?.length) {
+    const enrichUpdates: Promise<any>[] = [];
+
+    for (const customer of customersNoDates) {
+      let query = supabase
+        .from("nuvemshop_orders")
+        .select("order_date, total")
+        .order("order_date", { ascending: true });
+
+      if (customer.phone) {
+        query = query.or(`customer_phone.eq.${customer.phone},customer_phone.like.%${customer.phone.slice(-8)}%`);
+      } else if (customer.email) {
+        query = query.eq("customer_email", customer.email);
+      } else {
+        continue;
+      }
+
+      const { data: orders, error: ordersError } = await query;
+      if (ordersError) throw ordersError;
+
+      if (orders?.length) {
+        enrichUpdates.push(
+          supabase
+            .from("imported_customers")
+            .update({
+              first_purchase_at: orders[0].order_date,
+              last_purchase_at: orders[orders.length - 1].order_date,
+              total_spent: orders.reduce((sum: number, order: any) => sum + (Number(order.total) || 0), 0),
+              order_count: orders.length,
+            })
+            .eq("id", customer.id),
+        );
+      }
+
+      if (enrichUpdates.length >= 20) {
+        await Promise.all(enrichUpdates);
+        enrichUpdates.length = 0;
+      }
+    }
+
+    if (enrichUpdates.length) {
+      await Promise.all(enrichUpdates);
+    }
+  }
+
+  await calculateRFMScores(supabase);
+
+  await supabase
+    .from("import_batches")
+    .update({
+      status: "completed",
+      completed_at: new Date().toISOString(),
+      total_rows: totals.total,
+      valid_rows: totals.synced,
+      invalid_rows: totals.errors,
+      error_message: null,
+      column_mapping: { ...state, phase: "completed" },
+    })
+    .eq("id", jobId);
+
+  console.log(`Sync complete: ${totals.synced} synced, ${totals.errors} errors out of ${totals.total} total`);
+
+  return await fetchJob(supabase, jobId);
+}
+
+async function markJobFailed(supabase: any, jobId: string, message: string) {
+  const job = await fetchJob(supabase, jobId);
+  const state = parseJobState(job?.column_mapping);
+
+  await supabase
+    .from("import_batches")
+    .update({
+      status: "failed",
+      error_message: message,
+      completed_at: new Date().toISOString(),
+      column_mapping: { ...state, phase: state.phase ?? "sync" },
+    })
+    .eq("id", jobId);
+
+  return await fetchJob(supabase, jobId);
+}
+
+async function processNextChunk(supabase: any, accessToken: string, storeId: string, job: any) {
+  const state = parseJobState(job.column_mapping);
+  const page = state.next_page && state.next_page > 0
+    ? state.next_page
+    : Math.floor((Number(job.total_rows || 0) / CHUNK_SIZE)) + 1;
+
+  const currentTotals = {
+    synced: Number(job.valid_rows || 0),
+    errors: Number(job.invalid_rows || 0),
+    total: Number(job.total_rows || 0),
+  };
+
+  const customers = await fetchCustomersPage(accessToken, storeId, page, CHUNK_SIZE);
 
   if (!customers.length) {
-    return { synced: cumulativeSynced, errors: cumulativeErrors, total: cumulativeTotal, hasMore: false };
+    if (currentTotals.total === 0) {
+      return await markJobFailed(supabase, job.id, "Nenhum cliente encontrado na Nuvemshop");
+    }
+
+    return await finalizeJob(supabase, job.id, currentTotals);
   }
 
   const customerRecords = customers
-    .map((c) => {
-      const phone = cleanPhone(c.phone);
-      const email = c.email || null;
+    .map((customer) => {
+      const phone = cleanPhone(customer.phone);
+      const email = customer.email || null;
+
       if (!phone && !email) return null;
 
-      const hasOrders = (c.orders_count || 0) > 0;
+      const hasOrders = (customer.orders_count || 0) > 0;
 
       return {
         phone,
         email,
-        name: c.name || "Cliente",
+        name: customer.name || "Cliente",
         source: "nuvemshop",
-        total_spent: parseFloat(c.total_spent || "0"),
-        order_count: c.orders_count || 0,
-        city: c.billing_city || null,
-        state: c.billing_province || null,
-        region: getRegion(c.billing_province),
-        // Use API dates as proxy for purchase dates when customer has orders
-        first_purchase_at: hasOrders ? c.created_at : null,
-        last_purchase_at: hasOrders ? c.updated_at : null,
-        metadata: { nuvemshop_customer_id: c.id },
+        total_spent: Number(customer.total_spent || 0),
+        order_count: customer.orders_count || 0,
+        city: customer.billing_city || null,
+        state: customer.billing_province || null,
+        region: getRegion(customer.billing_province),
+        first_purchase_at: hasOrders ? customer.created_at : null,
+        last_purchase_at: hasOrders ? customer.updated_at : null,
+        metadata: { nuvemshop_customer_id: customer.id },
       };
     })
     .filter(Boolean);
 
   const { synced, errors } = await upsertCustomerBatch(supabase, customerRecords);
-  const newSynced = cumulativeSynced + synced;
-  const newErrors = cumulativeErrors + errors;
-  const newTotal = cumulativeTotal + customers.length;
 
-  // Update progress
-  await supabase.from("import_batches").update({
-    total_rows: newTotal,
-    valid_rows: newSynced,
-    invalid_rows: newErrors,
-    status: "processing",
-  }).eq("id", jobId);
+  const updatedTotals = {
+    synced: currentTotals.synced + synced,
+    errors: currentTotals.errors + errors,
+    total: currentTotals.total + customers.length,
+  };
 
-  console.log(`Page ${page}: ${customers.length} fetched, ${synced} synced, ${errors} errors | Total: ${newSynced}/${newTotal}`);
+  const hasMore = customers.length >= CHUNK_SIZE;
 
-  const hasMore = customers.length >= perPage;
-  return { synced: newSynced, errors: newErrors, total: newTotal, hasMore };
+  await supabase
+    .from("import_batches")
+    .update({
+      total_rows: updatedTotals.total,
+      valid_rows: updatedTotals.synced,
+      invalid_rows: updatedTotals.errors,
+      status: hasMore ? "processing" : "finalizing",
+      error_message: null,
+      column_mapping: {
+        next_page: page + 1,
+        phase: hasMore ? "sync" : "finalizing",
+      },
+    })
+    .eq("id", job.id);
+
+  console.log(`Page ${page}: ${customers.length} fetched, ${synced} synced, ${errors} errors | Total: ${updatedTotals.synced}/${updatedTotals.total}`);
+
+  if (hasMore) {
+    return await fetchJob(supabase, job.id);
+  }
+
+  return await finalizeJob(supabase, job.id, updatedTotals);
 }
 
-async function processSync(supabase: any, jobId: string) {
-  try {
-    const accessToken = Deno.env.get("NUVEMSHOP_ACCESS_TOKEN")!;
-    const storeId = Deno.env.get("NUVEMSHOP_STORE_ID")!;
+async function cancelJob(supabase: any, jobId: string) {
+  const job = await fetchJob(supabase, jobId);
+  if (!job) return null;
 
-    let page = 1;
-    let synced = 0, errors = 0, total = 0;
-    const maxPages = 200; // safety limit
-
-    while (page <= maxPages) {
-      const result = await processChunk(supabase, accessToken, storeId, page, jobId, synced, errors, total);
-      synced = result.synced;
-      errors = result.errors;
-      total = result.total;
-
-      if (!result.hasMore) break;
-      page++;
-      // Small delay between pages to avoid rate limiting
-      await new Promise((r) => setTimeout(r, 300));
-    }
-
-    if (total === 0) {
-      await supabase.from("import_batches").update({
-        status: "failed",
-        error_message: "Nenhum cliente encontrado na Nuvemshop",
-      }).eq("id", jobId);
-      return;
-    }
-
-    // Enrich from local nuvemshop_orders for purchase dates
-    console.log("Enriching from local orders...");
-    const { data: customersNoDates } = await supabase
-      .from("imported_customers")
-      .select("id, phone")
-      .is("first_purchase_at", null)
-      .not("phone", "is", null)
-      .eq("source", "nuvemshop")
-      .limit(5000);
-
-    if (customersNoDates?.length) {
-      console.log(`Enriching ${customersNoDates.length} customers from local orders...`);
-      const enrichUpdates: Promise<any>[] = [];
-
-      for (const cust of customersNoDates) {
-        const { data: orders } = await supabase
-          .from("nuvemshop_orders")
-          .select("order_date, total")
-          .or(`customer_phone.eq.${cust.phone},customer_phone.like.%${cust.phone.slice(-8)}%`)
-          .order("order_date", { ascending: true });
-
-        if (orders?.length) {
-          enrichUpdates.push(
-            supabase.from("imported_customers").update({
-              first_purchase_at: orders[0].order_date,
-              last_purchase_at: orders[orders.length - 1].order_date,
-              total_spent: orders.reduce((sum: number, o: any) => sum + (parseFloat(o.total) || 0), 0),
-              order_count: orders.length,
-            }).eq("id", cust.id)
-          );
-        }
-
-        if (enrichUpdates.length >= 20) {
-          await Promise.all(enrichUpdates);
-          enrichUpdates.length = 0;
-        }
-      }
-      if (enrichUpdates.length) await Promise.all(enrichUpdates);
-    }
-
-    // Calculate RFM scores
-    await calculateRFMScores(supabase);
-
-    await supabase.from("import_batches").update({
-      status: "completed",
-      completed_at: new Date().toISOString(),
-      total_rows: total,
-      valid_rows: synced,
-      invalid_rows: errors,
-    }).eq("id", jobId);
-
-    console.log(`Sync complete: ${synced} synced, ${errors} errors out of ${total} total`);
-  } catch (error) {
-    console.error("Sync error:", error);
-    await supabase.from("import_batches").update({
-      status: "failed",
-      error_message: error.message,
-    }).eq("id", jobId);
+  if (["completed", "failed", "cancelled"].includes(job.status || "")) {
+    return job;
   }
+
+  const state = parseJobState(job.column_mapping);
+
+  await supabase
+    .from("import_batches")
+    .update({
+      status: "cancelled",
+      completed_at: new Date().toISOString(),
+      error_message: null,
+      column_mapping: { ...state, phase: "cancelled" },
+    })
+    .eq("id", jobId);
+
+  return await fetchJob(supabase, jobId);
 }
 
 Deno.serve(async (req) => {
@@ -334,65 +476,98 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const accessToken = Deno.env.get("NUVEMSHOP_ACCESS_TOKEN");
     const storeId = Deno.env.get("NUVEMSHOP_STORE_ID");
 
-    if (!accessToken || !storeId) {
-      return new Response(
-        JSON.stringify({ error: "NUVEMSHOP_ACCESS_TOKEN ou NUVEMSHOP_STORE_ID não configurados" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    if (!supabaseUrl || !supabaseKey || !accessToken || !storeId) {
+      return jsonResponse({
+        success: false,
+        error: "Configuração da integração com a Nuvemshop incompleta",
+      }, 400);
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey);
     const url = new URL(req.url);
     const jobId = url.searchParams.get("job_id");
+    const action = url.searchParams.get("action");
+
+    if (req.method === "GET") {
+      if (!isValidUuid(jobId)) {
+        return jsonResponse({ success: false, error: "job_id inválido" }, 400);
+      }
+
+      const job = await fetchJob(supabase, jobId);
+      if (!job) {
+        return jsonResponse({ success: false, error: "Sincronização não encontrada" }, 404);
+      }
+
+      return jsonResponse({ success: true, job_id: job.id, ...job });
+    }
+
+    if (req.method !== "POST") {
+      return jsonResponse({ success: false, error: "Método não permitido" }, 405);
+    }
+
+    if (action === "cancel") {
+      if (!isValidUuid(jobId)) {
+        return jsonResponse({ success: false, error: "job_id inválido" }, 400);
+      }
+
+      const job = await cancelJob(supabase, jobId);
+      if (!job) {
+        return jsonResponse({ success: false, error: "Sincronização não encontrada" }, 404);
+      }
+
+      return jsonResponse({ success: true, job_id: job.id, ...job, message: "Sincronização cancelada" });
+    }
 
     if (jobId) {
-      const { data: job } = await supabase
-        .from("import_batches")
-        .select("status, error_message, total_rows, valid_rows, invalid_rows, completed_at")
-        .eq("id", jobId)
-        .single();
+      if (!isValidUuid(jobId)) {
+        return jsonResponse({ success: false, error: "job_id inválido" }, 400);
+      }
 
-      return new Response(
-        JSON.stringify({ success: true, job_id: jobId, ...job }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      const job = await fetchJob(supabase, jobId);
+      if (!job) {
+        return jsonResponse({ success: false, error: "Sincronização não encontrada" }, 404);
+      }
+
+      if (["completed", "failed", "cancelled"].includes(job.status || "")) {
+        return jsonResponse({ success: true, job_id: job.id, ...job });
+      }
+
+      const updatedJob = await processNextChunk(supabase, accessToken, storeId, job);
+      return jsonResponse({ success: true, job_id: updatedJob.id, ...updatedJob });
     }
 
-    const { data: job, error: jobError } = await supabase
+    const { data: createdJob, error: createError } = await supabase
       .from("import_batches")
-      .insert({ filename: "nuvemshop_customers_sync", status: "processing", total_rows: 0 })
-      .select()
+      .insert({
+        filename: SYNC_FILENAME,
+        status: "processing",
+        total_rows: 0,
+        valid_rows: 0,
+        invalid_rows: 0,
+        column_mapping: { next_page: 1, phase: "sync" },
+      })
+      .select("id, status, error_message, total_rows, valid_rows, invalid_rows, completed_at, column_mapping")
       .single();
 
-    if (jobError) throw jobError;
+    if (createError) throw createError;
 
-    // @ts-ignore
-    if (typeof EdgeRuntime !== "undefined" && EdgeRuntime.waitUntil) {
-      // @ts-ignore
-      EdgeRuntime.waitUntil(processSync(supabase, job.id));
-    } else {
-      processSync(supabase, job.id).catch(console.error);
-    }
-
-    return new Response(
-      JSON.stringify({
-        success: true,
-        job_id: job.id,
-        message: "Sincronização iniciada (100 por vez). Aguarde...",
-        status: "processing",
-      }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    const updatedJob = await processNextChunk(supabase, accessToken, storeId, createdJob);
+    return jsonResponse({
+      success: true,
+      job_id: updatedJob.id,
+      ...updatedJob,
+      message: "Sincronização iniciada",
+    });
   } catch (error) {
     console.error("Error:", error);
-    return new Response(
-      JSON.stringify({ success: false, error: error.message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return jsonResponse({
+      success: false,
+      error: error instanceof Error ? error.message : "Erro desconhecido",
+    }, 500);
   }
 });
