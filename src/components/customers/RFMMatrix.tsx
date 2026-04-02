@@ -503,11 +503,10 @@ export function RFMMatrix() {
                               </span>
                             </div>
                             {order.products && Array.isArray(order.products) && order.products.length > 0 && (
-                              <div className="mt-1.5 text-xs text-muted-foreground">
-                                {order.products.slice(0, 3).map((p: any, i: number) => (
-                                  <span key={i}>{i > 0 ? ", " : ""}{p.name || p.product_name || "Produto"}</span>
+                              <div className="mt-1.5 text-xs text-muted-foreground space-y-0.5">
+                                {order.products.map((p: any, i: number) => (
+                                  <div key={i}>{p.name || p.product_name || "Produto"}</div>
                                 ))}
-                                {order.products.length > 3 && <span> +{order.products.length - 3}</span>}
                               </div>
                             )}
                             <div className="mt-1 flex gap-2">
