@@ -116,13 +116,37 @@ export function RFMMatrix() {
 
   const fetchData = useCallback(async () => {
     setLoading(true);
-    const { data } = await supabase
-      .from("imported_customers")
-      .select("id, name, email, phone, rfm_recency, rfm_frequency, rfm_monetary, rfm_score, total_spent, order_count, last_purchase_at, favorite_product, favorite_category, region, state, city")
-      .not("rfm_score", "is", null)
-      .order("total_spent", { ascending: false });
-    setCustomers((data as RFMCustomer[]) || []);
-    setLoading(false);
+
+    try {
+      const pageSize = 1000;
+      let from = 0;
+      let allCustomers: RFMCustomer[] = [];
+
+      while (true) {
+        const { data, error } = await supabase
+          .from("imported_customers")
+          .select("id, name, email, phone, rfm_recency, rfm_frequency, rfm_monetary, rfm_score, total_spent, order_count, last_purchase_at, favorite_product, favorite_category, region, state, city")
+          .not("rfm_score", "is", null)
+          .order("total_spent", { ascending: false })
+          .order("id", { ascending: true })
+          .range(from, from + pageSize - 1);
+
+        if (error) throw error;
+
+        const batch = (data as RFMCustomer[]) || [];
+        allCustomers = allCustomers.concat(batch);
+
+        if (batch.length < pageSize) break;
+        from += pageSize;
+      }
+
+      setCustomers(allCustomers);
+    } catch (error) {
+      console.error("Error fetching RFM customers:", error);
+      toast.error("Erro ao atualizar a matriz RFM");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
