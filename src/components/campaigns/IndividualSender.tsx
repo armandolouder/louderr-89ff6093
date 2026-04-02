@@ -187,7 +187,30 @@ export function IndividualSender({ initialPhone, initialMessage }: { initialPhon
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editItem, setEditItem] = useState<SavedMessage | null>(null);
 
+  const [improvingAI, setImprovingAI] = useState(false);
+
   const queryClient = useQueryClient();
+
+  const handleAI = async (mode: "generate" | "improve") => {
+    if (mode === "improve" && !content.trim()) {
+      toast.error("Digite uma mensagem primeiro para melhorar");
+      return;
+    }
+    setImprovingAI(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("improve-message", {
+        body: { message: content, mode },
+      });
+      if (error) throw error;
+      if (!data.success) throw new Error(data.error);
+      setContent(data.message);
+      toast.success(mode === "generate" ? "Mensagem gerada!" : "Mensagem melhorada!");
+    } catch (err: any) {
+      toast.error(`Erro: ${err.message}`);
+    } finally {
+      setImprovingAI(false);
+    }
+  };
 
   const { data: savedMessages = [] } = useQuery({
     queryKey: ["saved-individual-messages"],
