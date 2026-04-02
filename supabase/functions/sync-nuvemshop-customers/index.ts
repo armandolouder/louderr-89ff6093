@@ -203,62 +203,7 @@ async function finalizeJob(
     })
     .eq("id", jobId);
 
-  console.log("Enriching from local orders...");
-
-  const { data: customersNoDates, error: customersError } = await supabase
-    .from("imported_customers")
-    .select("id, phone, email")
-    .is("first_purchase_at", null)
-    .eq("source", "nuvemshop")
-    .limit(5000);
-
-  if (customersError) throw customersError;
-
-  if (customersNoDates?.length) {
-    const enrichUpdates: Promise<any>[] = [];
-
-    for (const customer of customersNoDates) {
-      let query = supabase
-        .from("nuvemshop_orders")
-        .select("order_date, total")
-        .order("order_date", { ascending: true });
-
-      if (customer.phone) {
-        query = query.or(`customer_phone.eq.${customer.phone},customer_phone.like.%${customer.phone.slice(-8)}%`);
-      } else if (customer.email) {
-        query = query.eq("customer_email", customer.email);
-      } else {
-        continue;
-      }
-
-      const { data: orders, error: ordersError } = await query;
-      if (ordersError) throw ordersError;
-
-      if (orders?.length) {
-        enrichUpdates.push(
-          supabase
-            .from("imported_customers")
-            .update({
-              first_purchase_at: orders[0].order_date,
-              last_purchase_at: orders[orders.length - 1].order_date,
-              total_spent: orders.reduce((sum: number, order: any) => sum + (Number(order.total) || 0), 0),
-              order_count: orders.length,
-            })
-            .eq("id", customer.id),
-        );
-      }
-
-      if (enrichUpdates.length >= 20) {
-        await Promise.all(enrichUpdates);
-        enrichUpdates.length = 0;
-      }
-    }
-
-    if (enrichUpdates.length) {
-      await Promise.all(enrichUpdates);
-    }
-  }
-
+  // Use fast SQL function for RFM calculation
   await calculateRFMScores(supabase);
 
   await supabase
