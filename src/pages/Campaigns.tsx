@@ -3,10 +3,18 @@ import { Send, GalleryHorizontalEnd, MessageSquare } from "lucide-react";
 import { CampaignsList } from "@/components/campaigns/CampaignsList";
 import { CarouselBuilder } from "@/components/campaigns/CarouselBuilder";
 import { IndividualSender } from "@/components/campaigns/IndividualSender";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 
 export default function Campaigns() {
-  const [activeTab, setActiveTab] = useState("campaigns");
+  const [searchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const phoneParam = searchParams.get("phone");
+  const [activeTab, setActiveTab] = useState(tabParam || "campaigns");
+
+  useEffect(() => {
+    if (tabParam) setActiveTab(tabParam);
+  }, [tabParam]);
 
   return (
     <div className="flex flex-col h-full bg-background">
@@ -39,7 +47,7 @@ export default function Campaigns() {
           </TabsContent>
 
           <TabsContent value="individual" className="mt-0">
-            <IndividualSender />
+            <IndividualSender initialPhone={phoneParam || undefined} />
           </TabsContent>
 
           <TabsContent value="carousel" className="mt-0">

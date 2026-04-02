@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -78,6 +79,7 @@ export function RFMMatrix() {
   const [selectedCustomer, setSelectedCustomer] = useState<RFMCustomer | null>(null);
   const [customerOrders, setCustomerOrders] = useState<any[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
+  const navigate = useNavigate();
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -120,9 +122,8 @@ export function RFMMatrix() {
     setLoadingOrders(false);
   };
 
-  const sendWhatsApp = (phone: string, name: string) => {
-    const message = encodeURIComponent(`Olá ${name}! `);
-    window.open(`https://wa.me/${phone}?text=${message}`, "_blank");
+  const sendWhatsApp = (phone: string) => {
+    navigate(`/campaigns?tab=individual&phone=${phone}`);
   };
 
   const startSync = async () => {
@@ -383,10 +384,7 @@ export function RFMMatrix() {
                         <TableHead>Email</TableHead>
                         <TableHead>WhatsApp</TableHead>
                         <TableHead>Produto Favorito</TableHead>
-                        <TableHead>Localização</TableHead>
-                        <TableHead className="text-center">R</TableHead>
-                        <TableHead className="text-center">F</TableHead>
-                        <TableHead className="text-center">M</TableHead>
+                        <TableHead>UF</TableHead>
                         <TableHead className="text-right">Total Gasto</TableHead>
                         <TableHead className="text-right">Pedidos</TableHead>
                         <TableHead className="text-center">Ações</TableHead>
@@ -399,7 +397,7 @@ export function RFMMatrix() {
                           className="cursor-pointer hover:bg-accent/50"
                           onClick={() => openCustomerDetail(c)}
                         >
-                          <TableCell className="font-medium whitespace-nowrap">{c.name}</TableCell>
+                          <TableCell className="font-medium whitespace-nowrap">{c.name.length > 12 ? c.name.slice(0, 12) + "…" : c.name}</TableCell>
                           <TableCell className="text-xs text-muted-foreground max-w-[180px] truncate">{c.email || "—"}</TableCell>
                           <TableCell className="text-xs whitespace-nowrap">
                             {c.phone ? (
@@ -415,10 +413,7 @@ export function RFMMatrix() {
                             ) : "—"}
                           </TableCell>
                           <TableCell className="text-xs text-muted-foreground max-w-[160px] truncate">{c.favorite_product || c.favorite_category || "—"}</TableCell>
-                          <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{c.city && c.state ? `${c.city}/${c.state}` : c.region || c.state || "—"}</TableCell>
-                          <TableCell className="text-center"><Badge variant="outline" className="text-xs">{c.rfm_recency}</Badge></TableCell>
-                          <TableCell className="text-center"><Badge variant="outline" className="text-xs">{c.rfm_frequency}</Badge></TableCell>
-                          <TableCell className="text-center"><Badge variant="outline" className="text-xs">{c.rfm_monetary}</Badge></TableCell>
+                          <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{c.state || "—"}</TableCell>
                           <TableCell className="text-right whitespace-nowrap">R$ {Number(c.total_spent || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</TableCell>
                           <TableCell className="text-right">{c.order_count}</TableCell>
                           <TableCell className="text-center">
@@ -428,7 +423,7 @@ export function RFMMatrix() {
                                   size="icon"
                                   variant="ghost"
                                   className="h-7 w-7 text-emerald-400 hover:text-emerald-300"
-                                  onClick={(e) => { e.stopPropagation(); sendWhatsApp(c.phone!, c.name); }}
+                                  onClick={(e) => { e.stopPropagation(); sendWhatsApp(c.phone!); }}
                                 >
                                   <MessageCircle className="w-3.5 h-3.5" />
                                 </Button>
@@ -609,7 +604,7 @@ export function RFMMatrix() {
                 {selectedCustomer.phone && (
                   <Button
                     className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
-                    onClick={() => sendWhatsApp(selectedCustomer.phone!, selectedCustomer.name)}
+                    onClick={() => sendWhatsApp(selectedCustomer.phone!)}
                   >
                     <MessageCircle className="w-4 h-4 mr-2" />
                     Enviar WhatsApp

@@ -178,8 +178,8 @@ function SavedMessageDialog({
   );
 }
 
-export function IndividualSender() {
-  const [phone, setPhone] = useState("");
+export function IndividualSender({ initialPhone }: { initialPhone?: string }) {
+  const [phone, setPhone] = useState(initialPhone || "");
   const [content, setContent] = useState("");
   const [mediaUrl, setMediaUrl] = useState("");
   const [sending, setSending] = useState(false);
