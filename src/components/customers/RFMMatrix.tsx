@@ -289,82 +289,7 @@ export function RFMMatrix() {
             ))}
           </div>
 
-          {/* Matrix heatmap */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <TrendingUp className="w-5 h-5 text-primary" />
-                Matriz RFM — Recência × Frequência
-              </CardTitle>
-              <p className="text-xs text-muted-foreground">
-                Cada célula mostra quantos clientes possuem aquela combinação. Clique para ver os clientes.
-              </p>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr>
-                      <th className="p-2 text-xs text-muted-foreground text-right w-24">R ↓ / F →</th>
-                      {[1, 2, 3, 4, 5].map((f) => (
-                        <th key={f} className="p-2 text-center text-xs font-medium text-muted-foreground w-20">F={f}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {matrix.map((row, ri) => (
-                      <tr key={ri}>
-                        <td className="p-2 text-right text-xs font-medium text-muted-foreground">R={5 - ri}</td>
-                        {row.map((cell, ci) => {
-                          const rgba = SEGMENT_RGBA[cell.segment.label] || "rgba(107,114,128,";
-                          return (
-                            <td key={ci} className="p-1">
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <div
-                                    className={`rounded-lg p-3 text-center cursor-pointer transition-all hover:scale-105 border ${
-                                      cell.count > 0 ? "border-white/10" : "bg-muted/30 border-transparent"
-                                    }`}
-                                    style={{
-                                      backgroundColor: cell.count > 0
-                                        ? `${rgba}${0.15 + (cell.count / maxCellCount) * 0.45})`
-                                        : undefined,
-                                    }}
-                                    onClick={() => {
-                                      if (cell.count > 0) setSelectedSegment(selectedSegment === cell.segment.label ? null : cell.segment.label);
-                                    }}
-                                  >
-                                    <div className="text-lg font-bold text-foreground">{cell.count || "—"}</div>
-                                    {cell.count > 0 && <div className="text-[10px] text-muted-foreground mt-0.5">{cell.segment.emoji}</div>}
-                                  </div>
-                                </TooltipTrigger>
-                                <TooltipContent side="top" className="max-w-xs">
-                                  <p className="font-semibold">{cell.segment.emoji} {cell.segment.label}</p>
-                                  <p className="text-xs">{cell.segment.description}</p>
-                                  <p className="text-xs mt-1">R={cell.r}, F={cell.f} — {cell.count} clientes</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <div className="flex flex-wrap gap-3 mt-4 pt-4 border-t border-border">
-                {Object.entries(CELL_COLORS).map(([label]) => {
-                  const seg = segments.find((s) => s.segment.label === label);
-                  if (!seg) return null;
-                  return (
-                    <div key={label} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <span>{seg.segment.emoji}</span> {label} ({seg.count})
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
+
 
           {/* Customer list */}
           {selectedSegment && filteredCustomers.length > 0 && (
@@ -385,7 +310,6 @@ export function RFMMatrix() {
                         <TableHead>Nome</TableHead>
                         <TableHead>Email</TableHead>
                         <TableHead>WhatsApp</TableHead>
-                        <TableHead>Produto Favorito</TableHead>
                         <TableHead>UF</TableHead>
                         <TableHead className="text-right">Total Gasto</TableHead>
                         <TableHead className="text-right">Pedidos</TableHead>
@@ -414,7 +338,6 @@ export function RFMMatrix() {
                               </a>
                             ) : "—"}
                           </TableCell>
-                          <TableCell className="text-xs text-muted-foreground max-w-[160px] truncate">{c.favorite_product || c.favorite_category || "—"}</TableCell>
                           <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{c.state || "—"}</TableCell>
                           <TableCell className="text-right whitespace-nowrap">R$ {Number(c.total_spent || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</TableCell>
                           <TableCell className="text-right">{c.order_count}</TableCell>
@@ -533,21 +456,6 @@ export function RFMMatrix() {
                   </Card>
                 </div>
 
-                {/* Favorite product */}
-                {(selectedCustomer.favorite_product || selectedCustomer.favorite_category) && (
-                  <div className="space-y-2">
-                    <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                      <ShoppingBag className="w-4 h-4" />
-                      Preferências
-                    </h4>
-                    {selectedCustomer.favorite_product && (
-                      <p className="text-sm text-muted-foreground">Produto: {selectedCustomer.favorite_product}</p>
-                    )}
-                    {selectedCustomer.favorite_category && (
-                      <p className="text-sm text-muted-foreground">Categoria: {selectedCustomer.favorite_category}</p>
-                    )}
-                  </div>
-                )}
 
                 {/* Orders */}
                 <div className="space-y-2">
@@ -580,11 +488,10 @@ export function RFMMatrix() {
                               </span>
                             </div>
                             {order.products && Array.isArray(order.products) && order.products.length > 0 && (
-                              <div className="mt-1.5 text-xs text-muted-foreground">
-                                {order.products.slice(0, 3).map((p: any, i: number) => (
-                                  <span key={i}>{i > 0 ? ", " : ""}{p.name || p.product_name || "Produto"}</span>
+                              <div className="mt-1.5 text-xs text-muted-foreground space-y-0.5">
+                                {order.products.map((p: any, i: number) => (
+                                  <div key={i}>{p.name || p.product_name || "Produto"}</div>
                                 ))}
-                                {order.products.length > 3 && <span> +{order.products.length - 3}</span>}
                               </div>
                             )}
                             <div className="mt-1 flex gap-2">
