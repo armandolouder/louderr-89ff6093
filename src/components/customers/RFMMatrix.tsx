@@ -122,8 +122,10 @@ export function RFMMatrix() {
     setLoadingOrders(false);
   };
 
-  const sendWhatsApp = (phone: string) => {
-    navigate(`/campaigns?tab=individual&phone=${phone}`);
+  const sendWhatsApp = (phone: string, name: string) => {
+    const firstName = name.split(" ")[0];
+    const msg = encodeURIComponent(`Olá ${firstName}! `);
+    navigate(`/campaigns?tab=individual&phone=${phone}&msg=${msg}`);
   };
 
   const startSync = async () => {
