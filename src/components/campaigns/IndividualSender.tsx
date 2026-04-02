@@ -5,7 +5,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Send, Image, Loader2, ChevronLeft, Smile, Paperclip, Mic, Camera, Plus, Pencil, Trash2, MessageSquareText } from "lucide-react";
+import { Send, Image, Loader2, ChevronLeft, Smile, Paperclip, Mic, Camera, Plus, Pencil, Trash2, MessageSquareText, Sparkles, Wand2 } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -186,7 +187,30 @@ export function IndividualSender({ initialPhone, initialMessage }: { initialPhon
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editItem, setEditItem] = useState<SavedMessage | null>(null);
 
+  const [improvingAI, setImprovingAI] = useState(false);
+
   const queryClient = useQueryClient();
+
+  const handleAI = async (mode: "generate" | "improve") => {
+    if (mode === "improve" && !content.trim()) {
+      toast.error("Digite uma mensagem primeiro para melhorar");
+      return;
+    }
+    setImprovingAI(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("improve-message", {
+        body: { message: content, mode },
+      });
+      if (error) throw error;
+      if (!data.success) throw new Error(data.error);
+      setContent(data.message);
+      toast.success(mode === "generate" ? "Mensagem gerada!" : "Mensagem melhorada!");
+    } catch (err: any) {
+      toast.error(`Erro: ${err.message}`);
+    } finally {
+      setImprovingAI(false);
+    }
+  };
 
   const { data: savedMessages = [] } = useQuery({
     queryKey: ["saved-individual-messages"],
@@ -283,7 +307,27 @@ export function IndividualSender({ initialPhone, initialMessage }: { initialPhon
               </div>
 
               <div className="space-y-2">
-                <Label>Mensagem</Label>
+                <div className="flex items-center justify-between">
+                  <Label>Mensagem</Label>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button size="sm" variant="outline" disabled={improvingAI} className="h-7 gap-1.5 text-xs">
+                        {improvingAI ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                        IA
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handleAI("generate")}>
+                        <Sparkles className="w-4 h-4 mr-2" />
+                        Gerar mensagem
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleAI("improve")} disabled={!content.trim()}>
+                        <Wand2 className="w-4 h-4 mr-2" />
+                        Melhorar texto
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
                 <Textarea placeholder="Digite sua mensagem..." value={content} onChange={(e) => setContent(e.target.value)} rows={4} />
               </div>
 
