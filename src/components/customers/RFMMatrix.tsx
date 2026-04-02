@@ -81,6 +81,7 @@ export function RFMMatrix() {
   const requestInFlightRef = useRef(false);
   const stopRequestedRef = useRef(false);
   const [selectedSegment, setSelectedSegment] = useState<string | null>(null);
+  const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
   const [selectedCustomer, setSelectedCustomer] = useState<RFMCustomer | null>(null);
   const [customerOrders, setCustomerOrders] = useState<any[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
