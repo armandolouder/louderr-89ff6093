@@ -440,6 +440,42 @@ export function RFMMatrix() {
         </Card>
       ) : (
         <>
+          {/* Region filter */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <MapPin className="w-4 h-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground mr-1">Região:</span>
+            <Badge
+              variant={selectedRegion === null ? "default" : "outline"}
+              className="cursor-pointer"
+              onClick={() => { setSelectedRegion(null); setSelectedSegment(null); }}
+            >
+              Todas ({customers.length})
+            </Badge>
+            {REGIONS.map((region) => {
+              const count = regionCounts[region] || 0;
+              if (count === 0) return null;
+              return (
+                <Badge
+                  key={region}
+                  variant={selectedRegion === region ? "default" : "outline"}
+                  className="cursor-pointer"
+                  onClick={() => { setSelectedRegion(selectedRegion === region ? null : region); setSelectedSegment(null); }}
+                >
+                  {region} ({count})
+                </Badge>
+              );
+            })}
+            {(regionCounts["Sem região"] || 0) > 0 && (
+              <Badge
+                variant={selectedRegion === "Sem região" ? "default" : "outline"}
+                className="cursor-pointer"
+                onClick={() => { setSelectedRegion(selectedRegion === "Sem região" ? null : "Sem região"); setSelectedSegment(null); }}
+              >
+                Sem região ({regionCounts["Sem região"]})
+              </Badge>
+            )}
+          </div>
+
           {/* Segment cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {segments.map(({ segment, count, totalSpent }) => (
