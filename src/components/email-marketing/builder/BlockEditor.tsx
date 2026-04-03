@@ -104,7 +104,7 @@ export function BlockEditor({ block, onChange }: BlockEditorProps) {
             </div>
           ))}
           <Button variant="outline" size="sm" className="w-full gap-1" onClick={() => {
-            updateContent("products", [...(block.content.products || []), { image: "https://placehold.co/200x200/f5f5f5/333?text=Novo", name: "Novo Produto", price: "R$ 0,00", link: "#" }]);
+            updateContent("products", [...(block.content.products || []), { image: "https://placehold.co/300x380/f5f5f5/333?text=Novo", name: "NOVO PRODUTO", price: "R$ 0,00", oldPrice: "", link: "#" }]);
           }}><Plus className="w-3 h-3" /> Adicionar Produto</Button>
         </div>
       )}
