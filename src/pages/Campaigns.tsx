@@ -1,8 +1,9 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Send, GalleryHorizontalEnd, MessageSquare } from "lucide-react";
+import { Send, GalleryHorizontalEnd, MessageSquare, FileText } from "lucide-react";
 import { CampaignsList } from "@/components/campaigns/CampaignsList";
 import { CarouselBuilder } from "@/components/campaigns/CarouselBuilder";
 import { IndividualSender } from "@/components/campaigns/IndividualSender";
+import { SendLogs } from "@/components/campaigns/SendLogs";
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 
@@ -28,7 +29,7 @@ export default function Campaigns() {
 
       <div className="flex-1 p-4 md:p-6 overflow-auto">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full">
-          <TabsList className="grid w-full grid-cols-3 mb-6">
+          <TabsList className="grid w-full grid-cols-4 mb-6">
             <TabsTrigger value="campaigns" className="flex items-center gap-2">
               <Send className="w-4 h-4" />
               <span className="hidden sm:inline">Campanhas</span>
@@ -40,6 +41,10 @@ export default function Campaigns() {
             <TabsTrigger value="carousel" className="flex items-center gap-2">
               <GalleryHorizontalEnd className="w-4 h-4" />
               <span className="hidden sm:inline">Carrossel</span>
+            </TabsTrigger>
+            <TabsTrigger value="logs" className="flex items-center gap-2">
+              <FileText className="w-4 h-4" />
+              <span className="hidden sm:inline">Logs</span>
             </TabsTrigger>
           </TabsList>
 
@@ -53,6 +58,10 @@ export default function Campaigns() {
 
           <TabsContent value="carousel" className="mt-0">
             <CarouselBuilder />
+          </TabsContent>
+
+          <TabsContent value="logs" className="mt-0">
+            <SendLogs />
           </TabsContent>
         </Tabs>
       </div>
