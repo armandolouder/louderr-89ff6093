@@ -325,7 +325,7 @@ async function processNextChunk(supabase: any, accessToken: string, storeId: str
   }
 
   const customerRecords = customers
-    .map((customer) => {
+    .map((customer): Record<string, any> | null => {
       const phone = cleanPhone(customer.phone);
       const email = customer.email || null;
 
@@ -348,7 +348,7 @@ async function processNextChunk(supabase: any, accessToken: string, storeId: str
         metadata: { nuvemshop_customer_id: customer.id },
       };
     })
-    .filter(Boolean);
+    .filter((customer): customer is Record<string, any> => customer !== null);
 
   const { synced, errors } = await upsertCustomerBatch(supabase, customerRecords);
 
