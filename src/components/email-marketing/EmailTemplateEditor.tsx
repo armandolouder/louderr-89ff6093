@@ -7,8 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Eye, Pencil, Trash2, Code, FileText } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Plus, Eye, Pencil, Trash2, Code, FileText, Sparkles, Copy } from "lucide-react";
 import { toast } from "sonner";
+import { BRANDED_TEMPLATES } from "./brandedTemplates";
 
 const DEFAULT_TEMPLATE = `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -46,6 +48,7 @@ export function EmailTemplateEditor() {
   const [editing, setEditing] = useState<any>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [previewHtml, setPreviewHtml] = useState("");
+  const [showGallery, setShowGallery] = useState(false);
   const [form, setForm] = useState({ name: "", subject: "", html_content: DEFAULT_TEMPLATE, preview_text: "", category: "geral" });
 
   const { data: templates, isLoading } = useQuery({
@@ -61,11 +64,8 @@ export function EmailTemplateEditor() {
     mutationFn: async () => {
       if (editing?.id) {
         const { error } = await supabase.from("email_templates").update({
-          name: form.name,
-          subject: form.subject,
-          html_content: form.html_content,
-          preview_text: form.preview_text,
-          category: form.category,
+          name: form.name, subject: form.subject, html_content: form.html_content,
+          preview_text: form.preview_text, category: form.category,
         }).eq("id", editing.id);
         if (error) throw error;
       } else {
@@ -92,6 +92,22 @@ export function EmailTemplateEditor() {
     },
   });
 
+  const useTemplateMutation = useMutation({
+    mutationFn: async (tpl: typeof BRANDED_TEMPLATES[0]) => {
+      const { error } = await supabase.from("email_templates").insert({
+        name: tpl.name, subject: tpl.subject, html_content: tpl.html_content,
+        preview_text: tpl.preview_text, category: tpl.category,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["email-templates"] });
+      setShowGallery(false);
+      toast.success("Template adicionado à sua biblioteca!");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   const handleEdit = (t: any) => {
     setForm({ name: t.name, subject: t.subject, html_content: t.html_content, preview_text: t.preview_text || "", category: t.category || "geral" });
     setEditing(t);
@@ -109,6 +125,7 @@ export function EmailTemplateEditor() {
 
   if (isLoading) return <div className="flex items-center justify-center p-8"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
 
+  // Editor view
   if (editing) {
     return (
       <div className="space-y-4">
@@ -121,31 +138,39 @@ export function EmailTemplateEditor() {
             <Button variant="ghost" size="sm" onClick={() => setEditing(null)}>Cancelar</Button>
           </div>
         </div>
-
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Input placeholder="Nome do template" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           <Input placeholder="Assunto do email" value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} />
         </div>
-        <Input placeholder="Texto de preview (opcional)" value={form.preview_text} onChange={(e) => setForm({ ...form, preview_text: e.target.value })} />
-
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Input placeholder="Texto de preview (opcional)" value={form.preview_text} onChange={(e) => setForm({ ...form, preview_text: e.target.value })} />
+          <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="geral">Geral</SelectItem>
+              <SelectItem value="boas-vindas">Boas-vindas</SelectItem>
+              <SelectItem value="promocao">Promoção</SelectItem>
+              <SelectItem value="reativacao">Reativação</SelectItem>
+              <SelectItem value="lancamento">Lançamento</SelectItem>
+              <SelectItem value="informativo">Informativo</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
           <Code className="w-3.5 h-3.5" />
-          Variáveis disponíveis: <Badge variant="secondary" className="text-xs">{"{{nome}}"}</Badge>
+          Variáveis: <Badge variant="secondary" className="text-xs">{"{{nome}}"}</Badge>
           <Badge variant="secondary" className="text-xs">{"{{email}}"}</Badge>
           <Badge variant="secondary" className="text-xs">{"{{unsubscribe_url}}"}</Badge>
         </div>
-
         <Textarea
           placeholder="Código HTML do email"
           value={form.html_content}
           onChange={(e) => setForm({ ...form, html_content: e.target.value })}
           className="font-mono text-xs min-h-[400px]"
         />
-
         <Button onClick={() => saveMutation.mutate()} disabled={!form.name || !form.subject || saveMutation.isPending} className="w-full">
           {editing.id ? "Salvar Alterações" : "Criar Template"}
         </Button>
-
         <Dialog open={showPreview} onOpenChange={setShowPreview}>
           <DialogContent className="max-w-3xl max-h-[80vh]">
             <DialogHeader><DialogTitle>Preview do Email</DialogTitle></DialogHeader>
@@ -158,11 +183,19 @@ export function EmailTemplateEditor() {
     );
   }
 
+  // Gallery view
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-foreground">Templates de Email</h2>
-        <Button size="sm" onClick={handleNew} className="gap-2"><Plus className="w-4 h-4" /> Novo Template</Button>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={() => setShowGallery(true)} className="gap-2">
+            <Sparkles className="w-4 h-4" /> Galeria LOUDER
+          </Button>
+          <Button size="sm" onClick={handleNew} className="gap-2">
+            <Plus className="w-4 h-4" /> Novo Template
+          </Button>
+        </div>
       </div>
 
       {!templates?.length ? (
@@ -170,13 +203,16 @@ export function EmailTemplateEditor() {
           <CardContent className="flex flex-col items-center justify-center py-12 text-center">
             <FileText className="w-12 h-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold">Nenhum template</h3>
-            <p className="text-sm text-muted-foreground mt-1">Crie seu primeiro template para começar a enviar emails.</p>
+            <p className="text-sm text-muted-foreground mt-1 mb-4">Comece usando um template da galeria ou crie do zero.</p>
+            <Button variant="outline" onClick={() => setShowGallery(true)} className="gap-2">
+              <Sparkles className="w-4 h-4" /> Explorar Galeria LOUDER
+            </Button>
           </CardContent>
         </Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {templates.map((t) => (
-            <Card key={t.id}>
+            <Card key={t.id} className="group hover:border-primary/30 transition-colors">
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-base">{t.name}</CardTitle>
@@ -198,6 +234,47 @@ export function EmailTemplateEditor() {
           ))}
         </div>
       )}
+
+      {/* Branded Templates Gallery */}
+      <Dialog open={showGallery} onOpenChange={setShowGallery}>
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-primary" /> Galeria de Templates LOUDER.ink
+            </DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 md:grid-cols-2 mt-4">
+            {BRANDED_TEMPLATES.map((tpl, i) => (
+              <Card key={i} className="hover:border-primary/30 transition-colors">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm">{tpl.name}</CardTitle>
+                    <Badge variant="secondary" className="text-xs">{tpl.category}</Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">{tpl.subject.replace("{{nome}}", "Maria")}</p>
+                </CardHeader>
+                <CardContent>
+                  <div className="border rounded-lg overflow-hidden mb-3 bg-muted/30">
+                    <iframe
+                      srcDoc={tpl.html_content.replace(/\{\{nome\}\}/gi, "Maria").replace(/\{\{unsubscribe_url\}\}/gi, "#")}
+                      className="w-full h-48 border-0 pointer-events-none"
+                      title={tpl.name}
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" className="flex-1 gap-1" onClick={() => handlePreview(tpl.html_content)}>
+                      <Eye className="w-3.5 h-3.5" /> Preview
+                    </Button>
+                    <Button size="sm" className="flex-1 gap-1" onClick={() => useTemplateMutation.mutate(tpl)} disabled={useTemplateMutation.isPending}>
+                      <Copy className="w-3.5 h-3.5" /> Usar Template
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
