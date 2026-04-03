@@ -89,11 +89,13 @@ export function EmailTemplateEditor() {
       <EmailBuilder
         templateName={editing.name || ""}
         templateSubject={editing.subject || ""}
-        onSave={(html, _blocks) => {
+        initialBlocks={(editing.variables as any)?.blocks || undefined}
+        onSave={(html, blocks) => {
           const nameInput = document.querySelector<HTMLInputElement>('input[placeholder="Nome do template"]');
           const subjectInput = document.querySelector<HTMLInputElement>('input[placeholder="Assunto do email"]');
           saveMutation.mutate({
             html,
+            blocks,
             name: nameInput?.value || editing.name || "Sem nome",
             subject: subjectInput?.value || editing.subject || "Sem assunto",
           });
