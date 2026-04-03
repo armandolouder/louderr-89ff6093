@@ -27,7 +27,7 @@ function renderBlock(block: EmailBlock): string {
 
     case "button":
       return `<tr><td style="background:${s.backgroundColor};padding:${s.padding};text-align:${s.textAlign};">
-        <a href="${block.content.link}" target="_blank" style="display:inline-block;background:${s.buttonColor};color:${s.buttonTextColor};padding:14px 32px;border-radius:${s.borderRadius};text-decoration:none;font-weight:700;font-size:${s.fontSize};">${escapeHtml(block.content.text)}</a>
+        <a href="${block.content.link}" target="_blank" style="display:inline-block;background:${s.buttonColor};color:${s.buttonTextColor};padding:14px 32px;text-decoration:none;font-weight:700;font-size:${s.fontSize};">${escapeHtml(block.content.text)}</a>
       </td></tr>`;
 
     case "products": {
