@@ -15,6 +15,7 @@ import {
   Workflow,
   Rocket,
   Grid3X3,
+  Mail,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
