@@ -9,7 +9,7 @@ function renderBlock(block: EmailBlock): string {
   switch (block.type) {
     case "header":
       return `<tr><td style="background:${s.backgroundColor};padding:${s.padding};text-align:${s.textAlign};">
-        ${block.content.logoUrl ? `<img src="${block.content.logoUrl}" alt="Logo" style="max-height:48px;margin-bottom:12px;" />` : ""}
+        ${block.content.logoUrl ? `<img src="${block.content.logoUrl}" alt="Logo" style="max-height:120px;margin-bottom:12px;" />` : ""}
         <h1 style="margin:0;color:${s.textColor};font-size:${s.fontSize};letter-spacing:2px;font-weight:700;">${escapeHtml(block.content.title)}</h1>
         ${block.content.subtitle ? `<p style="margin:8px 0 0;color:${s.textColor};opacity:0.8;font-size:14px;">${escapeHtml(block.content.subtitle)}</p>` : ""}
       </td></tr>`;
