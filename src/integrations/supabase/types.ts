@@ -1406,6 +1406,10 @@ export type Database = {
     }
     Functions: {
       calculate_rfm_scores: { Args: never; Returns: undefined }
+      increment_campaign_sent: {
+        Args: { campaign_id_param: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

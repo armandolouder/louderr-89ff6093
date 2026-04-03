@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Mail, FileText, BarChart3, Ban, History } from "lucide-react";
+import { Mail, FileText, BarChart3, Ban } from "lucide-react";
 import { EmailCampaignsList } from "@/components/email-marketing/EmailCampaignsList";
 import { EmailTemplateEditor } from "@/components/email-marketing/EmailTemplateEditor";
 import { EmailDashboard } from "@/components/email-marketing/EmailDashboard";
