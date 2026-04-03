@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Mail, FileText, BarChart3, Ban } from "lucide-react";
+import { Mail, FileText, BarChart3, Ban, History } from "lucide-react";
 import { EmailCampaignsList } from "@/components/email-marketing/EmailCampaignsList";
 import { EmailTemplateEditor } from "@/components/email-marketing/EmailTemplateEditor";
 import { EmailDashboard } from "@/components/email-marketing/EmailDashboard";
@@ -13,13 +13,13 @@ export default function EmailMarketing() {
     <div className="flex flex-col h-full bg-background">
       <div className="border-b border-border bg-card/50 p-4 md:p-6">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-emerald-500/20 rounded-xl flex items-center justify-center">
-            <Mail className="w-5 h-5 text-emerald-500" />
+          <div className="w-10 h-10 bg-primary/20 rounded-xl flex items-center justify-center">
+            <Mail className="w-5 h-5 text-primary" />
           </div>
           <div>
             <h1 className="text-2xl font-bold text-foreground">Email Marketing</h1>
             <p className="text-muted-foreground text-sm mt-0.5">
-              Campanhas de email para nutrição de leads • Limite: 250/dia
+              Campanhas de email para todos os seus clusters • Limite: 250/dia
             </p>
           </div>
         </div>
