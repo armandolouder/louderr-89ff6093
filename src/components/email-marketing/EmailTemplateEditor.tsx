@@ -65,6 +65,7 @@ export function EmailTemplateEditor() {
       const { error } = await supabase.from("email_templates").insert({
         name: tpl.name, subject: tpl.subject, html_content: tpl.html_content,
         preview_text: tpl.preview_text, category: tpl.category,
+        variables: { blocks: tpl.blocks } as any,
       });
       if (error) throw error;
     },
