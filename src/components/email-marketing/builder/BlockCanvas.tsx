@@ -59,7 +59,7 @@ function BlockPreview({ block }: { block: EmailBlock }) {
     case "products":
       return (
         <div style={{ background: s.backgroundColor, padding: s.padding }}>
-          <div style={{ display: "grid", gridTemplateColumns: `repeat(${s.columns || 3}, 1fr)`, gap: "10px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: `repeat(${s.columns || 2}, 1fr)`, gap: "10px" }}>
             {(c.products || []).map((p: any, i: number) => (
               <div key={i} style={{ textAlign: "center" }}>
                 <img src={p.image} alt={p.name} style={{ width: "100%", display: "block" }} />
