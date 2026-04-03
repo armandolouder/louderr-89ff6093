@@ -21,8 +21,9 @@ import { SendTestEmail } from "./SendTestEmail";
 
 export function EmailCampaignsList() {
   const queryClient = useQueryClient();
-  const [wizardStep, setWizardStep] = useState(0); // 0 = closed, 1-4 = steps
+  const [wizardStep, setWizardStep] = useState(0);
   const [selectedCampaign, setSelectedCampaign] = useState<string | null>(null);
+  const [showTestEmail, setShowTestEmail] = useState(false);
   const [form, setForm] = useState({
     name: "", description: "", template_id: "", cluster_ids: [] as string[],
     scheduled_at: "", subject_override: "",
