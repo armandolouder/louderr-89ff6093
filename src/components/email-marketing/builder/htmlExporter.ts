@@ -103,7 +103,7 @@ export function exportToHtml(state: BuilderState): string {
 <body style="margin:0;padding:0;background:${g.backgroundColor};font-family:${g.fontFamily};">
 <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:${g.backgroundColor};">
 <tr><td align="center" style="padding:40px 20px;">
-<table cellpadding="0" cellspacing="0" border="0" width="${g.contentWidth}" style="max-width:${g.contentWidth}px;background:#ffffff;border-radius:${g.borderRadius};overflow:hidden;">
+<table cellpadding="0" cellspacing="0" border="0" width="${g.contentWidth}" style="max-width:${g.contentWidth}px;background:#ffffff;overflow:hidden;">
 ${blocksHtml}
 </table>
 </td></tr>

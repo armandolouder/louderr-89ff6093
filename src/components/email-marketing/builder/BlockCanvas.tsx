@@ -53,7 +53,7 @@ function BlockPreview({ block }: { block: EmailBlock }) {
     case "button":
       return (
         <div style={{ background: s.backgroundColor, padding: s.padding, textAlign: s.textAlign as any }}>
-          <span style={{ display: "inline-block", background: s.buttonColor, color: s.buttonTextColor, padding: "14px 32px", borderRadius: s.borderRadius, fontWeight: 700, fontSize: s.fontSize }}>{c.text}</span>
+          <span style={{ display: "inline-block", background: s.buttonColor, color: s.buttonTextColor, padding: "14px 32px", fontWeight: 700, fontSize: s.fontSize }}>{c.text}</span>
         </div>
       );
     case "products":
