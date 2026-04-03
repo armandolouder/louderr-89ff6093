@@ -5,9 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowLeft, Send, Users, Eye, MousePointer, XCircle, CheckCircle, Clock, Mail } from "lucide-react";
+import { ArrowLeft, Send, Users, Eye, MousePointer, XCircle, Search, RefreshCw, SkipForward } from "lucide-react";
 import { format } from "date-fns";
 
 interface Props {
@@ -17,8 +18,9 @@ interface Props {
 
 export function CampaignDetailView({ campaignId, onBack }: Props) {
   const [previewHtml, setPreviewHtml] = useState("");
+  const [search, setSearch] = useState("");
 
-  const { data: campaign } = useQuery({
+  const { data: campaign, isLoading } = useQuery({
     queryKey: ["email-campaign-detail", campaignId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -29,9 +31,13 @@ export function CampaignDetailView({ campaignId, onBack }: Props) {
       if (error) throw error;
       return data;
     },
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      return status === "sending" ? 10000 : false;
+    },
   });
 
-  const { data: queueStats } = useQuery({
+  const { data: queueStats, isLoading: queueLoading } = useQuery({
     queryKey: ["email-campaign-queue", campaignId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -39,7 +45,7 @@ export function CampaignDetailView({ campaignId, onBack }: Props) {
         .select("status, email, customer_name, sent_at, error_message, subject, html_content")
         .eq("campaign_id", campaignId)
         .order("sent_at", { ascending: false, nullsFirst: false })
-        .limit(200);
+        .limit(500);
       if (error) throw error;
 
       const sent = data.filter((q) => q.status === "sent").length;
@@ -49,9 +55,16 @@ export function CampaignDetailView({ campaignId, onBack }: Props) {
 
       return { items: data, sent, pending, failed, skipped, total: data.length };
     },
+    refetchInterval: campaign?.status === "sending" ? 10000 : false,
   });
 
-  if (!campaign) return null;
+  if (isLoading || !campaign) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   const progress = campaign.total_recipients
     ? Math.round(((campaign.sent_count || 0) / campaign.total_recipients) * 100)
@@ -64,16 +77,29 @@ export function CampaignDetailView({ campaignId, onBack }: Props) {
     skipped: { label: "Ignorado", variant: "secondary" },
   };
 
+  const filteredItems = queueStats?.items?.filter((item) => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return (
+      item.email?.toLowerCase().includes(q) ||
+      item.customer_name?.toLowerCase().includes(q) ||
+      item.subject?.toLowerCase().includes(q)
+    );
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" onClick={onBack}>
           <ArrowLeft className="w-4 h-4" />
         </Button>
-        <div>
+        <div className="flex-1">
           <h2 className="text-lg font-semibold text-foreground">{campaign.name}</h2>
           {campaign.description && <p className="text-sm text-muted-foreground">{campaign.description}</p>}
         </div>
+        {campaign.status === "sending" && (
+          <Badge className="bg-blue-500/20 text-blue-400 animate-pulse">⚡ Enviando</Badge>
+        )}
       </div>
 
       {/* Stats cards */}
@@ -107,10 +133,10 @@ export function CampaignDetailView({ campaignId, onBack }: Props) {
             </div>
             <Progress value={progress} className="h-3" />
             <div className="flex justify-between text-xs text-muted-foreground">
-              <span>Na fila: {queueStats?.pending || 0}</span>
-              <span>Enviados: {queueStats?.sent || 0}</span>
-              <span>Falhas: {queueStats?.failed || 0}</span>
-              <span>Ignorados: {queueStats?.skipped || 0}</span>
+              <span className="flex items-center gap-1"><RefreshCw className="w-3 h-3" /> Na fila: {queueStats?.pending || 0}</span>
+              <span className="flex items-center gap-1"><Send className="w-3 h-3" /> Enviados: {queueStats?.sent || 0}</span>
+              <span className="flex items-center gap-1"><XCircle className="w-3 h-3" /> Falhas: {queueStats?.failed || 0}</span>
+              <span className="flex items-center gap-1"><SkipForward className="w-3 h-3" /> Ignorados: {queueStats?.skipped || 0}</span>
             </div>
           </CardContent>
         </Card>
@@ -119,7 +145,18 @@ export function CampaignDetailView({ campaignId, onBack }: Props) {
       {/* Timeline/Log */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm">Log de Envios</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm">Log de Envios</CardTitle>
+            <div className="relative w-48">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Buscar..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="h-8 pl-8 text-xs"
+              />
+            </div>
+          </div>
         </CardHeader>
         <div className="overflow-auto max-h-[400px]">
           <Table>
@@ -132,14 +169,20 @@ export function CampaignDetailView({ campaignId, onBack }: Props) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {!queueStats?.items?.length ? (
+              {queueLoading ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center py-8">
+                    <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+                  </TableCell>
+                </TableRow>
+              ) : !filteredItems?.length ? (
                 <TableRow>
                   <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
-                    Nenhum envio registrado
+                    {search ? "Nenhum resultado encontrado" : "Nenhum envio registrado"}
                   </TableCell>
                 </TableRow>
               ) : (
-                queueStats.items.map((item, i) => {
+                filteredItems.map((item, i) => {
                   const sb = statusBadge[item.status || "pending"];
                   return (
                     <TableRow key={i}>
@@ -163,7 +206,10 @@ export function CampaignDetailView({ campaignId, onBack }: Props) {
                           size="sm"
                           variant="ghost"
                           className="h-7 text-xs"
-                          onClick={() => setPreviewHtml(item.html_content || "")}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPreviewHtml(item.html_content || "");
+                          }}
                         >
                           <Eye className="w-3 h-3 mr-1" /> Ver
                         </Button>

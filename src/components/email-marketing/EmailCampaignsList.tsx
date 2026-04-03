@@ -11,8 +11,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
   Plus, Send, Clock, CheckCircle, XCircle, Mail, Users, Eye, ArrowRight,
-  ArrowLeft, CalendarDays, Sparkles, Trash2, BarChart3, TestTube, ChevronRight
+  ArrowLeft, CalendarDays, Sparkles, Trash2, BarChart3, TestTube, ChevronRight, Copy
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
