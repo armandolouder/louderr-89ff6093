@@ -441,6 +441,7 @@ export function EmailCampaignsList() {
                         <span className="flex items-center gap-1"><CalendarDays className="w-3.5 h-3.5" />{format(new Date(campaign.scheduled_at), "dd/MM HH:mm")}</span>
                       )}
                     </div>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
                   </div>
                 </CardContent>
               </Card>
