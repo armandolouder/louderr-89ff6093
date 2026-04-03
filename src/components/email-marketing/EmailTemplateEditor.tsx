@@ -90,7 +90,7 @@ export function EmailTemplateEditor() {
     }
 
     const galleryTemplate = BRANDED_TEMPLATES.find(
-      (tpl) => tpl.name === template?.name && tpl.category === template?.category
+      (tpl) => tpl.name === template?.name || tpl.subject === template?.subject
     );
 
     return galleryTemplate?.blocks;
