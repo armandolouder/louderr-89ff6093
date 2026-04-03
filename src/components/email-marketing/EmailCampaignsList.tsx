@@ -499,7 +499,7 @@ export function EmailCampaignsList() {
                       <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); duplicateMutation.mutate(campaign); }} title="Duplicar">
                         <Copy className="w-3.5 h-3.5" />
                       </Button>
-                      {campaign.status === "draft" && (
+                      {campaign.status !== "sending" && (
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button size="icon" variant="ghost" onClick={(e) => e.stopPropagation()} className="text-destructive h-7 w-7">
