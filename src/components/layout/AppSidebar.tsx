@@ -27,6 +27,7 @@ const navigation = [
   { name: "Clientes", href: "/customers", icon: Users },
   { name: "Matriz RFM", href: "/rfm", icon: Grid3X3 },
   { name: "Campanhas", href: "/campaigns", icon: Megaphone },
+  { name: "Email Marketing", href: "/email-marketing", icon: Mail },
   { name: "Carrinhos", href: "/abandoned-checkouts", icon: ShoppingCart },
   { name: "Recovery Engine", href: "/recovery", icon: Rocket },
   { name: "Automações", href: "/automations", icon: Workflow },

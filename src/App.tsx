@@ -50,6 +50,7 @@ const App = () => (
               <Route path="/abandoned-checkouts" element={<AbandonedCheckouts />} />
               <Route path="/recovery" element={<RecoveryDashboard />} />
               <Route path="/automations" element={<Automations />} />
+              <Route path="/email-marketing" element={<EmailMarketing />} />
               <Route path="/settings" element={<Settings />} />
             </Route>
             <Route path="*" element={<NotFound />} />
