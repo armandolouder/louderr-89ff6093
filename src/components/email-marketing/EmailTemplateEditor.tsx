@@ -82,6 +82,20 @@ export function EmailTemplateEditor() {
     setShowPreview(true);
   };
 
+  const getTemplateBlocks = (template: any): EmailBlock[] | undefined => {
+    const variables = template?.variables;
+
+    if (variables && typeof variables === "object" && !Array.isArray(variables) && Array.isArray((variables as any).blocks)) {
+      return (variables as any).blocks as EmailBlock[];
+    }
+
+    const galleryTemplate = BRANDED_TEMPLATES.find(
+      (tpl) => tpl.name === template?.name || tpl.subject === template?.subject
+    );
+
+    return galleryTemplate?.blocks;
+  };
+
   if (isLoading) return <div className="flex items-center justify-center p-8"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
 
   // Builder view
@@ -90,7 +104,7 @@ export function EmailTemplateEditor() {
       <EmailBuilder
         templateName={editing.name || ""}
         templateSubject={editing.subject || ""}
-        initialBlocks={(editing.variables as any)?.blocks || undefined}
+        initialBlocks={getTemplateBlocks(editing)}
         onSave={(html, blocks) => {
           const nameInput = document.querySelector<HTMLInputElement>('input[placeholder="Nome do template"]');
           const subjectInput = document.querySelector<HTMLInputElement>('input[placeholder="Assunto do email"]');
