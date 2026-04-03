@@ -98,6 +98,7 @@ export function BlockEditor({ block, onChange }: BlockEditorProps) {
               </div>
               <Input value={p.name} onChange={(e) => { const products = [...block.content.products]; products[i] = { ...p, name: e.target.value }; updateContent("products", products); }} placeholder="Nome" className="h-7 text-xs" />
               <Input value={p.price} onChange={(e) => { const products = [...block.content.products]; products[i] = { ...p, price: e.target.value }; updateContent("products", products); }} placeholder="Preço" className="h-7 text-xs" />
+              <Input value={p.oldPrice || ""} onChange={(e) => { const products = [...block.content.products]; products[i] = { ...p, oldPrice: e.target.value }; updateContent("products", products); }} placeholder="Preço antigo (opcional)" className="h-7 text-xs" />
               <Input value={p.image} onChange={(e) => { const products = [...block.content.products]; products[i] = { ...p, image: e.target.value }; updateContent("products", products); }} placeholder="URL da imagem" className="h-7 text-xs" />
               <Input value={p.link} onChange={(e) => { const products = [...block.content.products]; products[i] = { ...p, link: e.target.value }; updateContent("products", products); }} placeholder="Link" className="h-7 text-xs" />
             </div>
