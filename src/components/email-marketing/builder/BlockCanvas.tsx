@@ -34,6 +34,7 @@ function BlockPreview({ block }: { block: EmailBlock }) {
     case "header":
       return (
         <div style={{ background: s.backgroundColor, padding: s.padding, textAlign: s.textAlign as any }}>
+          {c.logoUrl && <img src={c.logoUrl} alt="Logo" style={{ maxHeight: "120px", marginBottom: "12px", display: "inline-block" }} />}
           <h2 style={{ margin: 0, color: s.textColor, fontSize: s.fontSize, letterSpacing: "2px", fontWeight: 700 }}>{c.title}</h2>
           {c.subtitle && <p style={{ margin: "8px 0 0", color: s.textColor, opacity: 0.8, fontSize: "14px" }}>{c.subtitle}</p>}
         </div>
