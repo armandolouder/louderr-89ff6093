@@ -111,12 +111,20 @@ export function EmailCampaignsList() {
 
       const scheduledAt = form.scheduled_at ? new Date(form.scheduled_at).toISOString() : new Date().toISOString();
 
+      // Build unsubscribe URL
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const unsubUrl = `https://${projectId}.supabase.co/functions/v1/email-unsubscribe`;
+
       // Enqueue
       const queueItems = validCustomers.map((c) => {
         let html = template.html_content;
         let subject = form.subject_override || template.subject;
         const firstName = (c.name || "Cliente").split(" ")[0];
-        html = html.replace(/\{\{nome\}\}/gi, firstName).replace(/\{\{email\}\}/gi, c.email || "");
+        const emailUnsubLink = `${unsubUrl}?email=${encodeURIComponent(c.email || "")}`;
+        html = html
+          .replace(/\{\{nome\}\}/gi, firstName)
+          .replace(/\{\{email\}\}/gi, c.email || "")
+          .replace(/\{\{unsubscribe_url\}\}/gi, emailUnsubLink);
         subject = subject.replace(/\{\{nome\}\}/gi, firstName);
         return {
           campaign_id: campaign.id,
