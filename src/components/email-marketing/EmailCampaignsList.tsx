@@ -407,7 +407,7 @@ export function EmailCampaignsList() {
             const StatusIcon = sc.icon;
             const progress = campaign.total_recipients ? Math.round(((campaign.sent_count || 0) / campaign.total_recipients) * 100) : 0;
             return (
-              <Card key={campaign.id} className="hover:border-primary/20 transition-colors">
+              <Card key={campaign.id} className="hover:border-primary/20 transition-colors cursor-pointer" onClick={() => setSelectedCampaign(campaign.id)}>
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-base">{campaign.name}</CardTitle>
