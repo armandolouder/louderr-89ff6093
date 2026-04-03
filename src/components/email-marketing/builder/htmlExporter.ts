@@ -20,7 +20,7 @@ function renderBlock(block: EmailBlock): string {
       </td></tr>`;
 
     case "image": {
-      const img = `<img src="${block.content.src}" alt="${block.content.alt || ""}" style="width:${s.width};max-width:100%;border-radius:${s.borderRadius};display:block;" />`;
+      const img = `<img src="${block.content.src}" alt="${block.content.alt || ""}" style="width:${s.width};max-width:100%;display:block;" />`;
       const wrapped = block.content.link ? `<a href="${block.content.link}" target="_blank">${img}</a>` : img;
       return `<tr><td style="background:${s.backgroundColor};padding:${s.padding};text-align:${s.textAlign};">${wrapped}</td></tr>`;
     }
