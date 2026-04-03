@@ -444,6 +444,221 @@ export type Database = {
         }
         Relationships: []
       }
+      email_campaigns: {
+        Row: {
+          bounced_count: number | null
+          clicked_count: number | null
+          cluster_ids: string[] | null
+          completed_at: string | null
+          created_at: string
+          daily_limit: number | null
+          description: string | null
+          failed_count: number | null
+          id: string
+          metadata: Json | null
+          name: string
+          opened_count: number | null
+          scheduled_at: string | null
+          sent_count: number | null
+          started_at: string | null
+          status: string | null
+          subject_override: string | null
+          template_id: string | null
+          total_recipients: number | null
+          updated_at: string
+        }
+        Insert: {
+          bounced_count?: number | null
+          clicked_count?: number | null
+          cluster_ids?: string[] | null
+          completed_at?: string | null
+          created_at?: string
+          daily_limit?: number | null
+          description?: string | null
+          failed_count?: number | null
+          id?: string
+          metadata?: Json | null
+          name: string
+          opened_count?: number | null
+          scheduled_at?: string | null
+          sent_count?: number | null
+          started_at?: string | null
+          status?: string | null
+          subject_override?: string | null
+          template_id?: string | null
+          total_recipients?: number | null
+          updated_at?: string
+        }
+        Update: {
+          bounced_count?: number | null
+          clicked_count?: number | null
+          cluster_ids?: string[] | null
+          completed_at?: string | null
+          created_at?: string
+          daily_limit?: number | null
+          description?: string | null
+          failed_count?: number | null
+          id?: string
+          metadata?: Json | null
+          name?: string
+          opened_count?: number | null
+          scheduled_at?: string | null
+          sent_count?: number | null
+          started_at?: string | null
+          status?: string | null
+          subject_override?: string | null
+          template_id?: string | null
+          total_recipients?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_campaigns_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "email_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_queue: {
+        Row: {
+          attempts: number | null
+          brevo_message_id: string | null
+          campaign_id: string | null
+          clicked_at: string | null
+          created_at: string
+          customer_id: string | null
+          customer_name: string | null
+          email: string
+          error_message: string | null
+          html_content: string
+          id: string
+          metadata: Json | null
+          opened_at: string | null
+          scheduled_at: string | null
+          sent_at: string | null
+          status: string | null
+          subject: string
+        }
+        Insert: {
+          attempts?: number | null
+          brevo_message_id?: string | null
+          campaign_id?: string | null
+          clicked_at?: string | null
+          created_at?: string
+          customer_id?: string | null
+          customer_name?: string | null
+          email: string
+          error_message?: string | null
+          html_content: string
+          id?: string
+          metadata?: Json | null
+          opened_at?: string | null
+          scheduled_at?: string | null
+          sent_at?: string | null
+          status?: string | null
+          subject: string
+        }
+        Update: {
+          attempts?: number | null
+          brevo_message_id?: string | null
+          campaign_id?: string | null
+          clicked_at?: string | null
+          created_at?: string
+          customer_id?: string | null
+          customer_name?: string | null
+          email?: string
+          error_message?: string | null
+          html_content?: string
+          id?: string
+          metadata?: Json | null
+          opened_at?: string | null
+          scheduled_at?: string | null
+          sent_at?: string | null
+          status?: string | null
+          subject?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_queue_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "email_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_queue_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "imported_customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_templates: {
+        Row: {
+          category: string | null
+          created_at: string
+          html_content: string
+          id: string
+          is_active: boolean | null
+          name: string
+          preview_text: string | null
+          subject: string
+          updated_at: string
+          use_count: number | null
+          variables: Json | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          html_content: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          preview_text?: string | null
+          subject: string
+          updated_at?: string
+          use_count?: number | null
+          variables?: Json | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          html_content?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          preview_text?: string | null
+          subject?: string
+          updated_at?: string
+          use_count?: number | null
+          variables?: Json | null
+        }
+        Relationships: []
+      }
+      email_unsubscribes: {
+        Row: {
+          email: string
+          id: string
+          reason: string | null
+          unsubscribed_at: string
+        }
+        Insert: {
+          email: string
+          id?: string
+          reason?: string | null
+          unsubscribed_at?: string
+        }
+        Update: {
+          email?: string
+          id?: string
+          reason?: string | null
+          unsubscribed_at?: string
+        }
+        Relationships: []
+      }
       import_batches: {
         Row: {
           absent_emails: number | null
