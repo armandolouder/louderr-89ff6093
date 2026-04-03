@@ -183,7 +183,10 @@ export function EmailCampaignsList() {
 
   if (isLoading) return <div className="flex items-center justify-center p-8"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
 
-  // Campaign Wizard
+  // Campaign detail view
+  if (selectedCampaign) {
+    return <CampaignDetailView campaignId={selectedCampaign} onBack={() => setSelectedCampaign(null)} />;
+  }
   if (wizardStep > 0) {
     return (
       <div className="max-w-2xl mx-auto space-y-6">
