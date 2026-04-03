@@ -123,6 +123,16 @@ export function CampaignDetailView({ campaignId, onBack }: Props) {
         ))}
       </div>
 
+      {campaign.total_recipients === 0 && (
+        <Card>
+          <CardContent className="pt-4 pb-4">
+            <p className="text-sm text-muted-foreground">
+              Esta campanha não encontrou destinatários com email válido nos clusters selecionados, então nenhum envio entrou na fila e não há métricas para mostrar.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Progress */}
       {campaign.total_recipients > 0 && (
         <Card>
