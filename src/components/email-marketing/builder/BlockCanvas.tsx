@@ -191,7 +191,7 @@ export function BlockCanvas({ blocks, selectedBlockId, onSelect, onRemove, onDup
               </div>
 
               {/* Block preview */}
-              <div className="overflow-hidden rounded-md" style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif" }}>
+              <div className="overflow-hidden" style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif" }}>
                 <BlockPreview block={block} />
               </div>
             </div>
