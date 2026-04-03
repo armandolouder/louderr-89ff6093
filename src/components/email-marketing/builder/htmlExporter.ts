@@ -31,16 +31,21 @@ function renderBlock(block: EmailBlock): string {
       </td></tr>`;
 
     case "products": {
-      const cols = parseInt(s.columns || "3");
+      const cols = parseInt(s.columns || "2");
       const products = block.content.products || [];
       let rows = "";
       for (let i = 0; i < products.length; i += cols) {
         const cells = products.slice(i, i + cols).map((p: any) =>
-          `<td style="padding:5px;text-align:center;width:${100 / cols}%;">
-            <a href="${p.link || "#"}" style="text-decoration:none;color:inherit;">
-              <img src="${p.image}" alt="${p.name}" style="width:100%;display:block;" />
-              <p style="margin:8px 0 4px;font-weight:600;font-size:14px;color:#111;">${escapeHtml(p.name)}</p>
-              <p style="margin:0;font-size:16px;font-weight:700;color:#000;">${p.price}</p>
+          `<td style="padding:4px;text-align:left;width:${100 / cols}%;vertical-align:top;">
+            <a href="${p.link || "#"}" style="text-decoration:none;color:inherit;display:block;">
+              <div style="background:#f0f0f0;overflow:hidden;">
+                <img src="${p.image}" alt="${p.name}" style="width:100%;display:block;" />
+              </div>
+              <div style="padding:8px 4px;">
+                <p style="margin:0 0 4px;font-weight:700;font-size:12px;color:#111;text-transform:uppercase;line-height:1.3;">${escapeHtml(p.name)}</p>
+                ${p.oldPrice ? `<span style="font-size:12px;color:#999;text-decoration:line-through;margin-right:6px;">${p.oldPrice}</span>` : ""}
+                <span style="font-size:13px;font-weight:700;color:#000;">${p.price}</span>
+              </div>
             </a>
           </td>`
         ).join("");
