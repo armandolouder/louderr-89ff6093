@@ -92,14 +92,15 @@ export const BLOCK_DEFAULTS: Record<BlockType, () => Omit<EmailBlock, "id">> = {
     type: "products",
     content: {
       products: [
-        { image: "https://placehold.co/200x200/f5f5f5/333?text=Produto+1", name: "Produto 1", price: "R$ 99,90", link: "#" },
-        { image: "https://placehold.co/200x200/f5f5f5/333?text=Produto+2", name: "Produto 2", price: "R$ 149,90", link: "#" },
+        { image: "https://placehold.co/300x300/f5f5f5/333?text=Produto+1", name: "Produto 1", price: "R$ 99,90", link: "#" },
+        { image: "https://placehold.co/300x300/f5f5f5/333?text=Produto+2", name: "Produto 2", price: "R$ 149,90", link: "#" },
+        { image: "https://placehold.co/300x300/f5f5f5/333?text=Produto+3", name: "Produto 3", price: "R$ 199,90", link: "#" },
       ],
     },
     styles: {
       backgroundColor: "#ffffff",
-      padding: "24px 40px",
-      columns: "2",
+      padding: "10px",
+      columns: "3",
     },
   }),
   divider: () => ({

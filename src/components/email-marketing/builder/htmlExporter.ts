@@ -31,14 +31,14 @@ function renderBlock(block: EmailBlock): string {
       </td></tr>`;
 
     case "products": {
-      const cols = parseInt(s.columns || "2");
+      const cols = parseInt(s.columns || "3");
       const products = block.content.products || [];
       let rows = "";
       for (let i = 0; i < products.length; i += cols) {
         const cells = products.slice(i, i + cols).map((p: any) =>
-          `<td style="padding:8px;text-align:center;width:${100 / cols}%;">
+          `<td style="padding:5px;text-align:center;width:${100 / cols}%;">
             <a href="${p.link || "#"}" style="text-decoration:none;color:inherit;">
-              <img src="${p.image}" alt="${p.name}" style="width:100%;max-width:200px;border-radius:8px;" />
+              <img src="${p.image}" alt="${p.name}" style="width:100%;display:block;" />
               <p style="margin:8px 0 4px;font-weight:600;font-size:14px;color:#111;">${escapeHtml(p.name)}</p>
               <p style="margin:0;font-size:16px;font-weight:700;color:#000;">${p.price}</p>
             </a>

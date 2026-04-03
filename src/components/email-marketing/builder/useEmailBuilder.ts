@@ -10,7 +10,7 @@ const DEFAULT_STATE: BuilderState = {
     backgroundColor: "#f5f5f5",
     contentWidth: "600",
     fontFamily: "'Helvetica Neue', Arial, sans-serif",
-    borderRadius: "12px",
+    borderRadius: "0px",
   },
 };
 
