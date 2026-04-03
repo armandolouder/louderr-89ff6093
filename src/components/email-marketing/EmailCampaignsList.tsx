@@ -44,6 +44,10 @@ export function EmailCampaignsList() {
       if (error) throw error;
       return data;
     },
+    refetchInterval: (query) => {
+      const hasSending = query.state.data?.some((c) => c.status === "sending");
+      return hasSending ? 15000 : false;
+    },
   });
 
   const { data: templates } = useQuery({
