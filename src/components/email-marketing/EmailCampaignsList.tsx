@@ -366,12 +366,19 @@ export function EmailCampaignsList() {
                 <Send className="w-4 h-4" /> {form.scheduled_at ? "Agendar Campanha" : "Enviar Agora"}
               </Button>
             </div>
-            </Button>
           )}
         </div>
+
+        {selectedTemplate && (
+          <SendTestEmail
+            open={showTestEmail}
+            onOpenChange={setShowTestEmail}
+            templateHtml={selectedTemplate.html_content}
+            subject={form.subject_override || selectedTemplate.subject}
+          />
+        )}
       </div>
     );
-  }
 
   // Campaign list
   return (
