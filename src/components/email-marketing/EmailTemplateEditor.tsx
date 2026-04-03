@@ -28,15 +28,15 @@ export function EmailTemplateEditor() {
   });
 
   const saveMutation = useMutation({
-    mutationFn: async ({ html, name, subject }: { html: string; name: string; subject: string }) => {
+    mutationFn: async ({ html, name, subject, blocks }: { html: string; name: string; subject: string; blocks: EmailBlock[] }) => {
       if (editing?.id) {
         const { error } = await supabase.from("email_templates").update({
-          name, subject, html_content: html, category: "geral",
+          name, subject, html_content: html, category: "geral", variables: { blocks } as any,
         }).eq("id", editing.id);
         if (error) throw error;
       } else {
         const { error } = await supabase.from("email_templates").insert({
-          name, subject, html_content: html, category: "geral",
+          name, subject, html_content: html, category: "geral", variables: { blocks } as any,
         });
         if (error) throw error;
       }
@@ -89,11 +89,13 @@ export function EmailTemplateEditor() {
       <EmailBuilder
         templateName={editing.name || ""}
         templateSubject={editing.subject || ""}
-        onSave={(html, _blocks) => {
+        initialBlocks={(editing.variables as any)?.blocks || undefined}
+        onSave={(html, blocks) => {
           const nameInput = document.querySelector<HTMLInputElement>('input[placeholder="Nome do template"]');
           const subjectInput = document.querySelector<HTMLInputElement>('input[placeholder="Assunto do email"]');
           saveMutation.mutate({
             html,
+            blocks,
             name: nameInput?.value || editing.name || "Sem nome",
             subject: subjectInput?.value || editing.subject || "Sem assunto",
           });
