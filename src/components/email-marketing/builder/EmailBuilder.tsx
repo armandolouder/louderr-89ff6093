@@ -98,13 +98,9 @@ export function EmailBuilder({ initialBlocks, onSave, onCancel, templateName = "
         )}
       </div>
 
-      {/* Mobile palette button */}
-      <div className="md:hidden border-t border-border p-2 bg-card/80">
-        <ScrollArea className="w-full" orientation="horizontal">
-          <div className="flex gap-1.5">
-            <BlockPalette onAdd={addBlock} onDragStart={() => {}} />
-          </div>
-        </ScrollArea>
+      {/* Mobile palette */}
+      <div className="md:hidden border-t border-border p-2 bg-card/80 overflow-x-auto">
+        <BlockPalette onAdd={addBlock} onDragStart={() => {}} />
       </div>
 
       {/* Preview Dialog */}
