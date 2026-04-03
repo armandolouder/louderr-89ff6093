@@ -84,7 +84,7 @@ export const BLOCK_DEFAULTS: Record<BlockType, () => Omit<EmailBlock, "id">> = {
       buttonTextColor: "#ffffff",
       padding: "24px 40px",
       textAlign: "center",
-      borderRadius: "6px",
+      borderRadius: "0",
       fontSize: "14px",
     },
   }),
