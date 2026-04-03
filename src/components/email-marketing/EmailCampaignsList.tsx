@@ -12,10 +12,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import {
   Plus, Send, Clock, CheckCircle, XCircle, Mail, Users, Eye, ArrowRight,
-  ArrowLeft, CalendarDays, Sparkles, Trash2, BarChart3
+  ArrowLeft, CalendarDays, Sparkles, Trash2, BarChart3, TestTube, ChevronRight
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { CampaignDetailView } from "./CampaignDetailView";
+import { SendTestEmail } from "./SendTestEmail";
 
 export function EmailCampaignsList() {
   const queryClient = useQueryClient();
