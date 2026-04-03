@@ -356,8 +356,16 @@ export function EmailCampaignsList() {
               Próximo <ArrowRight className="w-4 h-4 ml-1" />
             </Button>
           ) : (
-            <Button onClick={() => createAndLaunchMutation.mutate()} disabled={createAndLaunchMutation.isPending} className="gap-2">
-              <Send className="w-4 h-4" /> {form.scheduled_at ? "Agendar Campanha" : "Enviar Agora"}
+            <div className="flex gap-2">
+              {selectedTemplate && (
+                <Button variant="outline" onClick={() => setShowTestEmail(true)} className="gap-2">
+                  <TestTube className="w-4 h-4" /> Enviar Teste
+                </Button>
+              )}
+              <Button onClick={() => createAndLaunchMutation.mutate()} disabled={createAndLaunchMutation.isPending} className="gap-2">
+                <Send className="w-4 h-4" /> {form.scheduled_at ? "Agendar Campanha" : "Enviar Agora"}
+              </Button>
+            </div>
             </Button>
           )}
         </div>
