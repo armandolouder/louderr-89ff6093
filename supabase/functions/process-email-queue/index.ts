@@ -115,12 +115,13 @@ Deno.serve(async (req) => {
 
           // Update campaign sent_count
           if (email.campaign_id) {
-            await supabase.rpc("increment_campaign_sent", { campaign_id_param: email.campaign_id }).catch(() => {
-              // Fallback: direct update
-              supabase.from("email_campaigns")
+            const { error: rpcError } = await supabase.rpc("increment_campaign_sent", { campaign_id_param: email.campaign_id });
+            if (rpcError) {
+              console.error("RPC increment error, using fallback:", rpcError.message);
+              await supabase.from("email_campaigns")
                 .update({ sent_count: sentCount })
                 .eq("id", email.campaign_id);
-            });
+            }
           }
         } else {
           const errText = await res.text();
