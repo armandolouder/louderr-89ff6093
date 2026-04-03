@@ -133,35 +133,83 @@ async function fetchCustomersPage(
   throw new Error(`Limite de tentativas excedido ao buscar página ${page}`);
 }
 
-async function upsertCustomerBatch(supabase: any, customers: any[]) {
+type ImportedCustomerMatch = {
+  id: string;
+  metadata?: Record<string, unknown> | null;
+};
+
+function getNuvemshopCustomerId(customer: Record<string, any>): string | null {
+  const value = customer.metadata?.nuvemshop_customer_id;
+  return value === undefined || value === null ? null : String(value);
+}
+
+function pickMergeableMatch(
+  matches: ImportedCustomerMatch[] | null | undefined,
+  currentNuvemshopId: string | null,
+) {
+  if (!matches?.length) return null;
+
+  return matches.find((match) => {
+    const existingNuvemshopId = match.metadata?.nuvemshop_customer_id;
+    return (
+      existingNuvemshopId === undefined ||
+      existingNuvemshopId === null ||
+      String(existingNuvemshopId) === currentNuvemshopId
+    );
+  }) ?? null;
+}
+
+async function findExistingCustomerId(supabase: any, customer: Record<string, any>) {
+  const nuvemshopCustomerId = getNuvemshopCustomerId(customer);
+  const metadataCustomerId = customer.metadata?.nuvemshop_customer_id;
+
+  if (metadataCustomerId !== undefined && metadataCustomerId !== null) {
+    const { data, error } = await supabase
+      .from("imported_customers")
+      .select("id, metadata")
+      .contains("metadata", { nuvemshop_customer_id: metadataCustomerId })
+      .limit(1);
+
+    if (error) throw error;
+    if (data?.[0]?.id) return data[0].id as string;
+  }
+
+  if (customer.email) {
+    const { data, error } = await supabase
+      .from("imported_customers")
+      .select("id, metadata")
+      .ilike("email", customer.email)
+      .limit(5);
+
+    if (error) throw error;
+
+    const match = pickMergeableMatch(data as ImportedCustomerMatch[] | null, nuvemshopCustomerId);
+    if (match?.id) return match.id;
+  }
+
+  if (customer.phone) {
+    const { data, error } = await supabase
+      .from("imported_customers")
+      .select("id, metadata")
+      .eq("phone", customer.phone)
+      .limit(5);
+
+    if (error) throw error;
+
+    const match = pickMergeableMatch(data as ImportedCustomerMatch[] | null, nuvemshopCustomerId);
+    if (match?.id) return match.id;
+  }
+
+  return null;
+}
+
+async function upsertCustomerBatch(supabase: any, customers: Record<string, any>[]) {
   let synced = 0;
   let errors = 0;
 
   for (const customer of customers) {
     try {
-      let existingId: string | null = null;
-
-      if (customer.phone) {
-        const { data, error } = await supabase
-          .from("imported_customers")
-          .select("id")
-          .eq("phone", customer.phone)
-          .maybeSingle();
-
-        if (error) throw error;
-        existingId = data?.id ?? null;
-      }
-
-      if (!existingId && customer.email) {
-        const { data, error } = await supabase
-          .from("imported_customers")
-          .select("id")
-          .eq("email", customer.email)
-          .maybeSingle();
-
-        if (error) throw error;
-        existingId = data?.id ?? null;
-      }
+      const existingId = await findExistingCustomerId(supabase, customer);
 
       if (existingId) {
         const { error } = await supabase
@@ -277,7 +325,7 @@ async function processNextChunk(supabase: any, accessToken: string, storeId: str
   }
 
   const customerRecords = customers
-    .map((customer) => {
+    .map((customer): Record<string, any> | null => {
       const phone = cleanPhone(customer.phone);
       const email = customer.email || null;
 
@@ -300,7 +348,7 @@ async function processNextChunk(supabase: any, accessToken: string, storeId: str
         metadata: { nuvemshop_customer_id: customer.id },
       };
     })
-    .filter(Boolean);
+    .filter((customer): customer is Record<string, any> => customer !== null);
 
   const { synced, errors } = await upsertCustomerBatch(supabase, customerRecords);
 
