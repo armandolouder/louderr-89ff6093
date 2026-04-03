@@ -58,14 +58,16 @@ function BlockPreview({ block }: { block: EmailBlock }) {
       );
     case "products":
       return (
-        <div style={{ background: s.backgroundColor, padding: s.padding, display: "grid", gridTemplateColumns: `repeat(${s.columns || 2}, 1fr)`, gap: "12px" }}>
-          {(c.products || []).map((p: any, i: number) => (
-            <div key={i} style={{ textAlign: "center" }}>
-              <img src={p.image} alt={p.name} style={{ width: "100%", maxWidth: "160px", borderRadius: "8px" }} />
-              <p style={{ margin: "8px 0 4px", fontWeight: 600, fontSize: "13px", color: "#111" }}>{p.name}</p>
-              <p style={{ margin: 0, fontSize: "14px", fontWeight: 700, color: "#000" }}>{p.price}</p>
-            </div>
-          ))}
+        <div style={{ background: s.backgroundColor, padding: s.padding }}>
+          <div style={{ display: "grid", gridTemplateColumns: `repeat(${s.columns || 3}, 1fr)`, gap: "10px" }}>
+            {(c.products || []).map((p: any, i: number) => (
+              <div key={i} style={{ textAlign: "center" }}>
+                <img src={p.image} alt={p.name} style={{ width: "100%", display: "block" }} />
+                <p style={{ margin: "8px 0 4px", fontWeight: 600, fontSize: "13px", color: "#111" }}>{p.name}</p>
+                <p style={{ margin: 0, fontSize: "14px", fontWeight: 700, color: "#000" }}>{p.price}</p>
+              </div>
+            ))}
+          </div>
         </div>
       );
     case "divider":
