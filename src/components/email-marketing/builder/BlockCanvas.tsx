@@ -47,7 +47,7 @@ function BlockPreview({ block }: { block: EmailBlock }) {
     case "image":
       return (
         <div style={{ background: s.backgroundColor, padding: s.padding, textAlign: s.textAlign as any }}>
-          <img src={c.src} alt={c.alt} style={{ width: s.width, maxWidth: "100%", borderRadius: s.borderRadius, display: "inline-block" }} />
+          <img src={c.src} alt={c.alt} style={{ width: s.width, maxWidth: "100%", display: "inline-block" }} />
         </div>
       );
     case "button":
