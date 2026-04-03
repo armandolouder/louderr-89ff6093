@@ -379,6 +379,7 @@ export function EmailCampaignsList() {
         )}
       </div>
     );
+  }
 
   // Campaign list
   return (
