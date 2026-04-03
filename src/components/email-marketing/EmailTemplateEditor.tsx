@@ -187,7 +187,7 @@ export function EmailTemplateEditor() {
                   <p className="text-xs text-muted-foreground">{tpl.subject.replace("{{nome}}", "Maria")}</p>
                 </CardHeader>
                 <CardContent>
-                  <div className="border rounded-lg overflow-hidden mb-3 bg-muted/30">
+                  <div className="border rounded-lg overflow-hidden mb-3 bg-muted/30" style={{ borderRadius: 0 }}>
                     <iframe
                       srcDoc={tpl.html_content.replace(/\{\{nome\}\}/gi, "Maria").replace(/\{\{unsubscribe_url\}\}/gi, "#")}
                       className="w-full h-48 border-0 pointer-events-none"
