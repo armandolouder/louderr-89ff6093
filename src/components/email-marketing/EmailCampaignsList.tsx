@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
@@ -23,6 +22,8 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { CampaignDetailView } from "./CampaignDetailView";
 import { SendTestEmail } from "./SendTestEmail";
+
+const normalizeEmail = (email?: string | null) => email?.trim().toLowerCase() || "";
 
 export function EmailCampaignsList() {
   const queryClient = useQueryClient();
@@ -69,97 +70,152 @@ export function EmailCampaignsList() {
         .from("customer_clusters")
         .select("id, name, emoji, customer_count");
       if (error) throw error;
-      return data;
+
+      const clustersWithEmailCounts = await Promise.all(
+        (data || []).map(async (cluster) => {
+          const { count, error: countError } = await supabase
+            .from("imported_customers")
+            .select("id", { count: "exact", head: true })
+            .eq("cluster_id", cluster.id)
+            .not("email", "is", null)
+            .neq("email", "");
+
+          if (countError) throw countError;
+
+          return {
+            ...cluster,
+            email_recipient_count: count || 0,
+          };
+        })
+      );
+
+      return clustersWithEmailCounts;
     },
   });
 
+  const availableClusters = clusters?.filter((cluster) => (cluster.email_recipient_count || 0) > 0) || [];
   const selectedTemplate = templates?.find((t) => t.id === form.template_id);
-  const totalRecipients = clusters?.filter((c) => form.cluster_ids.includes(c.id)).reduce((sum, c) => sum + (c.customer_count || 0), 0) || 0;
-  const estimatedDays = Math.ceil(totalRecipients / 250);
+  const totalRecipients = clusters
+    ?.filter((c) => form.cluster_ids.includes(c.id))
+    .reduce((sum, c) => sum + (c.email_recipient_count || 0), 0) || 0;
+  const estimatedDays = totalRecipients > 0 ? Math.ceil(totalRecipients / 250) : 0;
 
   const createAndLaunchMutation = useMutation({
     mutationFn: async () => {
-      // Create campaign
-      const { data: campaign, error: createError } = await supabase.from("email_campaigns").insert({
-        name: form.name,
-        description: form.description || null,
-        template_id: form.template_id || null,
-        cluster_ids: form.cluster_ids,
-        subject_override: form.subject_override || null,
-        scheduled_at: form.scheduled_at || null,
-        status: form.scheduled_at ? "scheduled" : "sending",
-      }).select().single();
-      if (createError) throw createError;
-
       if (!form.template_id) throw new Error("Selecione um template");
       const template = templates?.find((t) => t.id === form.template_id);
       if (!template) throw new Error("Template não encontrado");
 
-      // Get unsubscribed
-      const { data: unsubscribed } = await supabase.from("email_unsubscribes").select("email");
-      const unsubs = new Set((unsubscribed || []).map((u) => u.email));
+      const { data: unsubscribed, error: unsubscribedError } = await supabase
+        .from("email_unsubscribes")
+        .select("email");
+      if (unsubscribedError) throw unsubscribedError;
 
-      // Get customers - handle potentially large datasets
+      const unsubscribedEmails = new Set(
+        (unsubscribed || [])
+          .map((item) => normalizeEmail(item.email))
+          .filter(Boolean)
+      );
+
       let allCustomers: any[] = [];
       for (const clusterId of form.cluster_ids) {
         let from = 0;
         const pageSize = 1000;
+
         while (true) {
-          const { data: batch } = await supabase
+          const { data: batch, error: batchError } = await supabase
             .from("imported_customers")
             .select("id, name, email")
             .eq("cluster_id", clusterId)
             .not("email", "is", null)
+            .neq("email", "")
             .range(from, from + pageSize - 1);
+
+          if (batchError) throw batchError;
           if (!batch?.length) break;
+
           allCustomers = allCustomers.concat(batch);
+
           if (batch.length < pageSize) break;
           from += pageSize;
         }
       }
 
-      const validCustomers = allCustomers.filter((c) => c.email && !unsubs.has(c.email));
-      if (!validCustomers.length) throw new Error("Nenhum cliente válido encontrado");
-
-      const scheduledAt = form.scheduled_at ? new Date(form.scheduled_at).toISOString() : new Date().toISOString();
-
-      // Build unsubscribe URL
-      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-      const unsubUrl = `https://${projectId}.supabase.co/functions/v1/email-unsubscribe`;
-
-      // Enqueue
-      const queueItems = validCustomers.map((c) => {
-        let html = template.html_content;
-        let subject = form.subject_override || template.subject;
-        const firstName = (c.name || "Cliente").split(" ")[0];
-        const emailUnsubLink = `${unsubUrl}?email=${encodeURIComponent(c.email || "")}`;
-        html = html
-          .replace(/\{\{nome\}\}/gi, firstName)
-          .replace(/\{\{email\}\}/gi, c.email || "")
-          .replace(/\{\{unsubscribe_url\}\}/gi, emailUnsubLink);
-        subject = subject.replace(/\{\{nome\}\}/gi, firstName);
-        return {
-          campaign_id: campaign.id,
-          customer_id: c.id,
-          email: c.email!,
-          customer_name: c.name,
-          subject,
-          html_content: html,
-          status: "pending",
-          scheduled_at: scheduledAt,
-        };
+      const validCustomers = Array.from(
+        new Map(allCustomers.map((customer) => [customer.id, customer])).values()
+      ).filter((customer) => {
+        const normalizedEmail = normalizeEmail(customer.email);
+        return normalizedEmail && !unsubscribedEmails.has(normalizedEmail);
       });
 
-      for (let i = 0; i < queueItems.length; i += 100) {
-        const batch = queueItems.slice(i, i + 100);
-        const { error } = await supabase.from("email_queue").insert(batch);
-        if (error) throw error;
+      if (!validCustomers.length) {
+        throw new Error("Nenhum cliente com email válido foi encontrado nos clusters selecionados.");
       }
 
-      await supabase.from("email_campaigns").update({
-        total_recipients: validCustomers.length,
-        started_at: form.scheduled_at ? null : new Date().toISOString(),
-      }).eq("id", campaign.id);
+      const scheduledAt = form.scheduled_at ? new Date(form.scheduled_at).toISOString() : new Date().toISOString();
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const unsubUrl = `https://${projectId}.supabase.co/functions/v1/email-unsubscribe`;
+      let createdCampaignId: string | null = null;
+
+      try {
+        const { data: campaign, error: createError } = await supabase
+          .from("email_campaigns")
+          .insert({
+            name: form.name,
+            description: form.description || null,
+            template_id: form.template_id || null,
+            cluster_ids: form.cluster_ids,
+            subject_override: form.subject_override || null,
+            scheduled_at: form.scheduled_at || null,
+            status: form.scheduled_at ? "scheduled" : "sending",
+            total_recipients: validCustomers.length,
+            started_at: form.scheduled_at ? null : new Date().toISOString(),
+          })
+          .select()
+          .single();
+
+        if (createError) throw createError;
+        createdCampaignId = campaign.id;
+
+        const queueItems = validCustomers.map((customer) => {
+          let html = template.html_content;
+          let subject = form.subject_override || template.subject;
+          const firstName = (customer.name || "Cliente").split(" ")[0];
+          const emailUnsubLink = `${unsubUrl}?email=${encodeURIComponent(normalizeEmail(customer.email))}`;
+
+          html = html
+            .replace(/\{\{nome\}\}/gi, firstName)
+            .replace(/\{\{email\}\}/gi, normalizeEmail(customer.email))
+            .replace(/\{\{unsubscribe_url\}\}/gi, emailUnsubLink);
+
+          subject = subject.replace(/\{\{nome\}\}/gi, firstName);
+
+          return {
+            campaign_id: campaign.id,
+            customer_id: customer.id,
+            email: normalizeEmail(customer.email),
+            customer_name: customer.name,
+            subject,
+            html_content: html,
+            status: "pending",
+            scheduled_at: scheduledAt,
+          };
+        });
+
+        for (let i = 0; i < queueItems.length; i += 100) {
+          const batch = queueItems.slice(i, i + 100);
+          const { error } = await supabase.from("email_queue").insert(batch);
+          if (error) throw error;
+        }
+
+        return campaign;
+      } catch (error) {
+        if (createdCampaignId) {
+          await supabase.from("email_queue").delete().eq("campaign_id", createdCampaignId);
+          await supabase.from("email_campaigns").delete().eq("id", createdCampaignId);
+        }
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["email-campaigns"] });
@@ -210,14 +266,13 @@ export function EmailCampaignsList() {
 
   if (isLoading) return <div className="flex items-center justify-center p-8"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
 
-  // Campaign detail view
   if (selectedCampaign) {
     return <CampaignDetailView campaignId={selectedCampaign} onBack={() => setSelectedCampaign(null)} />;
   }
+
   if (wizardStep > 0) {
     return (
       <div className="max-w-2xl mx-auto space-y-6">
-        {/* Progress */}
         <div className="flex items-center gap-2 mb-2">
           {[1, 2, 3, 4].map((s) => (
             <div key={s} className="flex items-center gap-2 flex-1">
@@ -234,7 +289,6 @@ export function EmailCampaignsList() {
 
         <Card>
           <CardContent className="pt-6 space-y-4">
-            {/* Step 1: Basic info */}
             {wizardStep === 1 && (
               <>
                 <Input placeholder="Nome da campanha *" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
@@ -247,7 +301,6 @@ export function EmailCampaignsList() {
               </>
             )}
 
-            {/* Step 2: Template */}
             {wizardStep === 2 && (
               <div className="space-y-3">
                 <Input placeholder="Assunto customizado (opcional — sobrescreve o do template)" value={form.subject_override} onChange={(e) => setForm({ ...form, subject_override: e.target.value })} />
@@ -277,11 +330,10 @@ export function EmailCampaignsList() {
               </div>
             )}
 
-            {/* Step 3: Clusters */}
             {wizardStep === 3 && (
               <div className="space-y-3">
                 <p className="text-sm text-muted-foreground">Selecione os clusters que receberão esta campanha:</p>
-                {clusters?.filter(c => c.customer_count && c.customer_count > 0).map((c) => (
+                {availableClusters.map((c) => (
                   <label
                     key={c.id}
                     className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
@@ -300,10 +352,17 @@ export function EmailCampaignsList() {
                     <span className="text-lg">{c.emoji}</span>
                     <div className="flex-1">
                       <p className="font-medium text-sm">{c.name}</p>
-                      <p className="text-xs text-muted-foreground">{c.customer_count} clientes com email</p>
+                      <p className="text-xs text-muted-foreground">
+                        {c.email_recipient_count} cliente{c.email_recipient_count === 1 ? "" : "s"} com email
+                      </p>
                     </div>
                   </label>
                 ))}
+                {!availableClusters.length && (
+                  <p className="text-sm text-muted-foreground text-center py-8">
+                    Nenhum cluster com emails válidos disponível no momento.
+                  </p>
+                )}
                 {form.cluster_ids.length > 0 && (
                   <div className="bg-muted/50 rounded-lg p-3 text-sm">
                     <p className="font-medium">📊 Resumo: {totalRecipients} destinatários</p>
@@ -315,7 +374,6 @@ export function EmailCampaignsList() {
               </div>
             )}
 
-            {/* Step 4: Review */}
             {wizardStep === 4 && (
               <div className="space-y-4">
                 <div className="bg-muted/30 rounded-lg p-4 space-y-3">
@@ -347,7 +405,7 @@ export function EmailCampaignsList() {
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Duração estimada</span>
-                    <span className="font-medium">~{estimatedDays} dia{estimatedDays > 1 ? "s" : ""}</span>
+                    <span className="font-medium">{estimatedDays > 0 ? `~${estimatedDays} dia${estimatedDays > 1 ? "s" : ""}` : "—"}</span>
                   </div>
                 </div>
 
@@ -366,7 +424,6 @@ export function EmailCampaignsList() {
           </CardContent>
         </Card>
 
-        {/* Navigation */}
         <div className="flex items-center justify-between">
           <Button variant="ghost" onClick={() => wizardStep === 1 ? setWizardStep(0) : setWizardStep(wizardStep - 1)}>
             <ArrowLeft className="w-4 h-4 mr-1" /> {wizardStep === 1 ? "Cancelar" : "Voltar"}
@@ -408,7 +465,6 @@ export function EmailCampaignsList() {
     );
   }
 
-  // Campaign list
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
