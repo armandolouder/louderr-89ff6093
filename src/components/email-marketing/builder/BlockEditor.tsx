@@ -98,12 +98,13 @@ export function BlockEditor({ block, onChange }: BlockEditorProps) {
               </div>
               <Input value={p.name} onChange={(e) => { const products = [...block.content.products]; products[i] = { ...p, name: e.target.value }; updateContent("products", products); }} placeholder="Nome" className="h-7 text-xs" />
               <Input value={p.price} onChange={(e) => { const products = [...block.content.products]; products[i] = { ...p, price: e.target.value }; updateContent("products", products); }} placeholder="Preço" className="h-7 text-xs" />
+              <Input value={p.oldPrice || ""} onChange={(e) => { const products = [...block.content.products]; products[i] = { ...p, oldPrice: e.target.value }; updateContent("products", products); }} placeholder="Preço antigo (opcional)" className="h-7 text-xs" />
               <Input value={p.image} onChange={(e) => { const products = [...block.content.products]; products[i] = { ...p, image: e.target.value }; updateContent("products", products); }} placeholder="URL da imagem" className="h-7 text-xs" />
               <Input value={p.link} onChange={(e) => { const products = [...block.content.products]; products[i] = { ...p, link: e.target.value }; updateContent("products", products); }} placeholder="Link" className="h-7 text-xs" />
             </div>
           ))}
           <Button variant="outline" size="sm" className="w-full gap-1" onClick={() => {
-            updateContent("products", [...(block.content.products || []), { image: "https://placehold.co/200x200/f5f5f5/333?text=Novo", name: "Novo Produto", price: "R$ 0,00", link: "#" }]);
+            updateContent("products", [...(block.content.products || []), { image: "https://placehold.co/300x380/f5f5f5/333?text=Novo", name: "NOVO PRODUTO", price: "R$ 0,00", oldPrice: "", link: "#" }]);
           }}><Plus className="w-3 h-3" /> Adicionar Produto</Button>
         </div>
       )}

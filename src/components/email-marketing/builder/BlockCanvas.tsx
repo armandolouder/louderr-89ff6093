@@ -59,12 +59,19 @@ function BlockPreview({ block }: { block: EmailBlock }) {
     case "products":
       return (
         <div style={{ background: s.backgroundColor, padding: s.padding }}>
-          <div style={{ display: "grid", gridTemplateColumns: `repeat(${s.columns || 2}, 1fr)`, gap: "10px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: `repeat(${s.columns || 2}, 1fr)`, gap: s.gap || "8px" }}>
             {(c.products || []).map((p: any, i: number) => (
-              <div key={i} style={{ textAlign: "center" }}>
-                <img src={p.image} alt={p.name} style={{ width: "100%", display: "block" }} />
-                <p style={{ margin: "8px 0 4px", fontWeight: 600, fontSize: "13px", color: "#111" }}>{p.name}</p>
-                <p style={{ margin: 0, fontSize: "14px", fontWeight: 700, color: "#000" }}>{p.price}</p>
+              <div key={i} style={{ overflow: "hidden" }}>
+                <div style={{ background: "#f0f0f0", overflow: "hidden" }}>
+                  <img src={p.image} alt={p.name} style={{ width: "100%", display: "block", objectFit: "cover" }} />
+                </div>
+                <div style={{ padding: "8px 4px" }}>
+                  <p style={{ margin: "0 0 4px", fontWeight: 700, fontSize: "12px", color: "#111", textTransform: "uppercase", lineHeight: 1.3 }}>{p.name}</p>
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    {p.oldPrice && <span style={{ fontSize: "12px", color: "#999", textDecoration: "line-through" }}>{p.oldPrice}</span>}
+                    <span style={{ fontSize: "13px", fontWeight: 700, color: "#000" }}>{p.price}</span>
+                  </div>
+                </div>
               </div>
             ))}
           </div>
