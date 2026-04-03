@@ -20,14 +20,14 @@ function renderBlock(block: EmailBlock): string {
       </td></tr>`;
 
     case "image": {
-      const img = `<img src="${block.content.src}" alt="${block.content.alt || ""}" style="width:${s.width};max-width:100%;border-radius:${s.borderRadius};display:block;" />`;
+      const img = `<img src="${block.content.src}" alt="${block.content.alt || ""}" style="width:${s.width};max-width:100%;display:block;" />`;
       const wrapped = block.content.link ? `<a href="${block.content.link}" target="_blank">${img}</a>` : img;
       return `<tr><td style="background:${s.backgroundColor};padding:${s.padding};text-align:${s.textAlign};">${wrapped}</td></tr>`;
     }
 
     case "button":
       return `<tr><td style="background:${s.backgroundColor};padding:${s.padding};text-align:${s.textAlign};">
-        <a href="${block.content.link}" target="_blank" style="display:inline-block;background:${s.buttonColor};color:${s.buttonTextColor};padding:14px 32px;border-radius:${s.borderRadius};text-decoration:none;font-weight:700;font-size:${s.fontSize};">${escapeHtml(block.content.text)}</a>
+        <a href="${block.content.link}" target="_blank" style="display:inline-block;background:${s.buttonColor};color:${s.buttonTextColor};padding:14px 32px;text-decoration:none;font-weight:700;font-size:${s.fontSize};">${escapeHtml(block.content.text)}</a>
       </td></tr>`;
 
     case "products": {
@@ -103,7 +103,7 @@ export function exportToHtml(state: BuilderState): string {
 <body style="margin:0;padding:0;background:${g.backgroundColor};font-family:${g.fontFamily};">
 <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:${g.backgroundColor};">
 <tr><td align="center" style="padding:40px 20px;">
-<table cellpadding="0" cellspacing="0" border="0" width="${g.contentWidth}" style="max-width:${g.contentWidth}px;background:#ffffff;border-radius:${g.borderRadius};overflow:hidden;">
+<table cellpadding="0" cellspacing="0" border="0" width="${g.contentWidth}" style="max-width:${g.contentWidth}px;background:#ffffff;overflow:hidden;">
 ${blocksHtml}
 </table>
 </td></tr>

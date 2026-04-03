@@ -47,13 +47,13 @@ function BlockPreview({ block }: { block: EmailBlock }) {
     case "image":
       return (
         <div style={{ background: s.backgroundColor, padding: s.padding, textAlign: s.textAlign as any }}>
-          <img src={c.src} alt={c.alt} style={{ width: s.width, maxWidth: "100%", borderRadius: s.borderRadius, display: "inline-block" }} />
+          <img src={c.src} alt={c.alt} style={{ width: s.width, maxWidth: "100%", display: "inline-block" }} />
         </div>
       );
     case "button":
       return (
         <div style={{ background: s.backgroundColor, padding: s.padding, textAlign: s.textAlign as any }}>
-          <span style={{ display: "inline-block", background: s.buttonColor, color: s.buttonTextColor, padding: "14px 32px", borderRadius: s.borderRadius, fontWeight: 700, fontSize: s.fontSize }}>{c.text}</span>
+          <span style={{ display: "inline-block", background: s.buttonColor, color: s.buttonTextColor, padding: "14px 32px", fontWeight: 700, fontSize: s.fontSize }}>{c.text}</span>
         </div>
       );
     case "products":
