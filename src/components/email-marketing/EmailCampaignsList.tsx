@@ -12,15 +12,18 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import {
   Plus, Send, Clock, CheckCircle, XCircle, Mail, Users, Eye, ArrowRight,
-  ArrowLeft, CalendarDays, Sparkles, Trash2, BarChart3
+  ArrowLeft, CalendarDays, Sparkles, Trash2, BarChart3, TestTube, ChevronRight
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { CampaignDetailView } from "./CampaignDetailView";
+import { SendTestEmail } from "./SendTestEmail";
 
 export function EmailCampaignsList() {
   const queryClient = useQueryClient();
-  const [wizardStep, setWizardStep] = useState(0); // 0 = closed, 1-4 = steps
+  const [wizardStep, setWizardStep] = useState(0);
   const [selectedCampaign, setSelectedCampaign] = useState<string | null>(null);
+  const [showTestEmail, setShowTestEmail] = useState(false);
   const [form, setForm] = useState({
     name: "", description: "", template_id: "", cluster_ids: [] as string[],
     scheduled_at: "", subject_override: "",
@@ -111,12 +114,20 @@ export function EmailCampaignsList() {
 
       const scheduledAt = form.scheduled_at ? new Date(form.scheduled_at).toISOString() : new Date().toISOString();
 
+      // Build unsubscribe URL
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const unsubUrl = `https://${projectId}.supabase.co/functions/v1/email-unsubscribe`;
+
       // Enqueue
       const queueItems = validCustomers.map((c) => {
         let html = template.html_content;
         let subject = form.subject_override || template.subject;
         const firstName = (c.name || "Cliente").split(" ")[0];
-        html = html.replace(/\{\{nome\}\}/gi, firstName).replace(/\{\{email\}\}/gi, c.email || "");
+        const emailUnsubLink = `${unsubUrl}?email=${encodeURIComponent(c.email || "")}`;
+        html = html
+          .replace(/\{\{nome\}\}/gi, firstName)
+          .replace(/\{\{email\}\}/gi, c.email || "")
+          .replace(/\{\{unsubscribe_url\}\}/gi, emailUnsubLink);
         subject = subject.replace(/\{\{nome\}\}/gi, firstName);
         return {
           campaign_id: campaign.id,
@@ -172,7 +183,10 @@ export function EmailCampaignsList() {
 
   if (isLoading) return <div className="flex items-center justify-center p-8"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
 
-  // Campaign Wizard
+  // Campaign detail view
+  if (selectedCampaign) {
+    return <CampaignDetailView campaignId={selectedCampaign} onBack={() => setSelectedCampaign(null)} />;
+  }
   if (wizardStep > 0) {
     return (
       <div className="max-w-2xl mx-auto space-y-6">
@@ -342,11 +356,27 @@ export function EmailCampaignsList() {
               Próximo <ArrowRight className="w-4 h-4 ml-1" />
             </Button>
           ) : (
-            <Button onClick={() => createAndLaunchMutation.mutate()} disabled={createAndLaunchMutation.isPending} className="gap-2">
-              <Send className="w-4 h-4" /> {form.scheduled_at ? "Agendar Campanha" : "Enviar Agora"}
-            </Button>
+            <div className="flex gap-2">
+              {selectedTemplate && (
+                <Button variant="outline" onClick={() => setShowTestEmail(true)} className="gap-2">
+                  <TestTube className="w-4 h-4" /> Enviar Teste
+                </Button>
+              )}
+              <Button onClick={() => createAndLaunchMutation.mutate()} disabled={createAndLaunchMutation.isPending} className="gap-2">
+                <Send className="w-4 h-4" /> {form.scheduled_at ? "Agendar Campanha" : "Enviar Agora"}
+              </Button>
+            </div>
           )}
         </div>
+
+        {selectedTemplate && (
+          <SendTestEmail
+            open={showTestEmail}
+            onOpenChange={setShowTestEmail}
+            templateHtml={selectedTemplate.html_content}
+            subject={form.subject_override || selectedTemplate.subject}
+          />
+        )}
       </div>
     );
   }
@@ -377,7 +407,7 @@ export function EmailCampaignsList() {
             const StatusIcon = sc.icon;
             const progress = campaign.total_recipients ? Math.round(((campaign.sent_count || 0) / campaign.total_recipients) * 100) : 0;
             return (
-              <Card key={campaign.id} className="hover:border-primary/20 transition-colors">
+              <Card key={campaign.id} className="hover:border-primary/20 transition-colors cursor-pointer" onClick={() => setSelectedCampaign(campaign.id)}>
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-base">{campaign.name}</CardTitle>
@@ -411,6 +441,7 @@ export function EmailCampaignsList() {
                         <span className="flex items-center gap-1"><CalendarDays className="w-3.5 h-3.5" />{format(new Date(campaign.scheduled_at), "dd/MM HH:mm")}</span>
                       )}
                     </div>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
                   </div>
                 </CardContent>
               </Card>
