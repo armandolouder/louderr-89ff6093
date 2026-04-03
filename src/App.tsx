@@ -19,6 +19,7 @@ const AbandonedCheckouts = lazy(() => import("./pages/AbandonedCheckouts"));
 const RecoveryDashboard = lazy(() => import("./pages/RecoveryDashboard"));
 const Automations = lazy(() => import("./pages/Automations"));
 const RFMMatrixPage = lazy(() => import("./pages/RFMMatrix"));
+const EmailMarketing = lazy(() => import("./pages/EmailMarketing"));
 const Auth = lazy(() => import("./pages/Auth"));
 const Install = lazy(() => import("./pages/Install"));
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -49,6 +50,7 @@ const App = () => (
               <Route path="/abandoned-checkouts" element={<AbandonedCheckouts />} />
               <Route path="/recovery" element={<RecoveryDashboard />} />
               <Route path="/automations" element={<Automations />} />
+              <Route path="/email-marketing" element={<EmailMarketing />} />
               <Route path="/settings" element={<Settings />} />
             </Route>
             <Route path="*" element={<NotFound />} />
