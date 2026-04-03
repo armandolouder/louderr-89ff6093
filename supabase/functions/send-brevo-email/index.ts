@@ -258,7 +258,7 @@ Deno.serve(async (req) => {
         );
       }
 
-      let fromName = senderName || "Armando";
+      let fromName = senderName || "LOUDER.ink";
       let fromEmail = senderEmail;
 
       if (!fromEmail) {
