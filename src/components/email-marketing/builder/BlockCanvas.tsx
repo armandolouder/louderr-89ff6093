@@ -164,7 +164,7 @@ export function BlockCanvas({ blocks, selectedBlockId, onSelect, onRemove, onDup
             />
             <div
               className={cn(
-                "group relative rounded-lg border-2 transition-all cursor-pointer",
+                "group relative border-2 transition-all cursor-pointer",
                 selectedBlockId === block.id
                   ? "border-primary ring-2 ring-primary/20"
                   : "border-transparent hover:border-border"
