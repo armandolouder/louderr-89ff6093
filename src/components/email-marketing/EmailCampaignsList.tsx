@@ -436,10 +436,31 @@ export function EmailCampaignsList() {
                     <CardTitle className="text-base">{campaign.name}</CardTitle>
                     <div className="flex items-center gap-2">
                       <Badge className={sc.color}><StatusIcon className="w-3 h-3 mr-1" />{sc.label}</Badge>
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); duplicateMutation.mutate(campaign); }} title="Duplicar">
+                        <Copy className="w-3.5 h-3.5" />
+                      </Button>
                       {campaign.status === "draft" && (
-                        <Button size="icon" variant="ghost" onClick={() => deleteMutation.mutate(campaign.id)} className="text-destructive h-7 w-7">
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button size="icon" variant="ghost" onClick={(e) => e.stopPropagation()} className="text-destructive h-7 w-7">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Excluir campanha?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                A campanha "{campaign.name}" e todos os emails na fila serão removidos permanentemente.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => deleteMutation.mutate(campaign.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                Excluir
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       )}
                     </div>
                   </div>
