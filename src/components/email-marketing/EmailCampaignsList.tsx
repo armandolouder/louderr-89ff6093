@@ -178,6 +178,24 @@ export function EmailCampaignsList() {
     },
   });
 
+  const duplicateMutation = useMutation({
+    mutationFn: async (campaign: any) => {
+      const { error } = await supabase.from("email_campaigns").insert({
+        name: `${campaign.name} (cópia)`,
+        description: campaign.description,
+        template_id: campaign.template_id,
+        cluster_ids: campaign.cluster_ids,
+        subject_override: campaign.subject_override,
+        status: "draft",
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["email-campaigns"] });
+      toast.success("Campanha duplicada como rascunho!");
+    },
+  });
+
   const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
     draft: { label: "Rascunho", color: "bg-muted text-muted-foreground", icon: Clock },
     scheduled: { label: "Agendada", color: "bg-amber-500/20 text-amber-400", icon: CalendarDays },
