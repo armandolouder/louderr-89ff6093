@@ -1,9 +1,54 @@
-export const BRANDED_TEMPLATES = [
+import { EmailBlock } from "./builder/types";
+
+interface BrandedTemplate {
+  name: string;
+  subject: string;
+  category: string;
+  preview_text: string;
+  html_content: string;
+  blocks: EmailBlock[];
+}
+
+const LOGO_URL = "https://acdn-us.mitiendanube.com/stores/002/778/031/themes/common/logo-507807513-1674425349-aa10b3e5b7752a1b2b57c619e6ba49b41674425349-640-0.webp";
+
+export const BRANDED_TEMPLATES: BrandedTemplate[] = [
   {
     name: "Boas-vindas LOUDER",
     subject: "Bem-vindo à LOUDER.ink, {{nome}}! 🖤",
     category: "boas-vindas",
     preview_text: "Vista sua atitude. Conheça nossa coleção.",
+    blocks: [
+      {
+        id: "bv-header",
+        type: "header",
+        content: { title: "LOUDER.ink", subtitle: "", logoUrl: LOGO_URL },
+        styles: { backgroundColor: "#000000", textColor: "#ffffff", padding: "24px 40px", textAlign: "center", fontSize: "24px" },
+      },
+      {
+        id: "bv-text1",
+        type: "text",
+        content: { text: "Fala, {{nome}}! 🤘\n\nSeja bem-vindo(a) à LOUDER.ink. Aqui a gente acredita que roupa é extensão da atitude.\n\nDá uma olhada nas nossas peças — cada uma conta uma história. E a próxima pode ser a sua." },
+        styles: { backgroundColor: "#ffffff", textColor: "#333333", padding: "48px 40px 20px", fontSize: "16px", lineHeight: "1.6" },
+      },
+      {
+        id: "bv-btn",
+        type: "button",
+        content: { text: "CONHECER A COLEÇÃO →", link: "https://louder.ink" },
+        styles: { backgroundColor: "#ffffff", buttonColor: "#000000", buttonTextColor: "#ffffff", padding: "0 40px 32px", textAlign: "center", borderRadius: "4px", fontSize: "14px" },
+      },
+      {
+        id: "bv-quote",
+        type: "testimonial",
+        content: { quote: '"Vista sua atitude."', author: "LOUDER.ink", role: "" },
+        styles: { backgroundColor: "#ffffff", textColor: "#999999", padding: "24px 40px", fontSize: "13px", borderLeftColor: "#000000" },
+      },
+      {
+        id: "bv-footer",
+        type: "footer",
+        content: { text: "LOUDER.ink • Vista sua atitude", unsubscribeText: "Cancelar inscrição" },
+        styles: { backgroundColor: "#000000", textColor: "#ffffff", padding: "32px 40px", fontSize: "11px", textAlign: "center" },
+      },
+    ],
     html_content: `<!DOCTYPE html>
 <html lang="pt-BR">
 <head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /></head>
@@ -12,7 +57,7 @@ export const BRANDED_TEMPLATES = [
 <tr><td align="center" style="padding:0;">
 <table cellpadding="0" cellspacing="0" border="0" width="600" style="max-width:600px;background:#ffffff;">
   <tr><td style="background:#000;padding:24px 40px;text-align:center;">
-    <img src="https://acdn-us.mitiendanube.com/stores/002/778/031/themes/common/logo-507807513-1674425349-aa10b3e5b7752a1b2b57c619e6ba49b41674425349-640-0.webp" alt="LOUDER.ink" style="display:inline-block;max-width:280px;width:100%;height:auto;" />
+    <img src="${LOGO_URL}" alt="LOUDER.ink" style="display:inline-block;max-width:280px;width:100%;height:auto;" />
   </td></tr>
   <tr><td style="padding:48px 40px 20px;">
     <h1 style="margin:0 0 8px;font-size:28px;font-weight:800;color:#111;line-height:1.1;">Fala, {{nome}}! 🤘</h1>
@@ -47,6 +92,38 @@ export const BRANDED_TEMPLATES = [
     subject: "⚡ {{nome}}, oferta exclusiva por tempo limitado!",
     category: "promocao",
     preview_text: "Aproveite antes que acabe. Peças selecionadas com desconto.",
+    blocks: [
+      {
+        id: "pr-header",
+        type: "header",
+        content: { title: "LOUDER.ink", subtitle: "", logoUrl: LOGO_URL },
+        styles: { backgroundColor: "#000000", textColor: "#ffffff", padding: "24px 40px", textAlign: "center", fontSize: "24px" },
+      },
+      {
+        id: "pr-text1",
+        type: "text",
+        content: { text: "⚡\n\nOFERTA RELÂMPAGO\n\n{{nome}}, separamos peças selecionadas com desconto exclusivo pra você.\nMas corre — é por tempo limitado." },
+        styles: { backgroundColor: "#ffffff", textColor: "#333333", padding: "48px 40px 20px", fontSize: "16px", lineHeight: "1.6" },
+      },
+      {
+        id: "pr-btn",
+        type: "button",
+        content: { text: "QUERO APROVEITAR →", link: "https://louder.ink" },
+        styles: { backgroundColor: "#ffffff", buttonColor: "#dc2626", buttonTextColor: "#ffffff", padding: "0 40px 24px", textAlign: "center", borderRadius: "4px", fontSize: "14px" },
+      },
+      {
+        id: "pr-disc",
+        type: "text",
+        content: { text: "Válido enquanto durar o estoque. Não cumulativo." },
+        styles: { backgroundColor: "#ffffff", textColor: "#999999", padding: "0 40px 40px", fontSize: "12px", lineHeight: "1.4" },
+      },
+      {
+        id: "pr-footer",
+        type: "footer",
+        content: { text: "LOUDER.ink", unsubscribeText: "Cancelar inscrição" },
+        styles: { backgroundColor: "#000000", textColor: "#ffffff", padding: "32px 40px", fontSize: "11px", textAlign: "center" },
+      },
+    ],
     html_content: `<!DOCTYPE html>
 <html lang="pt-BR">
 <head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /></head>
@@ -55,7 +132,7 @@ export const BRANDED_TEMPLATES = [
 <tr><td align="center" style="padding:0;">
 <table cellpadding="0" cellspacing="0" border="0" width="600" style="max-width:600px;background:#ffffff;">
   <tr><td style="background:#000;padding:24px 40px;text-align:center;">
-    <img src="https://acdn-us.mitiendanube.com/stores/002/778/031/themes/common/logo-507807513-1674425349-aa10b3e5b7752a1b2b57c619e6ba49b41674425349-640-0.webp" alt="LOUDER.ink" style="display:inline-block;max-width:280px;width:100%;height:auto;" />
+    <img src="${LOGO_URL}" alt="LOUDER.ink" style="display:inline-block;max-width:280px;width:100%;height:auto;" />
   </td></tr>
   <tr><td style="padding:48px 40px 20px;text-align:center;">
     <p style="margin:0 0 8px;font-size:48px;">⚡</p>
@@ -88,6 +165,38 @@ export const BRANDED_TEMPLATES = [
     subject: "{{nome}}, faz tempo que você não aparece 💜",
     category: "reativacao",
     preview_text: "Tem coisa nova te esperando. Dá uma passada.",
+    blocks: [
+      {
+        id: "re-header",
+        type: "header",
+        content: { title: "LOUDER.ink", subtitle: "", logoUrl: LOGO_URL },
+        styles: { backgroundColor: "#000000", textColor: "#ffffff", padding: "24px 40px", textAlign: "center", fontSize: "24px" },
+      },
+      {
+        id: "re-text1",
+        type: "text",
+        content: { text: "Oi, {{nome}} 💜\n\nFaz um tempo que você não aparece por aqui. E tá tudo bem — a gente entende o corre.\n\nMas queria te contar que tem peças novas que combinam com o seu estilo. Dá uma olhada quando puder — vai que rola?" },
+        styles: { backgroundColor: "#ffffff", textColor: "#333333", padding: "48px 40px 20px", fontSize: "16px", lineHeight: "1.6" },
+      },
+      {
+        id: "re-btn",
+        type: "button",
+        content: { text: "VER NOVIDADES →", link: "https://louder.ink" },
+        styles: { backgroundColor: "#ffffff", buttonColor: "#000000", buttonTextColor: "#ffffff", padding: "0 40px 24px", textAlign: "center", borderRadius: "4px", fontSize: "14px" },
+      },
+      {
+        id: "re-quote",
+        type: "testimonial",
+        content: { quote: '"A gente não esquece quem veste atitude."', author: "LOUDER.ink", role: "" },
+        styles: { backgroundColor: "#ffffff", textColor: "#999999", padding: "24px 40px", fontSize: "13px", borderLeftColor: "#000000" },
+      },
+      {
+        id: "re-footer",
+        type: "footer",
+        content: { text: "LOUDER.ink", unsubscribeText: "Cancelar inscrição" },
+        styles: { backgroundColor: "#000000", textColor: "#ffffff", padding: "32px 40px", fontSize: "11px", textAlign: "center" },
+      },
+    ],
     html_content: `<!DOCTYPE html>
 <html lang="pt-BR">
 <head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /></head>
@@ -96,7 +205,7 @@ export const BRANDED_TEMPLATES = [
 <tr><td align="center" style="padding:0;">
 <table cellpadding="0" cellspacing="0" border="0" width="600" style="max-width:600px;background:#ffffff;">
   <tr><td style="background:#000;padding:24px 40px;text-align:center;">
-    <img src="https://acdn-us.mitiendanube.com/stores/002/778/031/themes/common/logo-507807513-1674425349-aa10b3e5b7752a1b2b57c619e6ba49b41674425349-640-0.webp" alt="LOUDER.ink" style="display:inline-block;max-width:280px;width:100%;height:auto;" />
+    <img src="${LOGO_URL}" alt="LOUDER.ink" style="display:inline-block;max-width:280px;width:100%;height:auto;" />
   </td></tr>
   <tr><td style="padding:48px 40px 20px;">
     <h1 style="margin:0 0 16px;font-size:26px;font-weight:800;color:#111;line-height:1.2;">Oi, {{nome}} 💜</h1>
@@ -131,6 +240,38 @@ export const BRANDED_TEMPLATES = [
     subject: "🔥 {{nome}}, a nova coleção chegou!",
     category: "lancamento",
     preview_text: "Peças novas, atitude renovada. Confira antes de todo mundo.",
+    blocks: [
+      {
+        id: "lc-header",
+        type: "header",
+        content: { title: "LOUDER.ink", subtitle: "", logoUrl: LOGO_URL },
+        styles: { backgroundColor: "#000000", textColor: "#ffffff", padding: "24px 40px", textAlign: "center", fontSize: "24px" },
+      },
+      {
+        id: "lc-text1",
+        type: "text",
+        content: { text: "Nova coleção\n\nDROP NOVO 🔥\n\n{{nome}}, as peças que você esperava acabaram de chegar.\nCorre que as primeiras unidades voam." },
+        styles: { backgroundColor: "#ffffff", textColor: "#333333", padding: "48px 40px 20px", fontSize: "16px", lineHeight: "1.6" },
+      },
+      {
+        id: "lc-btn",
+        type: "button",
+        content: { text: "VER COLEÇÃO →", link: "https://louder.ink" },
+        styles: { backgroundColor: "#ffffff", buttonColor: "#000000", buttonTextColor: "#ffffff", padding: "0 40px 24px", textAlign: "center", borderRadius: "4px", fontSize: "14px" },
+      },
+      {
+        id: "lc-disc",
+        type: "text",
+        content: { text: "Primeiros a comprar ganham frete grátis." },
+        styles: { backgroundColor: "#ffffff", textColor: "#999999", padding: "0 40px 40px", fontSize: "12px", lineHeight: "1.4" },
+      },
+      {
+        id: "lc-footer",
+        type: "footer",
+        content: { text: "LOUDER.ink", unsubscribeText: "Cancelar inscrição" },
+        styles: { backgroundColor: "#000000", textColor: "#ffffff", padding: "32px 40px", fontSize: "11px", textAlign: "center" },
+      },
+    ],
     html_content: `<!DOCTYPE html>
 <html lang="pt-BR">
 <head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /></head>
@@ -139,7 +280,7 @@ export const BRANDED_TEMPLATES = [
 <tr><td align="center" style="padding:0;">
 <table cellpadding="0" cellspacing="0" border="0" width="600" style="max-width:600px;background:#ffffff;">
   <tr><td style="background:#000;padding:24px 40px;text-align:center;">
-    <img src="https://acdn-us.mitiendanube.com/stores/002/778/031/themes/common/logo-507807513-1674425349-aa10b3e5b7752a1b2b57c619e6ba49b41674425349-640-0.webp" alt="LOUDER.ink" style="display:inline-block;max-width:280px;width:100%;height:auto;" />
+    <img src="${LOGO_URL}" alt="LOUDER.ink" style="display:inline-block;max-width:280px;width:100%;height:auto;" />
   </td></tr>
   <tr><td style="padding:48px 40px 20px;text-align:center;">
     <p style="margin:0 0 12px;font-size:14px;color:#999;text-transform:uppercase;letter-spacing:3px;">Nova coleção</p>
