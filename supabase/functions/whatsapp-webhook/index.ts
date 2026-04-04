@@ -480,6 +480,7 @@ serve(async (req) => {
             last_message: displayContent,
             last_message_at: new Date().toISOString(),
             unread_count: isFromMobile ? 0 : 1,
+            user_id: ownerUserId,
           })
           .select()
           .single();
