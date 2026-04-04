@@ -181,7 +181,7 @@ serve(async (req) => {
             .eq("id", item.customer_id)
             .single();
 
-          await supabase.from("send_logs").insert({
+           await supabase.from("send_logs").insert({
             campaign_id: item.campaign_id,
             customer_id: item.customer_id,
             queue_id: item.id,
@@ -191,6 +191,7 @@ serve(async (req) => {
             status: "sent",
             cluster_name: (customer?.customer_clusters as any)?.name || null,
             response_data: responseData,
+            user_id: ownerUserId,
           });
 
           // Track campaign updates
