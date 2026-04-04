@@ -16,6 +16,10 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Resolve owner user_id for multi-tenant data isolation
+    const { data: ownerData } = await supabase.rpc("get_webhook_owner_user_id");
+    const ownerUserId = ownerData as string | null;
+
     const NUVEMSHOP_ACCESS_TOKEN = Deno.env.get("NUVEMSHOP_ACCESS_TOKEN");
     const NUVEMSHOP_STORE_ID = Deno.env.get("NUVEMSHOP_STORE_ID");
 
