@@ -148,6 +148,7 @@ Deno.serve(async (req) => {
                 name: customerName || "Cliente",
                 source: "abandoned_checkout",
                 order_count: 0,
+                user_id: ownerUserId,
               };
               if (customerPhone) insertData.phone = customerPhone.replace(/\D/g, "");
               if (customerEmail) insertData.email = customerEmail;
