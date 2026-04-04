@@ -180,6 +180,7 @@ Deno.serve(async (req) => {
           const insertData: Record<string, any> = {
             name: customerName || "Cliente",
             source: "nuvemshop",
+            user_id: ownerUserId,
           };
           if (customerPhone) insertData.phone = customerPhone.replace(/\D/g, "");
           if (customerEmail) insertData.email = customerEmail;
