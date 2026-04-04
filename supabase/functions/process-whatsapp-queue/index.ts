@@ -224,6 +224,7 @@ serve(async (req) => {
               status: "failed",
               error_message: errorMessage,
               response_data: responseData,
+              user_id: ownerUserId,
             });
 
             if (!campaignUpdates[item.campaign_id]) {
