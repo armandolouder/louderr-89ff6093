@@ -24,6 +24,7 @@ serve(async (req) => {
     }
 
     const { message, mode, customerName } = await req.json();
+    const apiKey = Deno.env.get("LOVABLE_API_KEY");
     if (!apiKey) throw new Error("LOVABLE_API_KEY not configured");
 
     let systemPrompt: string;

@@ -23,6 +23,8 @@ Deno.serve(async (req) => {
     }
 
     const { url } = await req.json();
+
+    if (!url) {
       return new Response(
         JSON.stringify({ success: false, error: "URL is required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
