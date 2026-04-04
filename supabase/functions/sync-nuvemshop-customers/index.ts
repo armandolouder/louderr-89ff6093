@@ -491,6 +491,7 @@ Deno.serve(async (req) => {
         valid_rows: 0,
         invalid_rows: 0,
         column_mapping: { next_page: 1, phase: "sync" },
+        user_id: ownerUserId,
       })
       .select("id, status, error_message, total_rows, valid_rows, invalid_rows, completed_at, column_mapping")
       .single();
