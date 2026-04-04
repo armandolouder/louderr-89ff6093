@@ -30,6 +30,7 @@ serve(async (req) => {
     if (claimsError || !claimsData?.claims) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
+    const authenticatedUserId = claimsData.claims.sub;
 
     const UAZAPI_SERVER_URL = Deno.env.get("UAZAPI_SERVER_URL");
     const UAZAPI_INSTANCE_TOKEN = Deno.env.get("UAZAPI_INSTANCE_TOKEN");
