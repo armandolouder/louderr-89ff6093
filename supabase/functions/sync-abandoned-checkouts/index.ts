@@ -110,6 +110,7 @@ Deno.serve(async (req) => {
           products,
           status: "abandoned",
           created_at_nuvemshop: checkout.created_at || null,
+          user_id: ownerUserId,
         },
         { onConflict: "nuvemshop_checkout_id" }
       );
