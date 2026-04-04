@@ -62,6 +62,10 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+    // Resolve owner user_id for multi-tenant data isolation
+    const { data: ownerData } = await supabase.rpc("get_webhook_owner_user_id");
+    const ownerUserId = ownerData as string | null;
+
     const { campaignId, limit = 10 } = await req.json().catch(() => ({}));
 
     // Build query for pending messages
@@ -177,7 +181,7 @@ serve(async (req) => {
             .eq("id", item.customer_id)
             .single();
 
-          await supabase.from("send_logs").insert({
+           await supabase.from("send_logs").insert({
             campaign_id: item.campaign_id,
             customer_id: item.customer_id,
             queue_id: item.id,
@@ -187,6 +191,7 @@ serve(async (req) => {
             status: "sent",
             cluster_name: (customer?.customer_clusters as any)?.name || null,
             response_data: responseData,
+            user_id: ownerUserId,
           });
 
           // Track campaign updates
@@ -219,6 +224,7 @@ serve(async (req) => {
               status: "failed",
               error_message: errorMessage,
               response_data: responseData,
+              user_id: ownerUserId,
             });
 
             if (!campaignUpdates[item.campaign_id]) {

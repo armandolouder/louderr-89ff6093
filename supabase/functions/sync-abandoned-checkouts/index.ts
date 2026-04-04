@@ -26,6 +26,10 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Resolve owner user_id for multi-tenant data isolation
+    const { data: ownerData } = await supabase.rpc("get_webhook_owner_user_id");
+    const ownerUserId = ownerData as string | null;
+
     const url = new URL(req.url);
     const page = parseInt(url.searchParams.get("page") || "1");
     const perPage = parseInt(url.searchParams.get("per_page") || "50");
@@ -106,6 +110,7 @@ Deno.serve(async (req) => {
           products,
           status: "abandoned",
           created_at_nuvemshop: checkout.created_at || null,
+          user_id: ownerUserId,
         },
         { onConflict: "nuvemshop_checkout_id" }
       );
@@ -143,6 +148,7 @@ Deno.serve(async (req) => {
                 name: customerName || "Cliente",
                 source: "abandoned_checkout",
                 order_count: 0,
+                user_id: ownerUserId,
               };
               if (customerPhone) insertData.phone = customerPhone.replace(/\D/g, "");
               if (customerEmail) insertData.email = customerEmail;
@@ -190,6 +196,7 @@ Deno.serve(async (req) => {
 
               const { error: execError } = await supabase.from("automation_executions").insert({
                 flow_id: flow.id,
+                user_id: ownerUserId,
                 trigger_data: {
                   checkout_id: checkout.id,
                   event: "abandoned_checkout",

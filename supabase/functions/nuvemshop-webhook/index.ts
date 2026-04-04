@@ -16,6 +16,10 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Resolve owner user_id for multi-tenant data isolation
+    const { data: ownerData } = await supabase.rpc("get_webhook_owner_user_id");
+    const ownerUserId = ownerData as string | null;
+
     const NUVEMSHOP_ACCESS_TOKEN = Deno.env.get("NUVEMSHOP_ACCESS_TOKEN");
     const NUVEMSHOP_STORE_ID = Deno.env.get("NUVEMSHOP_STORE_ID");
 
@@ -113,6 +117,7 @@ Deno.serve(async (req) => {
         products,
         order_date: order.created_at || null,
         order_number: order.number?.toString() || null,
+        user_id: ownerUserId,
       },
       { onConflict: "nuvemshop_order_id" }
     );
@@ -175,6 +180,7 @@ Deno.serve(async (req) => {
           const insertData: Record<string, any> = {
             name: customerName || "Cliente",
             source: "nuvemshop",
+            user_id: ownerUserId,
           };
           if (customerPhone) insertData.phone = customerPhone.replace(/\D/g, "");
           if (customerEmail) insertData.email = customerEmail;

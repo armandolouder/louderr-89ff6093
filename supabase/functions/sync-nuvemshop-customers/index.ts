@@ -222,7 +222,7 @@ async function upsertCustomerBatch(supabase: any, customers: Record<string, any>
         continue;
       }
 
-      const { error } = await supabase.from("imported_customers").insert(customer);
+      const { error } = await supabase.from("imported_customers").insert({ ...customer, user_id: ownerUserId });
       if (error) throw error;
       synced++;
     } catch (error) {
@@ -426,6 +426,10 @@ Deno.serve(async (req) => {
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Resolve owner user_id for multi-tenant data isolation
+    const { data: ownerData } = await supabase.rpc("get_webhook_owner_user_id");
+    const ownerUserId = ownerData as string | null;
     const url = new URL(req.url);
     const jobId = url.searchParams.get("job_id");
     const action = url.searchParams.get("action");
@@ -487,6 +491,7 @@ Deno.serve(async (req) => {
         valid_rows: 0,
         invalid_rows: 0,
         column_mapping: { next_page: 1, phase: "sync" },
+        user_id: ownerUserId,
       })
       .select("id, status, error_message, total_rows, valid_rows, invalid_rows, completed_at, column_mapping")
       .single();

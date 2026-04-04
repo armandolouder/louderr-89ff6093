@@ -199,6 +199,11 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+    // Resolve owner user_id for multi-tenant data isolation
+    const { data: ownerData } = await supabase.rpc("get_webhook_owner_user_id");
+    const ownerUserId = ownerData as string | null;
+    console.log("Webhook owner user_id:", ownerUserId);
+
     const payload: UazapiPayload = await req.json();
     console.log("Webhook received:", payload.EventType);
     console.log("Payload:", JSON.stringify(payload).substring(0, 500));
@@ -421,7 +426,7 @@ serve(async (req) => {
         console.log("Creating new contact:", contactName);
         const { data: newContact, error: contactError } = await supabase
           .from("contacts")
-          .insert({ name: contactName, phone, avatar_url: chat.imagePreview || null })
+          .insert({ name: contactName, phone, avatar_url: chat.imagePreview || null, user_id: ownerUserId })
           .select()
           .single();
 
@@ -475,6 +480,7 @@ serve(async (req) => {
             last_message: displayContent,
             last_message_at: new Date().toISOString(),
             unread_count: isFromMobile ? 0 : 1,
+            user_id: ownerUserId,
           })
           .select()
           .single();
@@ -507,6 +513,7 @@ serve(async (req) => {
           message_type: messageType,
           media_url: mediaUrl,
           status: isFromMobile ? "sent" : "delivered",
+          user_id: ownerUserId,
           metadata: {
             whatsapp_message_id: msg.messageid,
             chatid: msg.chatid,
@@ -607,6 +614,7 @@ serve(async (req) => {
                         sender_type: "bot",
                         message_type: "text",
                         status: "sent",
+                        user_id: ownerUserId,
                         metadata: { from_bot: true, bot_type: "menu" },
                       });
 
