@@ -222,7 +222,7 @@ async function upsertCustomerBatch(supabase: any, customers: Record<string, any>
         continue;
       }
 
-      const { error } = await supabase.from("imported_customers").insert(customer);
+      const { error } = await supabase.from("imported_customers").insert({ ...customer, user_id: ownerUserId });
       if (error) throw error;
       synced++;
     } catch (error) {
