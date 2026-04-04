@@ -426,7 +426,7 @@ serve(async (req) => {
         console.log("Creating new contact:", contactName);
         const { data: newContact, error: contactError } = await supabase
           .from("contacts")
-          .insert({ name: contactName, phone, avatar_url: chat.imagePreview || null })
+          .insert({ name: contactName, phone, avatar_url: chat.imagePreview || null, user_id: ownerUserId })
           .select()
           .single();
 
