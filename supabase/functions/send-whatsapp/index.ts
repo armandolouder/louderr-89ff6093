@@ -147,6 +147,7 @@ serve(async (req) => {
         message_type: messageType,
         media_url: mediaUrl || null,
         status: "sent",
+        user_id: authenticatedUserId,
         metadata: { uazapi_response: uazapiData },
       })
       .select()
