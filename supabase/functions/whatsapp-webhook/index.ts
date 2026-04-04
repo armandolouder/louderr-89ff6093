@@ -614,6 +614,7 @@ serve(async (req) => {
                         sender_type: "bot",
                         message_type: "text",
                         status: "sent",
+                        user_id: ownerUserId,
                         metadata: { from_bot: true, bot_type: "menu" },
                       });
 
