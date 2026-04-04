@@ -513,6 +513,7 @@ serve(async (req) => {
           message_type: messageType,
           media_url: mediaUrl,
           status: isFromMobile ? "sent" : "delivered",
+          user_id: ownerUserId,
           metadata: {
             whatsapp_message_id: msg.messageid,
             chatid: msg.chatid,
