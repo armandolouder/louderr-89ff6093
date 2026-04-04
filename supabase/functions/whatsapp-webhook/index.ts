@@ -199,6 +199,11 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+    // Resolve owner user_id for multi-tenant data isolation
+    const { data: ownerData } = await supabase.rpc("get_webhook_owner_user_id");
+    const ownerUserId = ownerData as string | null;
+    console.log("Webhook owner user_id:", ownerUserId);
+
     const payload: UazapiPayload = await req.json();
     console.log("Webhook received:", payload.EventType);
     console.log("Payload:", JSON.stringify(payload).substring(0, 500));
