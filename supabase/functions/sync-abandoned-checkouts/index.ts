@@ -196,6 +196,7 @@ Deno.serve(async (req) => {
 
               const { error: execError } = await supabase.from("automation_executions").insert({
                 flow_id: flow.id,
+                user_id: ownerUserId,
                 trigger_data: {
                   checkout_id: checkout.id,
                   event: "abandoned_checkout",
