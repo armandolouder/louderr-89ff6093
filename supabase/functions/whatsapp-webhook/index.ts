@@ -562,18 +562,30 @@ serve(async (req) => {
               }
 
               if (isNuvemshopCustomer) {
-                console.log("Nuvemshop customer detected, sending welcome message...");
+                // Check if welcome was already sent for this conversation
+                const { data: existingWelcome } = await supabase
+                  .from("messages")
+                  .select("id")
+                  .eq("conversation_id", conversation.id)
+                  .eq("sender_type", "bot")
+                  .limit(1)
+                  .maybeSingle();
 
-                // Resolve variables
-                const now = new Date();
-                const brHour = (now.getUTCHours() - 3 + 24) % 24; // UTC-3
-                const saudacao = brHour < 12 ? "Bom dia" : brHour < 18 ? "Boa tarde" : "Boa noite";
-                const customerName = contactName || "cliente";
+                if (existingWelcome) {
+                  console.log("Welcome already sent for this conversation, skipping");
+                } else {
+                  console.log("Nuvemshop customer detected, sending welcome message...");
 
-                const replaceVars = (text: string) =>
-                  text.replace(/\{nome\}/g, customerName).replace(/\{saudacao\}/g, saudacao);
+                  // Resolve variables
+                  const now = new Date();
+                  const brHour = (now.getUTCHours() - 3 + 24) % 24; // UTC-3
+                  const saudacao = brHour < 12 ? "Bom dia" : brHour < 18 ? "Boa tarde" : "Boa noite";
+                  const customerName = contactName || "cliente";
 
-                const reply = replaceVars(welcomeMessage);
+                  const replaceVars = (text: string) =>
+                    text.replace(/\{nome\}/g, customerName).replace(/\{saudacao\}/g, saudacao);
+
+                  const reply = replaceVars(welcomeMessage);
 
                 if (reply) {
                   const UAZAPI_SERVER_URL = Deno.env.get("UAZAPI_SERVER_URL");
