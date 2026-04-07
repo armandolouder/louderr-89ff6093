@@ -1,7 +1,8 @@
 import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { TrendingUp, RefreshCw, ShoppingCart, DollarSign, Receipt, Settings, Download, Trash2, Eye, MessageSquare } from "lucide-react";
+import { TrendingUp, RefreshCw, ShoppingCart, DollarSign, Receipt, Settings, Download, Trash2, Eye, MessageSquare, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
