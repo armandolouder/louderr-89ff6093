@@ -48,7 +48,7 @@ export default function SalesDashboard() {
   const [year, setYear] = useState(now.getFullYear());
   const [statusFilter, setStatusFilter] = useState("all");
   const queryClient = useQueryClient();
-
+  const navigate = useNavigate();
   const startDate = new Date(year, month, 1).toISOString();
   const endDate = new Date(year, month + 1, 0, 23, 59, 59).toISOString();
 
