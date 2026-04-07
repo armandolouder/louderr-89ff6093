@@ -207,6 +207,49 @@ export default function AbandonedCheckouts() {
     }
   };
 
+  const sendEmail = async (checkout: any) => {
+    if (!checkout.customer_email) {
+      toast.error("Este cliente não tem e-mail cadastrado");
+      return;
+    }
+
+    setSendingEmailId(checkout.id);
+    try {
+      const firstName = (checkout.customer_name || "Cliente").split(" ")[0];
+      const products = (checkout.products as any[]) || [];
+      const total = checkout.total || 0;
+      const recoveryUrl = checkout.recovery_url || "";
+
+      const res = await supabase.functions.invoke("send-brevo-email", {
+        body: {
+          action: "send-recovery",
+          to: checkout.customer_email,
+          customerName: checkout.customer_name,
+          products,
+          total,
+          recoveryUrl,
+          stepType: "emocional",
+          variant: "A",
+        },
+      });
+
+      if (res.error) throw res.error;
+      if (!res.data?.success) throw new Error(res.data?.error || "Erro ao enviar e-mail");
+
+      await supabase
+        .from("nuvemshop_abandoned_checkouts")
+        .update({ contacted_at: new Date().toISOString(), contact_channel: "email" })
+        .eq("id", checkout.id);
+
+      toast.success(`E-mail enviado para ${firstName}!`);
+      queryClient.invalidateQueries({ queryKey: ["abandoned-checkouts"] });
+    } catch (err: any) {
+      toast.error("Erro ao enviar e-mail: " + (err.message || "Erro desconhecido"));
+    } finally {
+      setSendingEmailId(null);
+    }
+  };
+
   const years = Array.from({ length: 5 }, (_, i) => now.getFullYear() - 2 + i);
 
   const FILTER_OPTIONS = [
