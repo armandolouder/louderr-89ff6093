@@ -34,7 +34,10 @@ export function EmailBuilder({ initialBlocks, onSave, onCancel, templateName = "
   const previewHtml = html
     .replace(/\{\{nome\}\}/gi, "Maria")
     .replace(/\{\{email\}\}/gi, "maria@email.com")
-    .replace(/\{\{unsubscribe_url\}\}/gi, "#");
+    .replace(/\{\{unsubscribe_url\}\}/gi, "#")
+    .replace(/\{\{recovery_url\}\}/gi, "https://loja.com/checkout/exemplo")
+    .replace(/\{\{total\}\}/gi, "R$ 379,80")
+    .replace(/\{\{produtos\}\}/gi, '<table cellpadding="0" cellspacing="0" border="0" width="100%"><tr><td width="50%" style="padding:4px;vertical-align:top;"><div style="background:#f5f5f5;height:120px;text-align:center;line-height:120px;font-size:11px;color:#999;">Produto 1</div></td><td width="50%" style="padding:4px;vertical-align:top;"><div style="background:#f5f5f5;height:120px;text-align:center;line-height:120px;font-size:11px;color:#999;">Produto 2</div></td></tr></table>');
 
   const handleSave = () => {
     onSave(html, state.blocks);

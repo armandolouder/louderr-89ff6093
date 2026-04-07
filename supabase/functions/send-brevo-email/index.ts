@@ -8,37 +8,32 @@ const corsHeaders = {
 
 function buildProductGrid(products: any[]) {
   if (!products?.length) return "";
-  return products
-    .map(
-      (p: any) => `
-      <tr>
-        <td style="padding: 12px 0; border-bottom: 1px solid #f0f0f0;">
-          <table cellpadding="0" cellspacing="0" border="0" width="100%">
-            <tr>
-              ${
-                p.image
-                  ? `<td width="80" style="vertical-align: top; padding-right: 16px;">
-                      <img src="${p.image}" alt="${p.name || "Produto"}" width="80" height="80" style="display: block; border-radius: 8px; object-fit: cover; background: #f5f5f5;" />
-                    </td>`
-                  : `<td width="80" style="vertical-align: top; padding-right: 16px;">
-                      <div style="width: 80px; height: 80px; background: #f5f5f5; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                        <span style="font-size: 28px;">🛒</span>
-                      </div>
-                    </td>`
-              }
-              <td style="vertical-align: middle;">
-                <p style="margin: 0 0 4px; font-size: 15px; font-weight: 600; color: #111;">${p.name || "Produto"}</p>
-                ${p.variant ? `<p style="margin: 0 0 4px; font-size: 12px; color: #888;">${p.variant}</p>` : ""}
-                <p style="margin: 0; font-size: 14px; color: #111;">
-                  ${p.quantity && p.quantity > 1 ? `${p.quantity}x ` : ""}R$ ${Number(p.price || 0).toFixed(2).replace(".", ",")}
-                </p>
-              </td>
-            </tr>
-          </table>
-        </td>
-      </tr>`
-    )
-    .join("");
+  const cols = 2;
+  let rows = "";
+  for (let i = 0; i < products.length; i += cols) {
+    const cells = products.slice(i, i + cols).map((p: any) => {
+      const priceFormatted = `R$ ${Number(p.price || 0).toFixed(2).replace(".", ",")}`;
+      const qtyLabel = p.quantity && p.quantity > 1 ? `${p.quantity}x ` : "";
+      return `<td width="50%" style="padding:4px;vertical-align:top;">
+        <div style="background:#f5f5f5;overflow:hidden;">
+          ${p.image
+            ? `<img src="${p.image}" alt="${p.name || "Produto"}" width="100%" style="display:block;width:100%;object-fit:cover;" />`
+            : `<div style="width:100%;height:160px;background:#f5f5f5;text-align:center;line-height:160px;font-size:28px;">🛒</div>`
+          }
+        </div>
+        <div style="padding:8px 4px;">
+          <p style="margin:0 0 4px;font-weight:700;font-size:12px;color:#111;text-transform:uppercase;line-height:1.3;">${p.name || "Produto"}</p>
+          ${p.variant ? `<p style="margin:0 0 4px;font-size:11px;color:#888;">${p.variant}</p>` : ""}
+          <p style="margin:0;font-size:13px;font-weight:700;color:#000;">${qtyLabel}${priceFormatted}</p>
+        </div>
+      </td>`;
+    }).join("");
+    // Fill empty cells if odd number of products
+    const remaining = cols - products.slice(i, i + cols).length;
+    const emptyCells = Array(remaining).fill('<td width="50%" style="padding:4px;"></td>').join("");
+    rows += `<tr>${cells}${emptyCells}</tr>`;
+  }
+  return `<table cellpadding="0" cellspacing="0" border="0" width="100%" style="padding:10px;">${rows}</table>`;
 }
 
 function buildRecoveryEmail(
@@ -128,12 +123,10 @@ function buildRecoveryEmail(
             </td>
           </tr>
           
-          <!-- PRODUCTS GRID -->
+          <!-- PRODUCTS GRID (2 columns) -->
           <tr>
-            <td style="padding: 0 40px;">
-              <table cellpadding="0" cellspacing="0" border="0" width="100%">
-                ${productGrid}
-              </table>
+            <td style="padding: 0 30px;">
+              ${productGrid}
             </td>
           </tr>
           
