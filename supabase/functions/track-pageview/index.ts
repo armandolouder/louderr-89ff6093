@@ -6,18 +6,54 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+// Known bot user-agent patterns
+const BOT_PATTERNS = [
+  /googlebot/i, /bingbot/i, /slurp/i, /duckduckbot/i, /baiduspider/i,
+  /yandexbot/i, /sogou/i, /facebot/i, /ia_archiver/i, /applebot/i,
+  /twitterbot/i, /linkedinbot/i, /embedly/i, /quora link/i, /outbrain/i,
+  /pinterest/i, /semrushbot/i, /ahrefsbot/i, /mj12bot/i, /dotbot/i,
+  /petalbot/i, /bytespider/i, /gptbot/i, /claudebot/i, /anthropic/i,
+  /headlesschrome/i, /phantomjs/i, /lighthouse/i, /pagespeed/i,
+  /screaming frog/i, /nutch/i, /archive\.org_bot/i, /mediapartners-google/i,
+  /adsbot-google/i, /apis-google/i, /google-inspectiontool/i,
+  /chrome-lighthouse/i, /speed insights/i, /webpagetest/i,
+];
+
+function isBot(userAgent: string): boolean {
+  if (!userAgent) return false;
+  return BOT_PATTERNS.some((pattern) => pattern.test(userAgent));
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
+    // Check user-agent from headers first (most reliable)
+    const headerUA = req.headers.get("user-agent") || "";
+    if (isBot(headerUA)) {
+      return new Response(JSON.stringify({ ok: true, filtered: "bot" }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "no-store" },
+      });
+    }
+
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
     const body = await req.json();
+
+    // Also check user-agent sent from client-side script
+    const clientUA = String(body.user_agent || "");
+    if (isBot(clientUA)) {
+      return new Response(JSON.stringify({ ok: true, filtered: "bot" }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "no-store" },
+      });
+    }
 
     // Validate required fields
     const visitorId = String(body.visitor_id || "").trim();
@@ -69,7 +105,6 @@ Deno.serve(async (req) => {
               geoState = geo.regionName || geoState;
               geoCity = geo.city || geoCity;
               geoCountry = geo.countryCode || geoCountry;
-              console.log(`Geo resolved: ${geoState}, ${geoCity}, ${geoCountry}`);
             }
           }
         }
