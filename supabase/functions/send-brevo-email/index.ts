@@ -123,12 +123,10 @@ function buildRecoveryEmail(
             </td>
           </tr>
           
-          <!-- PRODUCTS GRID -->
+          <!-- PRODUCTS GRID (2 columns) -->
           <tr>
-            <td style="padding: 0 40px;">
-              <table cellpadding="0" cellspacing="0" border="0" width="100%">
-                ${productGrid}
-              </table>
+            <td style="padding: 0 30px;">
+              ${productGrid}
             </td>
           </tr>
           
