@@ -10,8 +10,37 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-// ScrollArea used for block editor panel
-import { ArrowLeft, Eye, Save, Code, Palette } from "lucide-react";
+import { SendTestEmail } from "../SendTestEmail";
+import { ArrowLeft, Eye, Save, Code, Palette, Send } from "lucide-react";
+
+const PRODUTOS_PREVIEW = `<table cellpadding="0" cellspacing="0" border="0" width="100%">
+  <tr>
+    <td width="50%" style="padding:6px;vertical-align:top;">
+      <div style="border:1px solid #e5e5e5;border-radius:8px;overflow:hidden;background:#fff;">
+        <div style="background:#f0f0f0;height:120px;text-align:center;display:flex;align-items:center;justify-content:center;">
+          <span style="font-size:32px;">👟</span>
+        </div>
+        <div style="padding:8px 10px;">
+          <div style="font-size:12px;font-weight:600;color:#333;">Tênis Runner Pro</div>
+          <div style="font-size:11px;color:#888;">Tam: 42 • Qtd: 1</div>
+          <div style="font-size:13px;font-weight:700;color:#111;margin-top:4px;">R$ 249,90</div>
+        </div>
+      </div>
+    </td>
+    <td width="50%" style="padding:6px;vertical-align:top;">
+      <div style="border:1px solid #e5e5e5;border-radius:8px;overflow:hidden;background:#fff;">
+        <div style="background:#f0f0f0;height:120px;text-align:center;display:flex;align-items:center;justify-content:center;">
+          <span style="font-size:32px;">👕</span>
+        </div>
+        <div style="padding:8px 10px;">
+          <div style="font-size:12px;font-weight:600;color:#333;">Camiseta Básica</div>
+          <div style="font-size:11px;color:#888;">Cor: Preta • Qtd: 2</div>
+          <div style="font-size:13px;font-weight:700;color:#111;margin-top:4px;">R$ 129,90</div>
+        </div>
+      </div>
+    </td>
+  </tr>
+</table>`;
 
 interface EmailBuilderProps {
   initialHtml?: string;
@@ -27,6 +56,7 @@ export function EmailBuilder({ initialBlocks, onSave, onCancel, templateName = "
   const [showPreview, setShowPreview] = useState(false);
   const [showCode, setShowCode] = useState(false);
   const [showGlobalStyles, setShowGlobalStyles] = useState(false);
+  const [showTestEmail, setShowTestEmail] = useState(false);
   const [name, setName] = useState(templateName);
   const [subject, setSubject] = useState(templateSubject);
 
@@ -37,7 +67,7 @@ export function EmailBuilder({ initialBlocks, onSave, onCancel, templateName = "
     .replace(/\{\{unsubscribe_url\}\}/gi, "#")
     .replace(/\{\{recovery_url\}\}/gi, "https://loja.com/checkout/exemplo")
     .replace(/\{\{total\}\}/gi, "R$ 379,80")
-    .replace(/\{\{produtos\}\}/gi, '<table cellpadding="0" cellspacing="0" border="0" width="100%"><tr><td width="50%" style="padding:4px;vertical-align:top;"><div style="background:#f5f5f5;height:120px;text-align:center;line-height:120px;font-size:11px;color:#999;">Produto 1</div></td><td width="50%" style="padding:4px;vertical-align:top;"><div style="background:#f5f5f5;height:120px;text-align:center;line-height:120px;font-size:11px;color:#999;">Produto 2</div></td></tr></table>');
+    .replace(/\{\{produtos\}\}/gi, PRODUTOS_PREVIEW);
 
   const handleSave = () => {
     onSave(html, state.blocks);
@@ -65,6 +95,9 @@ export function EmailBuilder({ initialBlocks, onSave, onCancel, templateName = "
           </Button>
           <Button variant="outline" size="sm" onClick={() => setShowPreview(true)} className="gap-1.5">
             <Eye className="w-4 h-4" /> <span className="hidden sm:inline">Preview</span>
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setShowTestEmail(true)} className="gap-1.5 text-emerald-600 border-emerald-300 hover:bg-emerald-50">
+            <Send className="w-4 h-4" /> <span className="hidden sm:inline">Enviar Teste</span>
           </Button>
           <Button size="sm" onClick={handleSave} disabled={!name || !subject} className="gap-1.5">
             <Save className="w-4 h-4" /> Salvar
@@ -155,6 +188,14 @@ export function EmailBuilder({ initialBlocks, onSave, onCancel, templateName = "
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Send Test Email */}
+      <SendTestEmail
+        open={showTestEmail}
+        onOpenChange={setShowTestEmail}
+        templateHtml={html}
+        subject={subject || name || "Teste"}
+      />
     </div>
   );
 }

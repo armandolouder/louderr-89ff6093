@@ -25,10 +25,15 @@ export function SendTestEmail({ open, onOpenChange, templateHtml, subject }: Pro
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
       const unsubUrl = `https://${projectId}.supabase.co/functions/v1/email-unsubscribe?email=${encodeURIComponent(testEmail)}`;
 
+      const produtosHtml = `<table cellpadding="0" cellspacing="0" border="0" width="100%"><tr><td width="50%" style="padding:6px;vertical-align:top;"><div style="border:1px solid #e5e5e5;border-radius:8px;overflow:hidden;background:#fff;"><div style="background:#f0f0f0;height:120px;text-align:center;display:flex;align-items:center;justify-content:center;"><span style="font-size:32px;">👟</span></div><div style="padding:8px 10px;"><div style="font-size:12px;font-weight:600;color:#333;">Tênis Runner Pro</div><div style="font-size:11px;color:#888;">Tam: 42 • Qtd: 1</div><div style="font-size:13px;font-weight:700;color:#111;margin-top:4px;">R$ 249,90</div></div></div></td><td width="50%" style="padding:6px;vertical-align:top;"><div style="border:1px solid #e5e5e5;border-radius:8px;overflow:hidden;background:#fff;"><div style="background:#f0f0f0;height:120px;text-align:center;display:flex;align-items:center;justify-content:center;"><span style="font-size:32px;">👕</span></div><div style="padding:8px 10px;"><div style="font-size:12px;font-weight:600;color:#333;">Camiseta Básica</div><div style="font-size:11px;color:#888;">Cor: Preta • Qtd: 2</div><div style="font-size:13px;font-weight:700;color:#111;margin-top:4px;">R$ 129,90</div></div></div></td></tr></table>`;
+
       const html = templateHtml
         .replace(/\{\{nome\}\}/gi, "Teste")
         .replace(/\{\{email\}\}/gi, testEmail)
-        .replace(/\{\{unsubscribe_url\}\}/gi, unsubUrl);
+        .replace(/\{\{unsubscribe_url\}\}/gi, unsubUrl)
+        .replace(/\{\{recovery_url\}\}/gi, "https://loja.com/checkout/exemplo")
+        .replace(/\{\{total\}\}/gi, "R$ 379,80")
+        .replace(/\{\{produtos\}\}/gi, produtosHtml);
 
       const renderedSubject = subject.replace(/\{\{nome\}\}/gi, "Teste");
 
@@ -80,7 +85,10 @@ export function SendTestEmail({ open, onOpenChange, templateHtml, subject }: Pro
               srcDoc={templateHtml
                 .replace(/\{\{nome\}\}/gi, "Teste")
                 .replace(/\{\{email\}\}/gi, testEmail || "email@teste.com")
-                .replace(/\{\{unsubscribe_url\}\}/gi, "#")}
+                .replace(/\{\{unsubscribe_url\}\}/gi, "#")
+                .replace(/\{\{recovery_url\}\}/gi, "https://loja.com/checkout/exemplo")
+                .replace(/\{\{total\}\}/gi, "R$ 379,80")
+                .replace(/\{\{produtos\}\}/gi, '<div style="background:#f5f5f5;padding:12px;text-align:center;font-size:11px;color:#999;border-radius:6px;">📦 Grid de produtos (exemplo)</div>')}
               className="w-full h-48 border-0"
               title="Test Preview"
             />
