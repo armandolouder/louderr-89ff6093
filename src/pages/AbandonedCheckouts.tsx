@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { ShoppingCart, RefreshCw, Mail, MessageSquare, ExternalLink, Phone, Send, MessageCircle, CheckCircle } from "lucide-react";
+import { ShoppingCart, RefreshCw, Mail, MessageSquare, ExternalLink, Phone, Send, MessageCircle, CheckCircle, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
 const MONTHS = [
@@ -31,6 +32,23 @@ export default function AbandonedCheckouts() {
   const [selectedCheckout, setSelectedCheckout] = useState<any>(null);
   const [sendingId, setSendingId] = useState<string | null>(null);
   const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
+  const [emailPickerCheckout, setEmailPickerCheckout] = useState<any>(null);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+
+  // Fetch recovery templates from DB
+  const { data: recoveryTemplates } = useQuery({
+    queryKey: ["recovery-templates"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("email_templates")
+        .select("id, name, subject, category")
+        .eq("category", "recuperacao")
+        .eq("is_active", true)
+        .order("name");
+      if (error) throw error;
+      return data || [];
+    },
+  });
 
   const startDate = new Date(year, month, 1).toISOString();
   const endDate = new Date(year, month + 1, 0, 23, 59, 59).toISOString();
@@ -207,7 +225,7 @@ export default function AbandonedCheckouts() {
     }
   };
 
-  const sendEmail = async (checkout: any) => {
+  const sendEmail = async (checkout: any, templateName?: string) => {
     if (!checkout.customer_email) {
       toast.error("Este cliente não tem e-mail cadastrado");
       return;
@@ -220,6 +238,16 @@ export default function AbandonedCheckouts() {
       const total = checkout.total || 0;
       const recoveryUrl = checkout.recovery_url || "";
 
+      // Derive stepType from template name
+      let stepType = "emocional";
+      if (templateName) {
+        const lower = templateName.toLowerCase();
+        if (lower.includes("urgência") || lower.includes("urgencia")) stepType = "urgencia";
+        else if (lower.includes("incentivo")) stepType = "incentivo";
+        else if (lower.includes("última chamada") || lower.includes("ultima")) stepType = "ultima_chamada";
+        else if (lower.includes("leve")) stepType = "leve";
+      }
+
       const res = await supabase.functions.invoke("send-brevo-email", {
         body: {
           action: "send-recovery",
@@ -228,7 +256,7 @@ export default function AbandonedCheckouts() {
           products,
           total,
           recoveryUrl,
-          stepType: "emocional",
+          stepType,
           variant: "A",
         },
       });
@@ -247,6 +275,7 @@ export default function AbandonedCheckouts() {
       toast.error("Erro ao enviar e-mail: " + (err.message || "Erro desconhecido"));
     } finally {
       setSendingEmailId(null);
+      setEmailPickerCheckout(null);
     }
   };
 
@@ -434,7 +463,10 @@ export default function AbandonedCheckouts() {
                               className="h-7 w-7"
                               title="Enviar e-mail de recuperação"
                               disabled={sendingEmailId === checkout.id}
-                              onClick={() => sendEmail(checkout)}
+                              onClick={() => {
+                                setEmailPickerCheckout(checkout);
+                                setSelectedTemplateId("");
+                              }}
                             >
                               <Mail className={`w-3.5 h-3.5 text-blue-400 ${sendingEmailId === checkout.id ? "animate-pulse" : ""}`} />
                             </Button>
@@ -488,6 +520,65 @@ export default function AbandonedCheckouts() {
           </Table>
         </div>
       </div>
+
+      {/* Email Template Picker Dialog */}
+      <Dialog open={!!emailPickerCheckout} onOpenChange={() => setEmailPickerCheckout(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Mail className="w-4 h-4" /> Escolher Template de Recuperação
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Enviar para: <strong>{emailPickerCheckout?.customer_email}</strong>
+            </p>
+            <div className="space-y-2">
+              <Label className="text-sm">Template</Label>
+              {recoveryTemplates && recoveryTemplates.length > 0 ? (
+                <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um template..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {recoveryTemplates.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        {t.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Nenhum template de recuperação encontrado. Crie templates com categoria "recuperacao" no Email Builder.
+                </p>
+              )}
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => setEmailPickerCheckout(null)}>
+                Cancelar
+              </Button>
+              <Button
+                size="sm"
+                disabled={!selectedTemplateId || sendingEmailId === emailPickerCheckout?.id}
+                onClick={() => {
+                  const template = recoveryTemplates?.find((t) => t.id === selectedTemplateId);
+                  if (template && emailPickerCheckout) {
+                    sendEmail(emailPickerCheckout, template.name);
+                  }
+                }}
+              >
+                {sendingEmailId === emailPickerCheckout?.id ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                ) : (
+                  <Send className="w-4 h-4 mr-1" />
+                )}
+                Enviar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Detail Modal */}
       <Dialog open={!!selectedCheckout} onOpenChange={() => setSelectedCheckout(null)}>
