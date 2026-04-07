@@ -16,6 +16,7 @@ import {
   Rocket,
   Grid3X3,
   Mail,
+  Eye,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
