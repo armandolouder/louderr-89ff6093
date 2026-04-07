@@ -541,11 +541,9 @@ serve(async (req) => {
 
           if (botConfig?.is_active) {
             const settings = botConfig.value as Record<string, unknown>;
-            const menuItems = (settings.menu_items as Array<{ label: string; response: string }>) || [];
             const welcomeMessage = (settings.welcome_message as string) || "Olá! Como posso ajudar?";
-            const fallbackMessage = (settings.fallback_message as string) || "Não entendi. Escolha uma opção pelo número.";
 
-            if (menuItems.length > 0) {
+            {
               // Check if this phone belongs to a Nuvemshop customer
               const phoneVariants = [phone];
               if (phone.startsWith("55")) phoneVariants.push(phone.slice(2));
@@ -564,7 +562,7 @@ serve(async (req) => {
               }
 
               if (isNuvemshopCustomer) {
-                console.log("Nuvemshop customer detected, processing menu bot...");
+                console.log("Nuvemshop customer detected, sending welcome message...");
 
                 // Resolve variables
                 const now = new Date();
@@ -575,23 +573,7 @@ serve(async (req) => {
                 const replaceVars = (text: string) =>
                   text.replace(/\{nome\}/g, customerName).replace(/\{saudacao\}/g, saudacao);
 
-                const trimmed = content.trim();
-                const chosenNumber = parseInt(trimmed, 10);
-                let reply = "";
-
-                if (!isNaN(chosenNumber) && chosenNumber >= 1 && chosenNumber <= menuItems.length) {
-                  // User chose a valid option
-                  reply = replaceVars(menuItems[chosenNumber - 1].response);
-                  console.log(`User chose option ${chosenNumber}: ${menuItems[chosenNumber - 1].label}`);
-                } else {
-                  // Send welcome menu with options
-                  let menuText = replaceVars(welcomeMessage) + "\n\n";
-                  menuItems.forEach((item, i) => {
-                    menuText += `${i + 1} - ${item.label}\n`;
-                  });
-                  reply = menuText.trim();
-                  console.log("Sending welcome menu");
-                }
+                const reply = replaceVars(welcomeMessage);
 
                 if (reply) {
                   const UAZAPI_SERVER_URL = Deno.env.get("UAZAPI_SERVER_URL");
@@ -615,7 +597,7 @@ serve(async (req) => {
                         message_type: "text",
                         status: "sent",
                         user_id: ownerUserId,
-                        metadata: { from_bot: true, bot_type: "menu" },
+                        metadata: { from_bot: true, bot_type: "welcome" },
                       });
 
                       await supabase.from("conversations").update({
@@ -623,7 +605,7 @@ serve(async (req) => {
                         last_message_at: new Date().toISOString(),
                       }).eq("id", conversation.id);
 
-                      console.log("Menu bot reply sent successfully");
+                      console.log("Welcome bot reply sent successfully");
                     } else {
                       console.error("Failed to send bot reply:", await sendRes.text());
                     }
