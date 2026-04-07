@@ -562,17 +562,21 @@ serve(async (req) => {
               }
 
               if (isNuvemshopCustomer) {
-                // Check if welcome was already sent for this conversation
+                // Check if welcome was already sent TODAY for this conversation
+                const todayStart = new Date();
+                todayStart.setUTCHours(0, 0, 0, 0);
+                
                 const { data: existingWelcome } = await supabase
                   .from("messages")
                   .select("id")
                   .eq("conversation_id", conversation.id)
                   .eq("sender_type", "bot")
+                  .gte("created_at", todayStart.toISOString())
                   .limit(1)
                   .maybeSingle();
 
                 if (existingWelcome) {
-                  console.log("Welcome already sent for this conversation, skipping");
+                  console.log("Welcome already sent today for this conversation, skipping");
                 } else {
                   console.log("Nuvemshop customer detected, sending welcome message...");
 
