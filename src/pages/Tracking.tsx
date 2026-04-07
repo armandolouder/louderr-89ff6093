@@ -137,8 +137,7 @@ export default function Tracking() {
   if(window.LS&&LS.customer){
     data.customer_email=LS.customer.email;data.customer_name=LS.customer.name;data.customer_phone=LS.customer.phone;
   }
-  // Geolocation from Nuvemshop store data
-  if(window.LS&&LS.store){data.state=LS.store.state;data.city=LS.store.city}
+  // Geolocation is resolved server-side via IP
   var t0=Date.now();
   window.addEventListener("beforeunload",function(){
     data.duration_seconds=Math.round((Date.now()-t0)/1000);
