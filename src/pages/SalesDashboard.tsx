@@ -394,6 +394,24 @@ export default function SalesDashboard() {
                 </Table>
               </div>
             </div>
+
+            {selectedOrder?.customer_phone && (
+              <Button
+                className="w-full"
+                variant="outline"
+                onClick={() => {
+                  const firstName = (selectedOrder.customer_name || "Cliente").split(" ")[0];
+                  const prods = Array.isArray(selectedOrder.products) ? (selectedOrder.products as any[]).map((p: any) => `• ${p.name || "Produto"}`).join("\n") : "";
+                  const totalStr = selectedOrder.total ? `R$ ${Number(selectedOrder.total).toFixed(2).replace(".", ",")}` : "";
+                  const msg = `Olá ${firstName}! 👋\nObrigado pelo seu pedido${totalStr ? ` de ${totalStr}` : ""}!\n${prods ? `\n${prods}\n` : ""}\nPrecisa de alguma ajuda?`;
+                  navigate(`/campaigns?tab=individual&phone=${encodeURIComponent(selectedOrder.customer_phone!)}&msg=${encodeURIComponent(msg)}`);
+                  setSelectedOrder(null);
+                }}
+              >
+                <Send className="w-4 h-4 mr-2 text-emerald-500" />
+                Enviar WhatsApp Individual
+              </Button>
+            )}
           </div>
         </DialogContent>
       </Dialog>
