@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { ShoppingCart, RefreshCw, Mail, MessageSquare, ExternalLink, Phone, Send, MessageCircle, CheckCircle } from "lucide-react";
+import { ShoppingCart, RefreshCw, Mail, MessageSquare, ExternalLink, Phone, Send, MessageCircle, CheckCircle, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
 const MONTHS = [
@@ -31,6 +32,23 @@ export default function AbandonedCheckouts() {
   const [selectedCheckout, setSelectedCheckout] = useState<any>(null);
   const [sendingId, setSendingId] = useState<string | null>(null);
   const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
+  const [emailPickerCheckout, setEmailPickerCheckout] = useState<any>(null);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+
+  // Fetch recovery templates from DB
+  const { data: recoveryTemplates } = useQuery({
+    queryKey: ["recovery-templates"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("email_templates")
+        .select("id, name, subject, category")
+        .eq("category", "recuperacao")
+        .eq("is_active", true)
+        .order("name");
+      if (error) throw error;
+      return data || [];
+    },
+  });
 
   const startDate = new Date(year, month, 1).toISOString();
   const endDate = new Date(year, month + 1, 0, 23, 59, 59).toISOString();
