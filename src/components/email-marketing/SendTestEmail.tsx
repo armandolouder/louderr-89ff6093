@@ -85,7 +85,10 @@ export function SendTestEmail({ open, onOpenChange, templateHtml, subject }: Pro
               srcDoc={templateHtml
                 .replace(/\{\{nome\}\}/gi, "Teste")
                 .replace(/\{\{email\}\}/gi, testEmail || "email@teste.com")
-                .replace(/\{\{unsubscribe_url\}\}/gi, "#")}
+                .replace(/\{\{unsubscribe_url\}\}/gi, "#")
+                .replace(/\{\{recovery_url\}\}/gi, "https://loja.com/checkout/exemplo")
+                .replace(/\{\{total\}\}/gi, "R$ 379,80")
+                .replace(/\{\{produtos\}\}/gi, '<div style="background:#f5f5f5;padding:12px;text-align:center;font-size:11px;color:#999;border-radius:6px;">📦 Grid de produtos (exemplo)</div>')}
               className="w-full h-48 border-0"
               title="Test Preview"
             />
