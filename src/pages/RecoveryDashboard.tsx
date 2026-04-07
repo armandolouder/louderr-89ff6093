@@ -43,6 +43,7 @@ const DEFAULT_STEPS: RecoveryStep[] = [
 
 export default function RecoveryDashboard() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [showFlowEditor, setShowFlowEditor] = useState(false);
   const [editingFlow, setEditingFlow] = useState<any>(null);
   const [flowName, setFlowName] = useState("");
