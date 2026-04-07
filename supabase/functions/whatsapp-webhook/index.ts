@@ -623,6 +623,7 @@ serve(async (req) => {
                     }
                   }
                 }
+                } // end else (no existing welcome)
               } else {
                 console.log("Phone not in Nuvemshop customers, skipping bot");
               }
