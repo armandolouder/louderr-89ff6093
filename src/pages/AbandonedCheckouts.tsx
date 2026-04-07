@@ -225,7 +225,7 @@ export default function AbandonedCheckouts() {
     }
   };
 
-  const sendEmail = async (checkout: any) => {
+  const sendEmail = async (checkout: any, templateName?: string) => {
     if (!checkout.customer_email) {
       toast.error("Este cliente não tem e-mail cadastrado");
       return;
@@ -238,6 +238,16 @@ export default function AbandonedCheckouts() {
       const total = checkout.total || 0;
       const recoveryUrl = checkout.recovery_url || "";
 
+      // Derive stepType from template name
+      let stepType = "emocional";
+      if (templateName) {
+        const lower = templateName.toLowerCase();
+        if (lower.includes("urgência") || lower.includes("urgencia")) stepType = "urgencia";
+        else if (lower.includes("incentivo")) stepType = "incentivo";
+        else if (lower.includes("última chamada") || lower.includes("ultima")) stepType = "ultima_chamada";
+        else if (lower.includes("leve")) stepType = "leve";
+      }
+
       const res = await supabase.functions.invoke("send-brevo-email", {
         body: {
           action: "send-recovery",
@@ -246,7 +256,7 @@ export default function AbandonedCheckouts() {
           products,
           total,
           recoveryUrl,
-          stepType: "emocional",
+          stepType,
           variant: "A",
         },
       });
@@ -265,6 +275,7 @@ export default function AbandonedCheckouts() {
       toast.error("Erro ao enviar e-mail: " + (err.message || "Erro desconhecido"));
     } finally {
       setSendingEmailId(null);
+      setEmailPickerCheckout(null);
     }
   };
 
