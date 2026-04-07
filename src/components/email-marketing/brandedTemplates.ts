@@ -308,4 +308,368 @@ export const BRANDED_TEMPLATES: BrandedTemplate[] = [
 </body>
 </html>`,
   },
+  // ===== RECOVERY ENGINE TEMPLATES =====
+  {
+    name: "Recuperação — Emocional 💜",
+    subject: "{{nome}}, você deixou isso aqui 💜",
+    category: "recuperacao",
+    preview_text: "Esses itens não ficaram aí por acaso.",
+    blocks: [
+      {
+        id: "rec-em-header",
+        type: "header",
+        content: { title: "LOUDER.ink", subtitle: "", logoUrl: LOGO_URL },
+        styles: { backgroundColor: "#000000", textColor: "#ffffff", padding: "24px 40px", textAlign: "center", fontSize: "24px" },
+      },
+      {
+        id: "rec-em-text1",
+        type: "text",
+        content: { text: "Você deixou isso aqui.\n\nOi {{nome}}, esses itens não ficaram aí por acaso." },
+        styles: { backgroundColor: "#ffffff", textColor: "#333333", padding: "40px 40px 20px", fontSize: "16px", lineHeight: "1.6" },
+      },
+      {
+        id: "rec-em-text2",
+        type: "text",
+        content: { text: "🛒 Seus itens estão esperando por você.\n\nTotal: R$ XX,XX" },
+        styles: { backgroundColor: "#ffffff", textColor: "#111111", padding: "0 40px 20px", fontSize: "15px", lineHeight: "1.6" },
+      },
+      {
+        id: "rec-em-btn",
+        type: "button",
+        content: { text: "FINALIZAR COMPRA →", link: "{{recovery_url}}" },
+        styles: { backgroundColor: "#ffffff", buttonColor: "#000000", buttonTextColor: "#ffffff", padding: "0 40px 24px", textAlign: "center", borderRadius: "4px", fontSize: "14px" },
+      },
+      {
+        id: "rec-em-quote",
+        type: "testimonial",
+        content: { quote: '"Isso não ficou aí por acaso."', author: "LOUDER.ink", role: "" },
+        styles: { backgroundColor: "#ffffff", textColor: "#999999", padding: "24px 40px", fontSize: "13px", borderLeftColor: "#000000" },
+      },
+      {
+        id: "rec-em-footer",
+        type: "footer",
+        content: { text: "LOUDER.ink • Vista sua atitude", unsubscribeText: "Cancelar inscrição" },
+        styles: { backgroundColor: "#000000", textColor: "#ffffff", padding: "32px 40px", fontSize: "11px", textAlign: "center" },
+      },
+    ],
+    html_content: `<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /></head>
+<body style="margin:0;padding:0;background:#f5f5f5;font-family:'Helvetica Neue',Arial,sans-serif;">
+<table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#f5f5f5;">
+<tr><td align="center" style="padding:0;">
+<table cellpadding="0" cellspacing="0" border="0" width="600" style="max-width:600px;background:#ffffff;">
+  <tr><td style="background:#000;padding:24px 40px;text-align:center;">
+    <img src="${LOGO_URL}" alt="LOUDER.ink" style="display:inline-block;max-width:280px;width:100%;height:auto;" />
+  </td></tr>
+  <tr><td style="padding:40px 40px 20px;">
+    <h2 style="margin:0 0 8px;font-size:24px;font-weight:700;color:#111;line-height:1.2;">Você deixou isso aqui.</h2>
+    <p style="margin:0 0 32px;font-size:15px;color:#666;line-height:1.5;">Oi {{nome}}, esses itens não ficaram aí por acaso.</p>
+  </td></tr>
+  <tr><td style="padding:0 40px 20px;">
+    <p style="margin:0;font-size:15px;color:#111;">🛒 Seus itens estão esperando por você.</p>
+    <p style="margin:8px 0 0;font-size:22px;font-weight:700;color:#111;">Total: R$ XX,XX</p>
+  </td></tr>
+  <tr><td style="padding:32px 40px;text-align:center;">
+    <a href="{{recovery_url}}" style="display:inline-block;background:#000;color:#fff;padding:16px 48px;border-radius:4px;text-decoration:none;font-weight:700;font-size:14px;letter-spacing:1.5px;text-transform:uppercase;">FINALIZAR COMPRA →</a>
+  </td></tr>
+  <tr><td style="padding:0 40px 40px;text-align:center;">
+    <p style="margin:0;font-size:13px;color:#999;font-style:italic;">"Isso não ficou aí por acaso."</p>
+  </td></tr>
+  <tr><td style="background:#000;padding:32px 40px;text-align:center;">
+    <p style="margin:0 0 8px;font-size:16px;font-weight:700;letter-spacing:2px;color:#fff;opacity:0.9;">LOUDER.ink</p>
+    <p style="margin:0 0 16px;font-size:11px;color:#fff;opacity:0.4;letter-spacing:1px;">Vista sua atitude</p>
+    <p style="margin:0;font-size:11px;color:#fff;opacity:0.3;"><a href="{{unsubscribe_url}}" style="color:#fff;opacity:0.5;">Cancelar inscrição</a></p>
+  </td></tr>
+</table>
+</td></tr>
+</table>
+</body>
+</html>`,
+  },
+  {
+    name: "Recuperação — Urgência ⚡",
+    subject: "⚡ {{nome}}, seus itens podem esgotar!",
+    category: "recuperacao",
+    preview_text: "O estoque tá acabando e a gente não quer que você perca.",
+    blocks: [
+      {
+        id: "rec-ur-header",
+        type: "header",
+        content: { title: "LOUDER.ink", subtitle: "", logoUrl: LOGO_URL },
+        styles: { backgroundColor: "#000000", textColor: "#ffffff", padding: "24px 40px", textAlign: "center", fontSize: "24px" },
+      },
+      {
+        id: "rec-ur-text1",
+        type: "text",
+        content: { text: "Corre, esses itens são limitados.\n\nOi {{nome}}, o estoque tá acabando e a gente não quer que você perca." },
+        styles: { backgroundColor: "#ffffff", textColor: "#333333", padding: "40px 40px 20px", fontSize: "16px", lineHeight: "1.6" },
+      },
+      {
+        id: "rec-ur-text2",
+        type: "text",
+        content: { text: "🛒 Seus itens estão esperando por você.\n\nTotal: R$ XX,XX" },
+        styles: { backgroundColor: "#ffffff", textColor: "#111111", padding: "0 40px 20px", fontSize: "15px", lineHeight: "1.6" },
+      },
+      {
+        id: "rec-ur-btn",
+        type: "button",
+        content: { text: "GARANTIR AGORA →", link: "{{recovery_url}}" },
+        styles: { backgroundColor: "#ffffff", buttonColor: "#dc2626", buttonTextColor: "#ffffff", padding: "0 40px 24px", textAlign: "center", borderRadius: "4px", fontSize: "14px" },
+      },
+      {
+        id: "rec-ur-footer",
+        type: "footer",
+        content: { text: "LOUDER.ink • Vista sua atitude", unsubscribeText: "Cancelar inscrição" },
+        styles: { backgroundColor: "#000000", textColor: "#ffffff", padding: "32px 40px", fontSize: "11px", textAlign: "center" },
+      },
+    ],
+    html_content: `<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /></head>
+<body style="margin:0;padding:0;background:#f5f5f5;font-family:'Helvetica Neue',Arial,sans-serif;">
+<table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#f5f5f5;">
+<tr><td align="center" style="padding:0;">
+<table cellpadding="0" cellspacing="0" border="0" width="600" style="max-width:600px;background:#ffffff;">
+  <tr><td style="background:#000;padding:24px 40px;text-align:center;">
+    <img src="${LOGO_URL}" alt="LOUDER.ink" style="display:inline-block;max-width:280px;width:100%;height:auto;" />
+  </td></tr>
+  <tr><td style="padding:40px 40px 20px;">
+    <h2 style="margin:0 0 8px;font-size:24px;font-weight:700;color:#111;line-height:1.2;">Corre, esses itens são limitados.</h2>
+    <p style="margin:0 0 32px;font-size:15px;color:#666;line-height:1.5;">Oi {{nome}}, o estoque tá acabando e a gente não quer que você perca.</p>
+  </td></tr>
+  <tr><td style="padding:0 40px 20px;">
+    <p style="margin:0;font-size:15px;color:#111;">🛒 Seus itens estão esperando por você.</p>
+    <p style="margin:8px 0 0;font-size:22px;font-weight:700;color:#111;">Total: R$ XX,XX</p>
+  </td></tr>
+  <tr><td style="padding:32px 40px;text-align:center;">
+    <a href="{{recovery_url}}" style="display:inline-block;background:#dc2626;color:#fff;padding:16px 48px;border-radius:4px;text-decoration:none;font-weight:700;font-size:14px;letter-spacing:1.5px;text-transform:uppercase;">GARANTIR AGORA →</a>
+  </td></tr>
+  <tr><td style="background:#000;padding:32px 40px;text-align:center;">
+    <p style="margin:0 0 8px;font-size:16px;font-weight:700;letter-spacing:2px;color:#fff;opacity:0.9;">LOUDER.ink</p>
+    <p style="margin:0 0 16px;font-size:11px;color:#fff;opacity:0.4;letter-spacing:1px;">Vista sua atitude</p>
+    <p style="margin:0;font-size:11px;color:#fff;opacity:0.3;"><a href="{{unsubscribe_url}}" style="color:#fff;opacity:0.5;">Cancelar inscrição</a></p>
+  </td></tr>
+</table>
+</td></tr>
+</table>
+</body>
+</html>`,
+  },
+  {
+    name: "Recuperação — Incentivo 🎁",
+    subject: "🎁 {{nome}}, temos algo especial pra você",
+    category: "recuperacao",
+    preview_text: "Finalize sua compra e desbloqueie algo exclusivo.",
+    blocks: [
+      {
+        id: "rec-in-header",
+        type: "header",
+        content: { title: "LOUDER.ink", subtitle: "", logoUrl: LOGO_URL },
+        styles: { backgroundColor: "#000000", textColor: "#ffffff", padding: "24px 40px", textAlign: "center", fontSize: "24px" },
+      },
+      {
+        id: "rec-in-text1",
+        type: "text",
+        content: { text: "Esse carrinho libera algo exclusivo.\n\nOi {{nome}}, finalize sua compra e desbloqueie um conteúdo especial da LOUDER." },
+        styles: { backgroundColor: "#ffffff", textColor: "#333333", padding: "40px 40px 20px", fontSize: "16px", lineHeight: "1.6" },
+      },
+      {
+        id: "rec-in-text2",
+        type: "text",
+        content: { text: "🛒 Seus itens estão esperando por você.\n\nTotal: R$ XX,XX" },
+        styles: { backgroundColor: "#ffffff", textColor: "#111111", padding: "0 40px 20px", fontSize: "15px", lineHeight: "1.6" },
+      },
+      {
+        id: "rec-in-btn",
+        type: "button",
+        content: { text: "QUERO MEU BÔNUS →", link: "{{recovery_url}}" },
+        styles: { backgroundColor: "#ffffff", buttonColor: "#000000", buttonTextColor: "#ffffff", padding: "0 40px 24px", textAlign: "center", borderRadius: "4px", fontSize: "14px" },
+      },
+      {
+        id: "rec-in-quote",
+        type: "testimonial",
+        content: { quote: '"Esse carrinho libera algo exclusivo depois da compra."', author: "LOUDER.ink", role: "" },
+        styles: { backgroundColor: "#ffffff", textColor: "#999999", padding: "24px 40px", fontSize: "13px", borderLeftColor: "#000000" },
+      },
+      {
+        id: "rec-in-footer",
+        type: "footer",
+        content: { text: "LOUDER.ink • Vista sua atitude", unsubscribeText: "Cancelar inscrição" },
+        styles: { backgroundColor: "#000000", textColor: "#ffffff", padding: "32px 40px", fontSize: "11px", textAlign: "center" },
+      },
+    ],
+    html_content: `<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /></head>
+<body style="margin:0;padding:0;background:#f5f5f5;font-family:'Helvetica Neue',Arial,sans-serif;">
+<table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#f5f5f5;">
+<tr><td align="center" style="padding:0;">
+<table cellpadding="0" cellspacing="0" border="0" width="600" style="max-width:600px;background:#ffffff;">
+  <tr><td style="background:#000;padding:24px 40px;text-align:center;">
+    <img src="${LOGO_URL}" alt="LOUDER.ink" style="display:inline-block;max-width:280px;width:100%;height:auto;" />
+  </td></tr>
+  <tr><td style="padding:40px 40px 20px;">
+    <h2 style="margin:0 0 8px;font-size:24px;font-weight:700;color:#111;line-height:1.2;">Esse carrinho libera algo exclusivo.</h2>
+    <p style="margin:0 0 32px;font-size:15px;color:#666;line-height:1.5;">Oi {{nome}}, finalize sua compra e desbloqueie um conteúdo especial da LOUDER.</p>
+  </td></tr>
+  <tr><td style="padding:0 40px 20px;">
+    <p style="margin:0;font-size:15px;color:#111;">🛒 Seus itens estão esperando por você.</p>
+    <p style="margin:8px 0 0;font-size:22px;font-weight:700;color:#111;">Total: R$ XX,XX</p>
+  </td></tr>
+  <tr><td style="padding:32px 40px;text-align:center;">
+    <a href="{{recovery_url}}" style="display:inline-block;background:#000;color:#fff;padding:16px 48px;border-radius:4px;text-decoration:none;font-weight:700;font-size:14px;letter-spacing:1.5px;text-transform:uppercase;">QUERO MEU BÔNUS →</a>
+  </td></tr>
+  <tr><td style="padding:0 40px 40px;text-align:center;">
+    <p style="margin:0;font-size:13px;color:#999;font-style:italic;">"Esse carrinho libera algo exclusivo depois da compra."</p>
+  </td></tr>
+  <tr><td style="background:#000;padding:32px 40px;text-align:center;">
+    <p style="margin:0 0 8px;font-size:16px;font-weight:700;letter-spacing:2px;color:#fff;opacity:0.9;">LOUDER.ink</p>
+    <p style="margin:0 0 16px;font-size:11px;color:#fff;opacity:0.4;letter-spacing:1px;">Vista sua atitude</p>
+    <p style="margin:0;font-size:11px;color:#fff;opacity:0.3;"><a href="{{unsubscribe_url}}" style="color:#fff;opacity:0.5;">Cancelar inscrição</a></p>
+  </td></tr>
+</table>
+</td></tr>
+</table>
+</body>
+</html>`,
+  },
+  {
+    name: "Recuperação — Última Chamada ⏰",
+    subject: "⏰ Última chance, {{nome}}!",
+    category: "recuperacao",
+    preview_text: "Seu carrinho será limpo em breve. Essa é a última vez.",
+    blocks: [
+      {
+        id: "rec-uc-header",
+        type: "header",
+        content: { title: "LOUDER.ink", subtitle: "", logoUrl: LOGO_URL },
+        styles: { backgroundColor: "#000000", textColor: "#ffffff", padding: "24px 40px", textAlign: "center", fontSize: "24px" },
+      },
+      {
+        id: "rec-uc-text1",
+        type: "text",
+        content: { text: "Última chamada.\n\nOi {{nome}}, seu carrinho será limpo em breve. Essa é a última vez que vamos te lembrar." },
+        styles: { backgroundColor: "#ffffff", textColor: "#333333", padding: "40px 40px 20px", fontSize: "16px", lineHeight: "1.6" },
+      },
+      {
+        id: "rec-uc-text2",
+        type: "text",
+        content: { text: "🛒 Seus itens estão esperando por você.\n\nTotal: R$ XX,XX" },
+        styles: { backgroundColor: "#ffffff", textColor: "#111111", padding: "0 40px 20px", fontSize: "15px", lineHeight: "1.6" },
+      },
+      {
+        id: "rec-uc-btn",
+        type: "button",
+        content: { text: "FINALIZAR COMPRA →", link: "{{recovery_url}}" },
+        styles: { backgroundColor: "#ffffff", buttonColor: "#f59e0b", buttonTextColor: "#000000", padding: "0 40px 24px", textAlign: "center", borderRadius: "4px", fontSize: "14px" },
+      },
+      {
+        id: "rec-uc-footer",
+        type: "footer",
+        content: { text: "LOUDER.ink • Vista sua atitude", unsubscribeText: "Cancelar inscrição" },
+        styles: { backgroundColor: "#000000", textColor: "#ffffff", padding: "32px 40px", fontSize: "11px", textAlign: "center" },
+      },
+    ],
+    html_content: `<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /></head>
+<body style="margin:0;padding:0;background:#f5f5f5;font-family:'Helvetica Neue',Arial,sans-serif;">
+<table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#f5f5f5;">
+<tr><td align="center" style="padding:0;">
+<table cellpadding="0" cellspacing="0" border="0" width="600" style="max-width:600px;background:#ffffff;">
+  <tr><td style="background:#000;padding:24px 40px;text-align:center;">
+    <img src="${LOGO_URL}" alt="LOUDER.ink" style="display:inline-block;max-width:280px;width:100%;height:auto;" />
+  </td></tr>
+  <tr><td style="padding:40px 40px 20px;">
+    <h2 style="margin:0 0 8px;font-size:24px;font-weight:700;color:#111;line-height:1.2;">Última chamada.</h2>
+    <p style="margin:0 0 32px;font-size:15px;color:#666;line-height:1.5;">Oi {{nome}}, seu carrinho será limpo em breve. Essa é a última vez que vamos te lembrar.</p>
+  </td></tr>
+  <tr><td style="padding:0 40px 20px;">
+    <p style="margin:0;font-size:15px;color:#111;">🛒 Seus itens estão esperando por você.</p>
+    <p style="margin:8px 0 0;font-size:22px;font-weight:700;color:#111;">Total: R$ XX,XX</p>
+  </td></tr>
+  <tr><td style="padding:32px 40px;text-align:center;">
+    <a href="{{recovery_url}}" style="display:inline-block;background:#f59e0b;color:#000;padding:16px 48px;border-radius:4px;text-decoration:none;font-weight:700;font-size:14px;letter-spacing:1.5px;text-transform:uppercase;">FINALIZAR COMPRA →</a>
+  </td></tr>
+  <tr><td style="background:#000;padding:32px 40px;text-align:center;">
+    <p style="margin:0 0 8px;font-size:16px;font-weight:700;letter-spacing:2px;color:#fff;opacity:0.9;">LOUDER.ink</p>
+    <p style="margin:0 0 16px;font-size:11px;color:#fff;opacity:0.4;letter-spacing:1px;">Vista sua atitude</p>
+    <p style="margin:0;font-size:11px;color:#fff;opacity:0.3;"><a href="{{unsubscribe_url}}" style="color:#fff;opacity:0.5;">Cancelar inscrição</a></p>
+  </td></tr>
+</table>
+</td></tr>
+</table>
+</body>
+</html>`,
+  },
+  {
+    name: "Recuperação — Leve 👋",
+    subject: "{{nome}}, separamos seu carrinho 👋",
+    category: "recuperacao",
+    preview_text: "É só finalizar a compra. Rápido e fácil.",
+    blocks: [
+      {
+        id: "rec-lv-header",
+        type: "header",
+        content: { title: "LOUDER.ink", subtitle: "", logoUrl: LOGO_URL },
+        styles: { backgroundColor: "#000000", textColor: "#ffffff", padding: "24px 40px", textAlign: "center", fontSize: "24px" },
+      },
+      {
+        id: "rec-lv-text1",
+        type: "text",
+        content: { text: "Separamos tudo pra você.\n\nOi {{nome}}, é só finalizar a compra. Rápido e fácil." },
+        styles: { backgroundColor: "#ffffff", textColor: "#333333", padding: "40px 40px 20px", fontSize: "16px", lineHeight: "1.6" },
+      },
+      {
+        id: "rec-lv-text2",
+        type: "text",
+        content: { text: "🛒 Seus itens estão esperando por você.\n\nTotal: R$ XX,XX" },
+        styles: { backgroundColor: "#ffffff", textColor: "#111111", padding: "0 40px 20px", fontSize: "15px", lineHeight: "1.6" },
+      },
+      {
+        id: "rec-lv-btn",
+        type: "button",
+        content: { text: "FINALIZAR COMPRA →", link: "{{recovery_url}}" },
+        styles: { backgroundColor: "#ffffff", buttonColor: "#000000", buttonTextColor: "#ffffff", padding: "0 40px 24px", textAlign: "center", borderRadius: "4px", fontSize: "14px" },
+      },
+      {
+        id: "rec-lv-footer",
+        type: "footer",
+        content: { text: "LOUDER.ink • Vista sua atitude", unsubscribeText: "Cancelar inscrição" },
+        styles: { backgroundColor: "#000000", textColor: "#ffffff", padding: "32px 40px", fontSize: "11px", textAlign: "center" },
+      },
+    ],
+    html_content: `<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /></head>
+<body style="margin:0;padding:0;background:#f5f5f5;font-family:'Helvetica Neue',Arial,sans-serif;">
+<table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#f5f5f5;">
+<tr><td align="center" style="padding:0;">
+<table cellpadding="0" cellspacing="0" border="0" width="600" style="max-width:600px;background:#ffffff;">
+  <tr><td style="background:#000;padding:24px 40px;text-align:center;">
+    <img src="${LOGO_URL}" alt="LOUDER.ink" style="display:inline-block;max-width:280px;width:100%;height:auto;" />
+  </td></tr>
+  <tr><td style="padding:40px 40px 20px;">
+    <h2 style="margin:0 0 8px;font-size:24px;font-weight:700;color:#111;line-height:1.2;">Separamos tudo pra você.</h2>
+    <p style="margin:0 0 32px;font-size:15px;color:#666;line-height:1.5;">Oi {{nome}}, é só finalizar a compra. Rápido e fácil.</p>
+  </td></tr>
+  <tr><td style="padding:0 40px 20px;">
+    <p style="margin:0;font-size:15px;color:#111;">🛒 Seus itens estão esperando por você.</p>
+    <p style="margin:8px 0 0;font-size:22px;font-weight:700;color:#111;">Total: R$ XX,XX</p>
+  </td></tr>
+  <tr><td style="padding:32px 40px;text-align:center;">
+    <a href="{{recovery_url}}" style="display:inline-block;background:#000;color:#fff;padding:16px 48px;border-radius:4px;text-decoration:none;font-weight:700;font-size:14px;letter-spacing:1.5px;text-transform:uppercase;">FINALIZAR COMPRA →</a>
+  </td></tr>
+  <tr><td style="background:#000;padding:32px 40px;text-align:center;">
+    <p style="margin:0 0 8px;font-size:16px;font-weight:700;letter-spacing:2px;color:#fff;opacity:0.9;">LOUDER.ink</p>
+    <p style="margin:0 0 16px;font-size:11px;color:#fff;opacity:0.4;letter-spacing:1px;">Vista sua atitude</p>
+    <p style="margin:0;font-size:11px;color:#fff;opacity:0.3;"><a href="{{unsubscribe_url}}" style="color:#fff;opacity:0.5;">Cancelar inscrição</a></p>
+  </td></tr>
+</table>
+</td></tr>
+</table>
+</body>
+</html>`,
+  },
 ];
