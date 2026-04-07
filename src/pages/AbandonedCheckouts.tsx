@@ -365,12 +365,30 @@ export default function AbandonedCheckouts() {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center justify-center gap-1">
+                          {checkout.customer_phone && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              title="Mensagem Individual"
+                              onClick={() => {
+                                const phone = checkout.customer_phone?.replace(/\D/g, "") || "";
+                                const firstName = (checkout.customer_name || "").split(" ")[0] || "Cliente";
+                                const products = (checkout.products as any[]) || [];
+                                const productsList = products.map((p: any) => `• ${p.name}`).join("\n");
+                                const msg = `Olá ${firstName}! 👋\nVi que você se interessou por:\n${productsList}\n\nPosso te ajudar com alguma dúvida?`;
+                                navigate(`/campaigns?tab=individual&phone=${encodeURIComponent(phone)}&msg=${encodeURIComponent(msg)}`);
+                              }}
+                            >
+                              <MessageCircle className="w-3.5 h-3.5 text-emerald-400" />
+                            </Button>
+                          )}
                           {checkout.customer_phone && !checkout.contacted_at && (
                             <Button
                               variant="ghost"
                               size="icon"
                               className="h-7 w-7"
-                              title="Enviar WhatsApp"
+                              title="Enviar WhatsApp (automação)"
                               disabled={sendingId === checkout.id}
                               onClick={() => sendWhatsApp(checkout)}
                             >
