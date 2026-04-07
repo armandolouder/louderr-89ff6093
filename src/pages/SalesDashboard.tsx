@@ -1,7 +1,8 @@
 import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { TrendingUp, RefreshCw, ShoppingCart, DollarSign, Receipt, Settings, Download, Trash2, Eye, MessageSquare } from "lucide-react";
+import { TrendingUp, RefreshCw, ShoppingCart, DollarSign, Receipt, Settings, Download, Trash2, Eye, MessageSquare, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -47,7 +48,7 @@ export default function SalesDashboard() {
   const [year, setYear] = useState(now.getFullYear());
   const [statusFilter, setStatusFilter] = useState("all");
   const queryClient = useQueryClient();
-
+  const navigate = useNavigate();
   const startDate = new Date(year, month, 1).toISOString();
   const endDate = new Date(year, month + 1, 0, 23, 59, 59).toISOString();
 
@@ -322,9 +323,28 @@ export default function SalesDashboard() {
                         })()}
                       </TableCell>
                       <TableCell className="text-center">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedOrder(order)}>
-                          <Eye className="w-4 h-4 text-muted-foreground" />
-                        </Button>
+                        <div className="flex items-center justify-center gap-1">
+                          {order.customer_phone && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              title="Enviar WhatsApp individual"
+                              onClick={() => {
+                                const firstName = (order.customer_name || "Cliente").split(" ")[0];
+                                const prods = Array.isArray(order.products) ? (order.products as any[]).map((p: any) => `• ${p.name || "Produto"}`).join("\n") : "";
+                                const totalStr = order.total ? `R$ ${Number(order.total).toFixed(2).replace(".", ",")}` : "";
+                                const msg = `Olá ${firstName}! 👋\nObrigado pelo seu pedido${totalStr ? ` de ${totalStr}` : ""}!\n${prods ? `\n${prods}\n` : ""}\nPrecisa de alguma ajuda?`;
+                                navigate(`/campaigns?tab=individual&phone=${encodeURIComponent(order.customer_phone!)}&msg=${encodeURIComponent(msg)}`);
+                              }}
+                            >
+                              <Send className="w-4 h-4 text-emerald-500" />
+                            </Button>
+                          )}
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedOrder(order)}>
+                            <Eye className="w-4 h-4 text-muted-foreground" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
@@ -374,6 +394,24 @@ export default function SalesDashboard() {
                 </Table>
               </div>
             </div>
+
+            {selectedOrder?.customer_phone && (
+              <Button
+                className="w-full"
+                variant="outline"
+                onClick={() => {
+                  const firstName = (selectedOrder.customer_name || "Cliente").split(" ")[0];
+                  const prods = Array.isArray(selectedOrder.products) ? (selectedOrder.products as any[]).map((p: any) => `• ${p.name || "Produto"}`).join("\n") : "";
+                  const totalStr = selectedOrder.total ? `R$ ${Number(selectedOrder.total).toFixed(2).replace(".", ",")}` : "";
+                  const msg = `Olá ${firstName}! 👋\nObrigado pelo seu pedido${totalStr ? ` de ${totalStr}` : ""}!\n${prods ? `\n${prods}\n` : ""}\nPrecisa de alguma ajuda?`;
+                  navigate(`/campaigns?tab=individual&phone=${encodeURIComponent(selectedOrder.customer_phone!)}&msg=${encodeURIComponent(msg)}`);
+                  setSelectedOrder(null);
+                }}
+              >
+                <Send className="w-4 h-4 mr-2 text-emerald-500" />
+                Enviar WhatsApp Individual
+              </Button>
+            )}
           </div>
         </DialogContent>
       </Dialog>
