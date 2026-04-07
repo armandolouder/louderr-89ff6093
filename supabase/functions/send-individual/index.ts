@@ -3,9 +3,80 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+function buildPhoneCandidates(rawPhone: string) {
+  let normalized = rawPhone.replace(/\D/g, "");
+
+  if (normalized.length >= 10 && !normalized.startsWith("55")) {
+    normalized = `55${normalized}`;
+  }
+
+  const candidates = new Set<string>([normalized]);
+
+  if (normalized.startsWith("55") && normalized.length === 13 && normalized[4] === "9") {
+    candidates.add(`${normalized.slice(0, 4)}${normalized.slice(5)}`);
+  }
+
+  if (normalized.startsWith("55") && normalized.length === 12) {
+    candidates.add(`${normalized.slice(0, 4)}9${normalized.slice(4)}`);
+  }
+
+  return Array.from(candidates).filter(Boolean);
+}
+
+async function sendToUazapi({
+  baseUrl,
+  token,
+  number,
+  content,
+  mediaUrl,
+}: {
+  baseUrl: string;
+  token: string;
+  number: string;
+  content: string;
+  mediaUrl?: string;
+}) {
+  const endpoint = mediaUrl ? "/send/media" : "/send/text";
+  const body = mediaUrl
+    ? {
+        number,
+        type: "image",
+        file: mediaUrl,
+        text: content,
+      }
+    : {
+        number,
+        text: content,
+      };
+
+  const response = await fetch(`${baseUrl}${endpoint}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      token,
+    },
+    body: JSON.stringify(body),
+  });
+
+  const responseText = await response.text();
+
+  let data: Record<string, unknown>;
+  try {
+    data = JSON.parse(responseText);
+  } catch {
+    data = { raw: responseText };
+  }
+
+  return {
+    ok: response.ok,
+    status: response.status,
+    responseText,
+    data,
+  };
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -13,17 +84,32 @@ serve(async (req) => {
   }
 
   try {
-    // Auth check
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
-    const anonClient = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: authHeader } } });
-    const { data: claimsData, error: claimsError } = await anonClient.auth.getClaims(authHeader.replace('Bearer ', ''));
-    if (claimsError || !claimsData?.claims) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
+    const anonClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } },
+    );
+
+    const { data: claimsData, error: claimsError } = await anonClient.auth.getClaims(
+      authHeader.replace("Bearer ", ""),
+    );
+
+    if (claimsError || !claimsData?.claims?.sub) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const authenticatedUserId = claimsData.claims.sub;
     const UAZAPI_SERVER_URL = Deno.env.get("UAZAPI_SERVER_URL");
     const UAZAPI_INSTANCE_TOKEN = Deno.env.get("UAZAPI_INSTANCE_TOKEN");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
@@ -32,109 +118,110 @@ serve(async (req) => {
     if (!UAZAPI_SERVER_URL || !UAZAPI_INSTANCE_TOKEN) {
       throw new Error("UAZAPI credentials not configured");
     }
+
     if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
       throw new Error("Supabase credentials not configured");
     }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-
     const { phone, content, mediaUrl } = await req.json();
 
-    if (!phone || !content) {
-      throw new Error("phone and content are required");
-    }
-
-    // Auto-format phone
-    let formattedPhone = phone.replace(/\D/g, "");
-    if (formattedPhone.length >= 10 && !formattedPhone.startsWith("55")) {
-      formattedPhone = "55" + formattedPhone;
-    }
-
-    console.log(`Sending individual message to ${formattedPhone}, hasMedia: ${!!mediaUrl}`);
-
-    let uazapiResponse;
-
-    if (mediaUrl) {
-      uazapiResponse = await fetch(`${UAZAPI_SERVER_URL}/send/media`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "token": UAZAPI_INSTANCE_TOKEN,
+    if (typeof phone !== "string" || typeof content !== "string" || !phone.trim() || !content.trim()) {
+      return new Response(
+        JSON.stringify({ success: false, error: "phone and content are required" }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
         },
-        body: JSON.stringify({
-          number: formattedPhone,
-          type: "image",
-          file: mediaUrl,
-          text: content,
-        }),
+      );
+    }
+
+    const phoneCandidates = buildPhoneCandidates(phone);
+    console.log(`Sending individual message, candidates: ${phoneCandidates.join(", ")}, hasMedia: ${!!mediaUrl}`);
+
+    let successfulCandidate: string | null = null;
+    let uazapiData: Record<string, unknown> | null = null;
+    let lastErrorMessage = "";
+
+    for (const candidate of phoneCandidates) {
+      const result = await sendToUazapi({
+        baseUrl: UAZAPI_SERVER_URL,
+        token: UAZAPI_INSTANCE_TOKEN,
+        number: candidate,
+        content,
+        mediaUrl,
       });
-    } else {
-      uazapiResponse = await fetch(`${UAZAPI_SERVER_URL}/send/text`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "token": UAZAPI_INSTANCE_TOKEN,
+
+      console.log(`UAZAPI response status for ${candidate}:`, result.status);
+      console.log(`UAZAPI response for ${candidate}:`, result.responseText);
+
+      if (result.ok) {
+        successfulCandidate = candidate;
+        uazapiData = result.data;
+        break;
+      }
+
+      lastErrorMessage = `UAZAPI error: ${result.status} - ${result.responseText}`;
+      uazapiData = result.data;
+
+      const responseText = result.responseText.toLowerCase();
+      const notFoundOnWhatsApp =
+        responseText.includes("not on whatsapp") ||
+        responseText.includes("não está no whatsapp") ||
+        responseText.includes("not found");
+
+      if (!notFoundOnWhatsApp) {
+        break;
+      }
+    }
+
+    if (!successfulCandidate) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error:
+            "Não consegui localizar esse número no WhatsApp. Confira o DDD, o 9º dígito e se o telefone do carrinho não é um dado de teste.",
+          details: lastErrorMessage,
+          triedNumbers: phoneCandidates,
+        }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
         },
-        body: JSON.stringify({
-          number: formattedPhone,
-          text: content,
-        }),
-      });
+      );
     }
 
-    const responseText = await uazapiResponse.text();
-    console.log("UAZAPI response status:", uazapiResponse.status);
-    console.log("UAZAPI response:", responseText);
+    const phoneVariants = Array.from(
+      new Set([successfulCandidate, successfulCandidate.replace(/^55/, ""), `+${successfulCandidate}`]),
+    );
 
-    if (!uazapiResponse.ok) {
-      throw new Error(`UAZAPI error: ${uazapiResponse.status} - ${responseText}`);
-    }
-
-    let uazapiData;
-    try {
-      uazapiData = JSON.parse(responseText);
-    } catch {
-      uazapiData = { raw: responseText };
-    }
-
-    // --- Save message to database so it appears in Inbox ---
-
-    // Find or create contact by phone (try multiple variants)
-    const phoneVariants = [formattedPhone, formattedPhone.replace(/^55/, "")];
-    let contact = null;
+    let contact: Record<string, unknown> | null = null;
 
     for (const variant of phoneVariants) {
       const { data } = await supabase
         .from("contacts")
         .select("*")
+        .eq("user_id", authenticatedUserId)
         .eq("phone", variant)
         .maybeSingle();
+
       if (data) {
         contact = data;
         break;
       }
     }
 
-    // Also try with + prefix
     if (!contact) {
-      const { data } = await supabase
-        .from("contacts")
-        .select("*")
-        .eq("phone", "+" + formattedPhone)
-        .maybeSingle();
-      if (data) contact = data;
-    }
-
-    if (!contact) {
-      // Create new contact
       const { data: newContact, error: contactErr } = await supabase
         .from("contacts")
         .insert({
-          name: formattedPhone,
-          phone: formattedPhone,
+          name: successfulCandidate,
+          phone: `+${successfulCandidate}`,
+          user_id: authenticatedUserId,
         })
         .select()
         .single();
+
       if (contactErr) {
         console.error("Error creating contact:", contactErr);
       } else {
@@ -143,12 +230,13 @@ serve(async (req) => {
     }
 
     if (contact) {
-      // Find or create conversation
-      let conversation = null;
+      let conversation: Record<string, unknown> | null = null;
+
       const { data: existingConv } = await supabase
         .from("conversations")
         .select("*")
-        .eq("contact_id", contact.id)
+        .eq("user_id", authenticatedUserId)
+        .eq("contact_id", String(contact.id))
         .eq("channel", "whatsapp")
         .order("created_at", { ascending: false })
         .limit(1)
@@ -160,14 +248,16 @@ serve(async (req) => {
         const { data: newConv, error: convErr } = await supabase
           .from("conversations")
           .insert({
-            contact_id: contact.id,
+            contact_id: String(contact.id),
             channel: "whatsapp",
             status: "novo",
             last_message: content,
             last_message_at: new Date().toISOString(),
+            user_id: authenticatedUserId,
           })
           .select()
           .single();
+
         if (convErr) {
           console.error("Error creating conversation:", convErr);
         } else {
@@ -176,50 +266,49 @@ serve(async (req) => {
       }
 
       if (conversation) {
-        // Save message
         const messageType = mediaUrl ? "image" : "text";
-        const { error: msgErr } = await supabase
-          .from("messages")
-          .insert({
-            conversation_id: conversation.id,
-            content,
-            sender_type: "agent",
-            message_type: messageType,
-            media_url: mediaUrl || null,
-            status: "sent",
-            metadata: {
-              uazapi_response: uazapiData,
-              source: "individual_send",
-              whatsapp_message_id: uazapiData?.messageid || null,
-            },
-          });
+
+        const { error: msgErr } = await supabase.from("messages").insert({
+          conversation_id: String(conversation.id),
+          content,
+          sender_type: "agent",
+          message_type: messageType,
+          media_url: mediaUrl || null,
+          status: "sent",
+          user_id: authenticatedUserId,
+          metadata: {
+            uazapi_response: uazapiData,
+            source: "individual_send",
+            whatsapp_message_id:
+              (uazapiData?.messageid as string | undefined) ||
+              (uazapiData?.messageId as string | undefined) ||
+              null,
+          },
+        });
 
         if (msgErr) {
           console.error("Error saving message:", msgErr);
         }
 
-        // Update conversation last message
         await supabase
           .from("conversations")
           .update({
             last_message: content,
             last_message_at: new Date().toISOString(),
           })
-          .eq("id", conversation.id);
-
-        console.log(`Message saved to conversation ${conversation.id}`);
+          .eq("id", String(conversation.id))
+          .eq("user_id", authenticatedUserId);
       }
     }
 
-    return new Response(
-      JSON.stringify({ success: true, data: uazapiData }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ success: true, data: uazapiData }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (error) {
     console.error("Error sending individual message:", error);
-    return new Response(
-      JSON.stringify({ success: false, error: error.message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ success: false, error: error.message }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });
