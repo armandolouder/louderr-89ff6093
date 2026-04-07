@@ -16,6 +16,7 @@ import {
   Rocket,
   Grid3X3,
   Mail,
+  Eye,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,7 @@ const navigation = [
   { name: "Carrinhos", href: "/abandoned-checkouts", icon: ShoppingCart },
   { name: "Recovery Engine", href: "/recovery", icon: Rocket },
   { name: "Automações", href: "/automations", icon: Workflow },
+  { name: "Rastreamento", href: "/tracking", icon: Eye },
   { name: "Bot", href: "/bot", icon: Bot },
   { name: "APIs", href: "/apis", icon: Zap },
 ];
