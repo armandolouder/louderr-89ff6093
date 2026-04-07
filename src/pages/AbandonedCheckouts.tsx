@@ -26,6 +26,7 @@ export default function AbandonedCheckouts() {
   const [year, setYear] = useState(now.getFullYear());
   const [contactFilter, setContactFilter] = useState("all");
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [syncing, setSyncing] = useState(false);
   const [selectedCheckout, setSelectedCheckout] = useState<any>(null);
   const [sendingId, setSendingId] = useState<string | null>(null);
