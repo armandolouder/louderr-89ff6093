@@ -463,7 +463,10 @@ export default function AbandonedCheckouts() {
                               className="h-7 w-7"
                               title="Enviar e-mail de recuperação"
                               disabled={sendingEmailId === checkout.id}
-                              onClick={() => sendEmail(checkout)}
+                              onClick={() => {
+                                setEmailPickerCheckout(checkout);
+                                setSelectedTemplateId("");
+                              }}
                             >
                               <Mail className={`w-3.5 h-3.5 text-blue-400 ${sendingEmailId === checkout.id ? "animate-pulse" : ""}`} />
                             </Button>
