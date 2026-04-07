@@ -116,12 +116,14 @@ export default function Tracking() {
   var sid=sessionStorage.getItem("_od_sid");
   if(!sid){sid=Math.random().toString(36).substr(2,8);sessionStorage.setItem("_od_sid",sid)}
   var u=new URLSearchParams(location.search);
+  var ua=navigator.userAgent;
+  if(/bot|crawl|spider|slurp|Googlebot|Bingbot|Applebot|Yandex|Baidu|facebot|ia_archiver|GPTBot/i.test(ua))return;
   var data={
     shop_id:SHOP_ID,visitor_id:vid,session_id:sid,
     page_url:location.href,page_title:document.title,
-    referrer:document.referrer||null,
+    referrer:document.referrer||null,user_agent:ua,
     utm_source:u.get("utm_source"),utm_medium:u.get("utm_medium"),utm_campaign:u.get("utm_campaign"),
-    device_type:/Mobi/i.test(navigator.userAgent)?"mobile":/Tablet/i.test(navigator.userAgent)?"tablet":"desktop"
+    device_type:/Mobi/i.test(ua)?"mobile":/Tablet/i.test(ua)?"tablet":"desktop"
   };
   // Detect product page (Nuvemshop pattern)
   var pe=document.querySelector("[data-product-id]");
