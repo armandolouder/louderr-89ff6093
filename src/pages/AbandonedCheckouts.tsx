@@ -521,6 +521,65 @@ export default function AbandonedCheckouts() {
         </div>
       </div>
 
+      {/* Email Template Picker Dialog */}
+      <Dialog open={!!emailPickerCheckout} onOpenChange={() => setEmailPickerCheckout(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Mail className="w-4 h-4" /> Escolher Template de Recuperação
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Enviar para: <strong>{emailPickerCheckout?.customer_email}</strong>
+            </p>
+            <div className="space-y-2">
+              <Label className="text-sm">Template</Label>
+              {recoveryTemplates && recoveryTemplates.length > 0 ? (
+                <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um template..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {recoveryTemplates.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        {t.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Nenhum template de recuperação encontrado. Crie templates com categoria "recuperacao" no Email Builder.
+                </p>
+              )}
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => setEmailPickerCheckout(null)}>
+                Cancelar
+              </Button>
+              <Button
+                size="sm"
+                disabled={!selectedTemplateId || sendingEmailId === emailPickerCheckout?.id}
+                onClick={() => {
+                  const template = recoveryTemplates?.find((t) => t.id === selectedTemplateId);
+                  if (template && emailPickerCheckout) {
+                    sendEmail(emailPickerCheckout, template.name);
+                  }
+                }}
+              >
+                {sendingEmailId === emailPickerCheckout?.id ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                ) : (
+                  <Send className="w-4 h-4 mr-1" />
+                )}
+                Enviar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Detail Modal */}
       <Dialog open={!!selectedCheckout} onOpenChange={() => setSelectedCheckout(null)}>
         <DialogContent className="max-w-lg">
