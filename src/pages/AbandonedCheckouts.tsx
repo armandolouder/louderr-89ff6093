@@ -427,6 +427,18 @@ export default function AbandonedCheckouts() {
                               <MessageCircle className="w-3.5 h-3.5 text-emerald-400" />
                             </Button>
                           )}
+                          {checkout.customer_email && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              title="Enviar e-mail de recuperação"
+                              disabled={sendingEmailId === checkout.id}
+                              onClick={() => sendEmail(checkout)}
+                            >
+                              <Mail className={`w-3.5 h-3.5 text-blue-400 ${sendingEmailId === checkout.id ? "animate-pulse" : ""}`} />
+                            </Button>
+                          )}
                           {checkout.customer_phone && !checkout.contacted_at && (
                             <Button
                               variant="ghost"
@@ -437,6 +449,17 @@ export default function AbandonedCheckouts() {
                               onClick={() => sendWhatsApp(checkout)}
                             >
                               <Send className={`w-3.5 h-3.5 text-primary ${sendingId === checkout.id ? "animate-pulse" : ""}`} />
+                            </Button>
+                          )}
+                          {!checkout.recovered && checkout.contacted_at && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              title="Marcar como recuperado"
+                              onClick={() => markAsRecovered(checkout.id)}
+                            >
+                              <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
                             </Button>
                           )}
                           <Button
