@@ -47,6 +47,37 @@ Deno.serve(async (req) => {
       return String(val).substring(0, maxLen).trim() || null;
     };
 
+    // Try to get visitor geolocation from IP via free API
+    let geoState = sanitize(body.state, 50);
+    let geoCity = sanitize(body.city, 100);
+    let geoCountry = sanitize(body.country, 10) || "BR";
+
+    // If no state/city from client, try IP geolocation
+    if (!geoState) {
+      try {
+        const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+          || req.headers.get("cf-connecting-ip")
+          || req.headers.get("x-real-ip");
+
+        if (clientIp && clientIp !== "127.0.0.1") {
+          const geoResp = await fetch(`http://ip-api.com/json/${clientIp}?fields=status,regionName,city,countryCode`, {
+            signal: AbortSignal.timeout(3000),
+          });
+          if (geoResp.ok) {
+            const geo = await geoResp.json();
+            if (geo.status === "success") {
+              geoState = geo.regionName || geoState;
+              geoCity = geo.city || geoCity;
+              geoCountry = geo.countryCode || geoCountry;
+              console.log(`Geo resolved: ${geoState}, ${geoCity}, ${geoCountry}`);
+            }
+          }
+        }
+      } catch (geoErr) {
+        console.warn("Geo lookup failed (non-blocking):", geoErr);
+      }
+    }
+
     const record = {
       user_id: ownerUserId,
       visitor_id: visitorId.substring(0, 100),
@@ -61,9 +92,9 @@ Deno.serve(async (req) => {
       customer_email: sanitize(body.customer_email, 320),
       customer_phone: sanitize(body.customer_phone, 30),
       customer_name: sanitize(body.customer_name, 200),
-      state: sanitize(body.state, 50),
-      city: sanitize(body.city, 100),
-      country: sanitize(body.country, 10) || "BR",
+      state: geoState,
+      city: geoCity,
+      country: geoCountry,
       device_type: sanitize(body.device_type, 50),
       referrer: sanitize(body.referrer, 2000),
       utm_source: sanitize(body.utm_source, 200),
@@ -82,7 +113,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Return 1x1 transparent pixel for image-based tracking fallback
     return new Response(JSON.stringify({ ok: true }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "no-store" },
