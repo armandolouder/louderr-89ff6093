@@ -490,35 +490,69 @@ export default function RecoveryDashboard() {
                 </CardContent>
               </Card>
             ) : (
-              messages.slice(0, 50).map((msg: any) => (
-                <div key={msg.id} className="flex items-center justify-between p-3 bg-card border rounded-lg">
-                  <div className="flex items-center gap-3">
-                    {msg.channel === "whatsapp" ? (
-                      <MessageSquare className="w-4 h-4 text-emerald-500" />
-                    ) : (
-                      <Mail className="w-4 h-4 text-blue-500" />
-                    )}
-                    <div>
-                      <p className="text-sm font-medium">
-                        Etapa {msg.step_number + 1} • {msg.channel}
-                        {msg.variant === "B" && <Badge className="ml-2 text-[10px] bg-primary/20 text-primary">IA</Badge>}
-                      </p>
-                      <p className="text-xs text-muted-foreground truncate max-w-[300px]">
-                        {msg.content || msg.subject || "—"}
-                      </p>
+              messages.slice(0, 50).map((msg: any) => {
+                const execution = executions?.find((e: any) => e.id === msg.execution_id);
+                const customerPhone = execution?.customer_phone;
+                const customerName = execution?.customer_name || "Cliente";
+                const cartItems = (execution?.cart_items as any[]) || [];
+
+                const handleSendWhatsApp = () => {
+                  if (!customerPhone) {
+                    toast.error("Este cliente não tem telefone cadastrado");
+                    return;
+                  }
+                  const firstName = customerName.split(" ")[0];
+                  const productsList = cartItems.map((p: any) => `• ${p.name || p.title || "Produto"}`).join("\n");
+                  const cartValue = execution?.cart_value ? `R$ ${Number(execution.cart_value).toFixed(2).replace(".", ",")}` : "";
+                  const recoveryUrl = execution?.recovery_url || "";
+                  const msgText = `Olá ${firstName}! 👋\nVi que você se interessou por:\n${productsList}${cartValue ? `\n\nTotal: ${cartValue}` : ""}${recoveryUrl ? `\n\nFinalize aqui: ${recoveryUrl}` : ""}\n\nPosso te ajudar com alguma dúvida?`;
+                  navigate(`/campaigns?tab=individual&phone=${encodeURIComponent(customerPhone)}&msg=${encodeURIComponent(msgText)}`);
+                };
+
+                return (
+                  <div key={msg.id} className="flex items-center justify-between p-3 bg-card border rounded-lg">
+                    <div className="flex items-center gap-3">
+                      {msg.channel === "whatsapp" ? (
+                        <MessageSquare className="w-4 h-4 text-emerald-500" />
+                      ) : (
+                        <Mail className="w-4 h-4 text-blue-500" />
+                      )}
+                      <div>
+                        <p className="text-sm font-medium">
+                          Etapa {msg.step_number + 1} • {msg.channel}
+                          {msg.variant === "B" && <Badge className="ml-2 text-[10px] bg-primary/20 text-primary">IA</Badge>}
+                          {customerName && customerName !== "Cliente" && (
+                            <span className="ml-2 text-xs text-muted-foreground">— {customerName}</span>
+                          )}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate max-w-[300px]">
+                          {msg.content || msg.subject || "—"}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {customerPhone && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          title="Enviar WhatsApp individual"
+                          onClick={handleSendWhatsApp}
+                        >
+                          <Send className="w-3.5 h-3.5 text-emerald-500" />
+                        </Button>
+                      )}
+                      <Badge variant={msg.status === "sent" ? "secondary" : msg.status === "failed" ? "destructive" : "outline"} className="text-xs">
+                        {msg.status}
+                      </Badge>
+                      {msg.clicked_at && <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />}
+                      <span className="text-xs text-muted-foreground">
+                        {msg.sent_at ? new Date(msg.sent_at).toLocaleString("pt-BR") : "—"}
+                      </span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant={msg.status === "sent" ? "secondary" : msg.status === "failed" ? "destructive" : "outline"} className="text-xs">
-                      {msg.status}
-                    </Badge>
-                    {msg.clicked_at && <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />}
-                    <span className="text-xs text-muted-foreground">
-                      {msg.sent_at ? new Date(msg.sent_at).toLocaleString("pt-BR") : "—"}
-                    </span>
-                  </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </TabsContent>
