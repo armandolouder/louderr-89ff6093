@@ -231,6 +231,39 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const { action } = body;
 
+    // Check account/credits
+    if (action === "check-credits") {
+      const res = await fetch("https://api.brevo.com/v3/account", {
+        headers: { "api-key": brevoApiKey, "Content-Type": "application/json" },
+      });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        return new Response(
+          JSON.stringify({ success: false, error: `Brevo API error [${res.status}]: ${errText}` }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const account = await res.json();
+      const plans = account.plan || [];
+      const credits = plans.map((p: any) => ({
+        type: p.creditsType,
+        credits: p.credits,
+        planType: p.type,
+      }));
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          email: account.email,
+          companyName: account.companyName,
+          plans: credits,
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Test connection
     if (action === "test-connection") {
       const res = await fetch("https://api.brevo.com/v3/senders", {

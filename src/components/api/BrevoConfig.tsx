@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Mail, CheckCircle, XCircle, Send, Loader2, ExternalLink } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Mail, CheckCircle, XCircle, Send, Loader2, ExternalLink, CreditCard, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -20,10 +20,43 @@ interface BrevoConfigProps {
   onStatusChange: (status: BrevoStatus) => void;
 }
 
+interface CreditPlan {
+  type: string;
+  credits: number;
+  planType: string;
+}
+
 export function BrevoConfig({ status, onStatusChange }: BrevoConfigProps) {
   const [testing, setTesting] = useState(false);
   const [testEmail, setTestEmail] = useState("");
   const [sending, setSending] = useState(false);
+  const [credits, setCredits] = useState<CreditPlan[] | null>(null);
+  const [creditsLoading, setCreditsLoading] = useState(false);
+  const [creditsEmail, setCreditsEmail] = useState("");
+
+  useEffect(() => {
+    if (status?.connected) {
+      checkCredits();
+    }
+  }, [status?.connected]);
+
+  const checkCredits = async () => {
+    setCreditsLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-brevo-email", {
+        body: { action: "check-credits" },
+      });
+      if (error) throw error;
+      if (data?.success) {
+        setCredits(data.plans || []);
+        setCreditsEmail(data.email || "");
+      }
+    } catch {
+      // silent fail
+    } finally {
+      setCreditsLoading(false);
+    }
+  };
 
   const testConnection = async () => {
     setTesting(true);
@@ -85,6 +118,14 @@ export function BrevoConfig({ status, onStatusChange }: BrevoConfigProps) {
     }
   };
 
+  const formatCreditType = (type: string) => {
+    const map: Record<string, string> = {
+      sendLimit: "Limite de Envio",
+      credits: "Créditos",
+    };
+    return map[type] || type;
+  };
+
   return (
     <div className="flex-1 overflow-y-auto p-6 space-y-6">
       <div>
@@ -138,6 +179,54 @@ export function BrevoConfig({ status, onStatusChange }: BrevoConfigProps) {
           </Button>
         </CardContent>
       </Card>
+
+      {/* Credits */}
+      {status?.connected && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <CreditCard className="w-4 h-4" />
+                  Créditos da Conta
+                </CardTitle>
+                <CardDescription>
+                  {creditsEmail ? `Conta: ${creditsEmail}` : "Saldo disponível para envio de e-mails"}
+                </CardDescription>
+              </div>
+              <Button variant="ghost" size="icon" onClick={checkCredits} disabled={creditsLoading}>
+                <RefreshCw className={`w-4 h-4 ${creditsLoading ? "animate-spin" : ""}`} />
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {creditsLoading && !credits ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="w-4 h-4 animate-spin" /> Carregando créditos...
+              </div>
+            ) : credits && credits.length > 0 ? (
+              <div className="grid gap-3">
+                {credits.map((plan, i) => (
+                  <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-secondary/30">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">{formatCreditType(plan.type)}</p>
+                      <p className="text-xs text-muted-foreground">{plan.planType}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className={`text-lg font-bold ${plan.credits > 50 ? "text-emerald-400" : plan.credits > 0 ? "text-amber-400" : "text-destructive"}`}>
+                        {plan.credits.toLocaleString("pt-BR")}
+                      </p>
+                      <p className="text-xs text-muted-foreground">restantes</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Nenhuma informação de créditos disponível</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Test Email */}
       <Card>
