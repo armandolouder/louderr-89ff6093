@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { ShoppingCart, RefreshCw, Mail, MessageSquare, ExternalLink, Phone, Send, MessageCircle } from "lucide-react";
+import { ShoppingCart, RefreshCw, Mail, MessageSquare, ExternalLink, Phone, Send, MessageCircle, CheckCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -30,6 +30,7 @@ export default function AbandonedCheckouts() {
   const [syncing, setSyncing] = useState(false);
   const [selectedCheckout, setSelectedCheckout] = useState<any>(null);
   const [sendingId, setSendingId] = useState<string | null>(null);
+  const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
 
   const startDate = new Date(year, month, 1).toISOString();
   const endDate = new Date(year, month + 1, 0, 23, 59, 59).toISOString();
@@ -203,6 +204,49 @@ export default function AbandonedCheckouts() {
       toast.error("Erro ao enviar: " + (err.message || "Erro desconhecido"));
     } finally {
       setSendingId(null);
+    }
+  };
+
+  const sendEmail = async (checkout: any) => {
+    if (!checkout.customer_email) {
+      toast.error("Este cliente não tem e-mail cadastrado");
+      return;
+    }
+
+    setSendingEmailId(checkout.id);
+    try {
+      const firstName = (checkout.customer_name || "Cliente").split(" ")[0];
+      const products = (checkout.products as any[]) || [];
+      const total = checkout.total || 0;
+      const recoveryUrl = checkout.recovery_url || "";
+
+      const res = await supabase.functions.invoke("send-brevo-email", {
+        body: {
+          action: "send-recovery",
+          to: checkout.customer_email,
+          customerName: checkout.customer_name,
+          products,
+          total,
+          recoveryUrl,
+          stepType: "emocional",
+          variant: "A",
+        },
+      });
+
+      if (res.error) throw res.error;
+      if (!res.data?.success) throw new Error(res.data?.error || "Erro ao enviar e-mail");
+
+      await supabase
+        .from("nuvemshop_abandoned_checkouts")
+        .update({ contacted_at: new Date().toISOString(), contact_channel: "email" })
+        .eq("id", checkout.id);
+
+      toast.success(`E-mail enviado para ${firstName}!`);
+      queryClient.invalidateQueries({ queryKey: ["abandoned-checkouts"] });
+    } catch (err: any) {
+      toast.error("Erro ao enviar e-mail: " + (err.message || "Erro desconhecido"));
+    } finally {
+      setSendingEmailId(null);
     }
   };
 
@@ -383,6 +427,18 @@ export default function AbandonedCheckouts() {
                               <MessageCircle className="w-3.5 h-3.5 text-emerald-400" />
                             </Button>
                           )}
+                          {checkout.customer_email && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              title="Enviar e-mail de recuperação"
+                              disabled={sendingEmailId === checkout.id}
+                              onClick={() => sendEmail(checkout)}
+                            >
+                              <Mail className={`w-3.5 h-3.5 text-blue-400 ${sendingEmailId === checkout.id ? "animate-pulse" : ""}`} />
+                            </Button>
+                          )}
                           {checkout.customer_phone && !checkout.contacted_at && (
                             <Button
                               variant="ghost"
@@ -393,6 +449,17 @@ export default function AbandonedCheckouts() {
                               onClick={() => sendWhatsApp(checkout)}
                             >
                               <Send className={`w-3.5 h-3.5 text-primary ${sendingId === checkout.id ? "animate-pulse" : ""}`} />
+                            </Button>
+                          )}
+                          {!checkout.recovered && checkout.contacted_at && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              title="Marcar como recuperado"
+                              onClick={() => markAsRecovered(checkout.id)}
+                            >
+                              <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
                             </Button>
                           )}
                           <Button
