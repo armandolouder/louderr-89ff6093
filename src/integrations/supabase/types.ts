@@ -1042,6 +1042,87 @@ export type Database = {
         }
         Relationships: []
       }
+      page_views: {
+        Row: {
+          city: string | null
+          country: string | null
+          created_at: string
+          customer_email: string | null
+          customer_name: string | null
+          customer_phone: string | null
+          device_type: string | null
+          duration_seconds: number | null
+          id: string
+          page_title: string | null
+          page_url: string
+          product_category: string | null
+          product_id: string | null
+          product_image_url: string | null
+          product_name: string | null
+          product_price: number | null
+          referrer: string | null
+          session_id: string | null
+          state: string | null
+          user_id: string | null
+          utm_campaign: string | null
+          utm_medium: string | null
+          utm_source: string | null
+          visitor_id: string
+        }
+        Insert: {
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          customer_email?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          device_type?: string | null
+          duration_seconds?: number | null
+          id?: string
+          page_title?: string | null
+          page_url: string
+          product_category?: string | null
+          product_id?: string | null
+          product_image_url?: string | null
+          product_name?: string | null
+          product_price?: number | null
+          referrer?: string | null
+          session_id?: string | null
+          state?: string | null
+          user_id?: string | null
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          visitor_id: string
+        }
+        Update: {
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          customer_email?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          device_type?: string | null
+          duration_seconds?: number | null
+          id?: string
+          page_title?: string | null
+          page_url?: string
+          product_category?: string | null
+          product_id?: string | null
+          product_image_url?: string | null
+          product_name?: string | null
+          product_price?: number | null
+          referrer?: string | null
+          session_id?: string | null
+          state?: string | null
+          user_id?: string | null
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          visitor_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
