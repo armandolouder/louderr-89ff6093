@@ -42,6 +42,28 @@ export default function Auth() {
     }
   };
 
+  const handleForgotPassword = async () => {
+    if (!email) {
+      toast.error("Digite seu e-mail para recuperar a senha");
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) {
+        toast.error(error.message || "Erro ao enviar e-mail de recuperação");
+      } else {
+        toast.success("E-mail de recuperação enviado! Verifique sua caixa de entrada.");
+      }
+    } catch {
+      toast.error("Erro ao enviar e-mail de recuperação");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleSignUp = async () => {
     if (!email || !password) {
       toast.error("Preencha todos os campos");
@@ -114,6 +136,16 @@ export default function Auth() {
                 {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <LogIn className="w-4 h-4 mr-2" />}
                 Entrar
               </Button>
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={handleForgotPassword}
+                  className="text-sm text-muted-foreground hover:text-primary underline transition-colors"
+                  disabled={isLoading}
+                >
+                  Esqueci minha senha
+                </button>
+              </div>
             </TabsContent>
 
             <TabsContent value="signup" className="space-y-4">

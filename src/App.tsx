@@ -21,6 +21,7 @@ const RFMMatrixPage = lazy(() => import("./pages/RFMMatrix"));
 const EmailMarketing = lazy(() => import("./pages/EmailMarketing"));
 const Tracking = lazy(() => import("./pages/Tracking"));
 const Auth = lazy(() => import("./pages/Auth"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Install = lazy(() => import("./pages/Install"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
@@ -36,6 +37,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Navigate to="/inbox" replace />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/install" element={<Install />} />
             <Route element={<AppLayout />}>
               <Route path="/dashboard" element={<Dashboard />} />
