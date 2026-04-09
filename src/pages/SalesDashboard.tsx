@@ -278,10 +278,10 @@ export default function SalesDashboard() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          <MetricCard label="Lucro Líquido (Real)" value={formatCurrency(metrics.totalRevenue)} color="text-success" />
-          <MetricCard label="Faturamento Bruto" value={formatCurrency(metrics.totalRevenue)} color="text-primary" />
+          <MetricCard label="Lucro Líquido (Real)" value={formatCurrency(metrics.netProfit)} color="text-primary" />
+          <MetricCard label="Faturamento Bruto" value={formatCurrency(metrics.totalRevenue)} color="text-foreground" />
           <MetricCard label="Ticket Médio" value={formatCurrency(metrics.avgTicket)} color="text-accent" />
-          <MetricCard label="Custos Produtos (CPV)" value={formatCurrency(0)} color="text-primary" />
+          <MetricCard label="Custos Produtos (CPV)" value={formatCurrency(metrics.totalCosts)} color="text-destructive" />
           <MetricCard label="Outras Despesas" value={formatCurrency(0)} color="text-destructive" hasAction />
           <MetricCard
             label="Pedidos / Itens"
