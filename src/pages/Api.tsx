@@ -126,7 +126,7 @@ export default function Api() {
 
   const checkPrintbeeStatus = async () => {
     try {
-      const { data, error } = await supabase.functions.invoke("printbee-orders?action=test-connection");
+      const { data, error } = await supabase.functions.invoke("printbee-orders", { body: { action: "test-connection" } });
       if (error) {
         setPrintbeeStatus({ connected: false, error: error.message });
       } else if (data?.connected) {

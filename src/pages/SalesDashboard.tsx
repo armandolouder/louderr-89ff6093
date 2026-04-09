@@ -58,7 +58,7 @@ export default function SalesDashboard() {
     queryKey: ["printbee-orders"],
     queryFn: async () => {
       try {
-        const { data, error } = await supabase.functions.invoke("printbee-orders?action=orders&pageSize=200");
+        const { data, error } = await supabase.functions.invoke("printbee-orders", { body: { action: "orders", pageSize: "200" } });
         if (error) return null;
         return data;
       } catch {
@@ -74,7 +74,7 @@ export default function SalesDashboard() {
     queryKey: ["printbee-status"],
     queryFn: async () => {
       try {
-        const { data, error } = await supabase.functions.invoke("printbee-orders?action=test-connection");
+        const { data, error } = await supabase.functions.invoke("printbee-orders", { body: { action: "test-connection" } });
         if (error) return { connected: false };
         return data;
       } catch {
