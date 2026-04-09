@@ -22,7 +22,7 @@ export function PrintBeeConfig({ status, onStatusChange }: PrintBeeConfigProps) 
   const testConnection = async () => {
     setTesting(true);
     try {
-      const { data, error } = await supabase.functions.invoke("printbee-orders?action=test-connection");
+      const { data, error } = await supabase.functions.invoke("printbee-orders", { body: { action: "test-connection" } });
       if (error) {
         onStatusChange({ connected: false, error: error.message });
         toast.error("Falha na conexão com PrintBee");

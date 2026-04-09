@@ -59,8 +59,26 @@ Deno.serve(async (req) => {
       });
     }
 
-    const url = new URL(req.url);
-    const action = url.searchParams.get("action") || "orders";
+    // Read action from body (POST) or query params
+    let action = "orders";
+    let page = "1";
+    let pageSize = "50";
+    
+    if (req.method === "POST") {
+      try {
+        const body = await req.json();
+        action = body.action || "orders";
+        page = body.page || "1";
+        pageSize = body.pageSize || "50";
+      } catch {
+        // fallback to defaults
+      }
+    } else {
+      const url = new URL(req.url);
+      action = url.searchParams.get("action") || "orders";
+      page = url.searchParams.get("page") || "1";
+      pageSize = url.searchParams.get("pageSize") || "50";
+    }
 
     if (action === "test-connection") {
       try {
@@ -78,9 +96,6 @@ Deno.serve(async (req) => {
     }
 
     if (action === "orders") {
-      const page = url.searchParams.get("page") || "1";
-      const pageSize = url.searchParams.get("pageSize") || "50";
-
       const token = await getToken();
       
       const ordersRes = await fetch(
