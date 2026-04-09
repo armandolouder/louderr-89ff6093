@@ -37,16 +37,23 @@ interface BrevoStatus {
   error?: string;
 }
 
+interface PrintBeeStatus {
+  connected: boolean;
+  supplier?: string;
+  error?: string;
+}
+
 export default function Api() {
   const [activeIntegration, setActiveIntegration] = useState<IntegrationId>("uazapi");
   const [instanceStatus, setInstanceStatus] = useState<InstanceStatus | null>(null);
   const [groqStatus, setGroqStatus] = useState<GroqStatus | null>(null);
   const [nuvemshopStatus, setNuvemshopStatus] = useState<NuvemshopStatus | null>(null);
   const [brevoStatus, setBrevoStatus] = useState<BrevoStatus | null>(null);
+  const [printbeeStatus, setPrintbeeStatus] = useState<PrintBeeStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([checkInstanceStatus(), checkGroqStatus(), checkBrevoStatus()]).finally(() => {
+    Promise.all([checkInstanceStatus(), checkGroqStatus(), checkBrevoStatus(), checkPrintbeeStatus()]).finally(() => {
       setIsLoading(false);
     });
   }, []);
