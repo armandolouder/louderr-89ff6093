@@ -337,6 +337,13 @@ export default function SalesDashboard() {
                   const total = order.total || 0;
                   const products = order.products as any[];
                   const itemCount = Array.isArray(products) ? products.reduce((s, p) => s + (p.quantity || 1), 0) : 0;
+                  
+                  // PrintBee cost lookup
+                  const orderNum = (order as any).order_number || order.nuvemshop_order_id || "";
+                  const pbData = printbeeCostMap.get(orderNum.toString());
+                  const supplierName = pbData?.supplier || "—";
+                  const cost = pbData?.cost || 0;
+                  const net = total - cost;
 
                   return (
                     <TableRow key={order.id}>
@@ -347,15 +354,31 @@ export default function SalesDashboard() {
                       <TableCell>
                         <span className="font-medium">{(order.customer_name || "Consumidor").split(" ")[0]}</span>
                       </TableCell>
-                      <TableCell className="text-muted-foreground">—</TableCell>
+                      <TableCell>
+                        {pbData ? (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <Badge variant="outline" className="gap-1 text-xs">
+                                  <Printer className="w-3 h-3" />
+                                  {supplierName}
+                                </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent>Fornecedor vinculado via API</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
                       <TableCell className="text-right font-semibold">
                         {formatCurrency(total)}
                       </TableCell>
-                      <TableCell className="text-right text-success font-medium">
-                        {formatCurrency(0)}
+                      <TableCell className="text-right text-destructive font-medium">
+                        {cost > 0 ? formatCurrency(cost) : "—"}
                       </TableCell>
                       <TableCell className="text-right font-bold text-primary">
-                        {formatCurrency(total)}
+                        {formatCurrency(net)}
                       </TableCell>
                       <TableCell className="text-muted-foreground text-sm">
                         {(() => {
