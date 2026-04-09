@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
-import { MessageSquare, Brain, Loader2, ShoppingBag, Mail } from "lucide-react";
+import { MessageSquare, Brain, Loader2, ShoppingBag, Mail, Printer } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { IntegrationSidebar, type IntegrationId } from "@/components/api/IntegrationSidebar";
 import { UazapiConfig } from "@/components/api/UazapiConfig";
 import { GroqConfig } from "@/components/api/GroqConfig";
 import { NuvemshopConfig } from "@/components/api/NuvemshopConfig";
 import { BrevoConfig } from "@/components/api/BrevoConfig";
+import { PrintBeeConfig } from "@/components/api/PrintBeeConfig";
 
 interface InstanceStatus {
   connected: boolean;
