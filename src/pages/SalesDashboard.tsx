@@ -53,11 +53,59 @@ export default function SalesDashboard() {
   const startDate = new Date(year, month, 1).toISOString();
   const endDate = new Date(year, month + 1, 0, 23, 59, 59).toISOString();
 
+  // PrintBee orders data
+  const { data: printbeeData } = useQuery({
+    queryKey: ["printbee-orders"],
+    queryFn: async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke("printbee-orders?action=orders&pageSize=200");
+        if (error) return null;
+        return data;
+      } catch {
+        return null;
+      }
+    },
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+
+  // PrintBee connection status
+  const { data: printbeeStatus } = useQuery({
+    queryKey: ["printbee-status"],
+    queryFn: async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke("printbee-orders?action=test-connection");
+        if (error) return { connected: false };
+        return data;
+      } catch {
+        return { connected: false };
+      }
+    },
+    staleTime: 10 * 60 * 1000,
+    retry: false,
+  });
+
+  // Build a map of PrintBee order costs by order number for cross-referencing
+  const printbeeCostMap = useMemo(() => {
+    const map = new Map<string, { supplier: string; cost: number }>();
+    if (!printbeeData) return map;
+    
+    // Handle both array and paginated response
+    const orders = Array.isArray(printbeeData) ? printbeeData : printbeeData?.items || printbeeData?.data || [];
+    
+    for (const order of orders) {
+      const orderNumber = order.externalOrderId || order.orderNumber || order.id?.toString();
+      if (orderNumber) {
+        const cost = order.totalCost || order.productionCost || order.cost || 0;
+        map.set(orderNumber.toString(), { supplier: "PrintBee", cost });
+      }
+    }
+    return map;
+  }, [printbeeData]);
+
   const { data: orders, isLoading } = useQuery({
     queryKey: ["sales-dashboard", month, year],
     queryFn: async () => {
-      // Fetch orders filtering by order_date server-side
-      // Use two queries: one for orders with order_date, one fallback for orders without
       const { data: dated, error: e1 } = await supabase
         .from("nuvemshop_orders")
         .select("*")
@@ -67,7 +115,6 @@ export default function SalesDashboard() {
         .limit(1000);
       if (e1) throw e1;
 
-      // Also fetch orders without order_date that were created in the period (legacy)
       const { data: legacy, error: e2 } = await supabase
         .from("nuvemshop_orders")
         .select("*")
@@ -89,7 +136,6 @@ export default function SalesDashboard() {
   }, [orders, statusFilter]);
 
   const metrics = useMemo(() => {
-    // Exclude cancelled and unpaid orders from financial metrics and counts
     const billable = filteredOrders.filter(o => o.status !== "cancelled" && o.payment_status === "paid");
     const totalRevenue = billable.reduce((sum, o) => sum + (o.total || 0), 0);
     const totalOrders = billable.length;
@@ -98,8 +144,18 @@ export default function SalesDashboard() {
       const products = o.products as any[];
       return sum + (Array.isArray(products) ? products.reduce((s, p) => s + (p.quantity || 1), 0) : 0);
     }, 0);
-    return { totalRevenue, totalOrders, avgTicket, totalItems };
-  }, [filteredOrders]);
+    
+    // Calculate total costs from PrintBee
+    const totalCosts = billable.reduce((sum, o) => {
+      const orderNum = (o as any).order_number || o.nuvemshop_order_id || "";
+      const pb = printbeeCostMap.get(orderNum.toString());
+      return sum + (pb?.cost || 0);
+    }, 0);
+    
+    const netProfit = totalRevenue - totalCosts;
+    
+    return { totalRevenue, totalOrders, avgTicket, totalItems, totalCosts, netProfit };
+  }, [filteredOrders, printbeeCostMap]);
 
   const [syncing, setSyncing] = useState(false);
   const [clearing, setClearing] = useState(false);
