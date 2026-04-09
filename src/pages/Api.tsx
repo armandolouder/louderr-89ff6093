@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
-import { MessageSquare, Brain, Loader2, ShoppingBag, Mail } from "lucide-react";
+import { MessageSquare, Brain, Loader2, ShoppingBag, Mail, Printer } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { IntegrationSidebar, type IntegrationId } from "@/components/api/IntegrationSidebar";
 import { UazapiConfig } from "@/components/api/UazapiConfig";
 import { GroqConfig } from "@/components/api/GroqConfig";
 import { NuvemshopConfig } from "@/components/api/NuvemshopConfig";
 import { BrevoConfig } from "@/components/api/BrevoConfig";
+import { PrintBeeConfig } from "@/components/api/PrintBeeConfig";
 
 interface InstanceStatus {
   connected: boolean;
@@ -36,16 +37,23 @@ interface BrevoStatus {
   error?: string;
 }
 
+interface PrintBeeStatus {
+  connected: boolean;
+  supplier?: string;
+  error?: string;
+}
+
 export default function Api() {
   const [activeIntegration, setActiveIntegration] = useState<IntegrationId>("uazapi");
   const [instanceStatus, setInstanceStatus] = useState<InstanceStatus | null>(null);
   const [groqStatus, setGroqStatus] = useState<GroqStatus | null>(null);
   const [nuvemshopStatus, setNuvemshopStatus] = useState<NuvemshopStatus | null>(null);
   const [brevoStatus, setBrevoStatus] = useState<BrevoStatus | null>(null);
+  const [printbeeStatus, setPrintbeeStatus] = useState<PrintBeeStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([checkInstanceStatus(), checkGroqStatus(), checkBrevoStatus()]).finally(() => {
+    Promise.all([checkInstanceStatus(), checkGroqStatus(), checkBrevoStatus(), checkPrintbeeStatus()]).finally(() => {
       setIsLoading(false);
     });
   }, []);
@@ -116,6 +124,21 @@ export default function Api() {
     }
   };
 
+  const checkPrintbeeStatus = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke("printbee-orders?action=test-connection");
+      if (error) {
+        setPrintbeeStatus({ connected: false, error: error.message });
+      } else if (data?.connected) {
+        setPrintbeeStatus({ connected: true, supplier: data.supplier });
+      } else {
+        setPrintbeeStatus({ connected: false, error: data?.error || "Falha" });
+      }
+    } catch {
+      setPrintbeeStatus({ connected: false, error: "Erro de conexão" });
+    }
+  };
+
   const integrations = [
     {
       id: "uazapi" as IntegrationId,
@@ -144,6 +167,13 @@ export default function Api() {
       description: "E-mails de recuperação",
       icon: <Mail className="w-5 h-5" />,
       connected: brevoStatus?.connected ?? false,
+    },
+    {
+      id: "printbee" as IntegrationId,
+      name: "PrintBee",
+      description: "Fornecedor e custos",
+      icon: <Printer className="w-5 h-5" />,
+      connected: printbeeStatus?.connected ?? false,
     },
   ];
 
@@ -177,6 +207,10 @@ export default function Api() {
       
       {activeIntegration === "brevo" && (
         <BrevoConfig status={brevoStatus} onStatusChange={setBrevoStatus} />
+      )}
+
+      {activeIntegration === "printbee" && (
+        <PrintBeeConfig status={printbeeStatus} onStatusChange={setPrintbeeStatus} />
       )}
     </div>
   );

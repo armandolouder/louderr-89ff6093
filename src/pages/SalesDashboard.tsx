@@ -1,14 +1,15 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { TrendingUp, RefreshCw, ShoppingCart, DollarSign, Receipt, Settings, Download, Trash2, Eye, MessageSquare, Send } from "lucide-react";
+import { TrendingUp, RefreshCw, ShoppingCart, DollarSign, Receipt, Settings, Download, Trash2, Eye, MessageSquare, Send, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 
 const MONTHS = [
@@ -52,11 +53,59 @@ export default function SalesDashboard() {
   const startDate = new Date(year, month, 1).toISOString();
   const endDate = new Date(year, month + 1, 0, 23, 59, 59).toISOString();
 
+  // PrintBee orders data
+  const { data: printbeeData } = useQuery({
+    queryKey: ["printbee-orders"],
+    queryFn: async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke("printbee-orders?action=orders&pageSize=200");
+        if (error) return null;
+        return data;
+      } catch {
+        return null;
+      }
+    },
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+
+  // PrintBee connection status
+  const { data: printbeeStatus } = useQuery({
+    queryKey: ["printbee-status"],
+    queryFn: async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke("printbee-orders?action=test-connection");
+        if (error) return { connected: false };
+        return data;
+      } catch {
+        return { connected: false };
+      }
+    },
+    staleTime: 10 * 60 * 1000,
+    retry: false,
+  });
+
+  // Build a map of PrintBee order costs by order number for cross-referencing
+  const printbeeCostMap = useMemo(() => {
+    const map = new Map<string, { supplier: string; cost: number }>();
+    if (!printbeeData) return map;
+    
+    // Handle both array and paginated response
+    const orders = Array.isArray(printbeeData) ? printbeeData : printbeeData?.items || printbeeData?.data || [];
+    
+    for (const order of orders) {
+      const orderNumber = order.externalOrderId || order.orderNumber || order.id?.toString();
+      if (orderNumber) {
+        const cost = order.totalCost || order.productionCost || order.cost || 0;
+        map.set(orderNumber.toString(), { supplier: "PrintBee", cost });
+      }
+    }
+    return map;
+  }, [printbeeData]);
+
   const { data: orders, isLoading } = useQuery({
     queryKey: ["sales-dashboard", month, year],
     queryFn: async () => {
-      // Fetch orders filtering by order_date server-side
-      // Use two queries: one for orders with order_date, one fallback for orders without
       const { data: dated, error: e1 } = await supabase
         .from("nuvemshop_orders")
         .select("*")
@@ -66,7 +115,6 @@ export default function SalesDashboard() {
         .limit(1000);
       if (e1) throw e1;
 
-      // Also fetch orders without order_date that were created in the period (legacy)
       const { data: legacy, error: e2 } = await supabase
         .from("nuvemshop_orders")
         .select("*")
@@ -88,7 +136,6 @@ export default function SalesDashboard() {
   }, [orders, statusFilter]);
 
   const metrics = useMemo(() => {
-    // Exclude cancelled and unpaid orders from financial metrics and counts
     const billable = filteredOrders.filter(o => o.status !== "cancelled" && o.payment_status === "paid");
     const totalRevenue = billable.reduce((sum, o) => sum + (o.total || 0), 0);
     const totalOrders = billable.length;
@@ -97,8 +144,18 @@ export default function SalesDashboard() {
       const products = o.products as any[];
       return sum + (Array.isArray(products) ? products.reduce((s, p) => s + (p.quantity || 1), 0) : 0);
     }, 0);
-    return { totalRevenue, totalOrders, avgTicket, totalItems };
-  }, [filteredOrders]);
+    
+    // Calculate total costs from PrintBee
+    const totalCosts = billable.reduce((sum, o) => {
+      const orderNum = (o as any).order_number || o.nuvemshop_order_id || "";
+      const pb = printbeeCostMap.get(orderNum.toString());
+      return sum + (pb?.cost || 0);
+    }, 0);
+    
+    const netProfit = totalRevenue - totalCosts;
+    
+    return { totalRevenue, totalOrders, avgTicket, totalItems, totalCosts, netProfit };
+  }, [filteredOrders, printbeeCostMap]);
 
   const [syncing, setSyncing] = useState(false);
   const [clearing, setClearing] = useState(false);
@@ -221,10 +278,10 @@ export default function SalesDashboard() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          <MetricCard label="Lucro Líquido (Real)" value={formatCurrency(metrics.totalRevenue)} color="text-success" />
-          <MetricCard label="Faturamento Bruto" value={formatCurrency(metrics.totalRevenue)} color="text-primary" />
+          <MetricCard label="Lucro Líquido (Real)" value={formatCurrency(metrics.netProfit)} color="text-primary" />
+          <MetricCard label="Faturamento Bruto" value={formatCurrency(metrics.totalRevenue)} color="text-foreground" />
           <MetricCard label="Ticket Médio" value={formatCurrency(metrics.avgTicket)} color="text-accent" />
-          <MetricCard label="Custos Produtos (CPV)" value={formatCurrency(0)} color="text-primary" />
+          <MetricCard label="Custos Produtos (CPV)" value={formatCurrency(metrics.totalCosts)} color="text-destructive" />
           <MetricCard label="Outras Despesas" value={formatCurrency(0)} color="text-destructive" hasAction />
           <MetricCard
             label="Pedidos / Itens"
@@ -280,6 +337,13 @@ export default function SalesDashboard() {
                   const total = order.total || 0;
                   const products = order.products as any[];
                   const itemCount = Array.isArray(products) ? products.reduce((s, p) => s + (p.quantity || 1), 0) : 0;
+                  
+                  // PrintBee cost lookup
+                  const orderNum = (order as any).order_number || order.nuvemshop_order_id || "";
+                  const pbData = printbeeCostMap.get(orderNum.toString());
+                  const supplierName = pbData?.supplier || "—";
+                  const cost = pbData?.cost || 0;
+                  const net = total - cost;
 
                   return (
                     <TableRow key={order.id}>
@@ -290,15 +354,31 @@ export default function SalesDashboard() {
                       <TableCell>
                         <span className="font-medium">{(order.customer_name || "Consumidor").split(" ")[0]}</span>
                       </TableCell>
-                      <TableCell className="text-muted-foreground">—</TableCell>
+                      <TableCell>
+                        {pbData ? (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <Badge variant="outline" className="gap-1 text-xs">
+                                  <Printer className="w-3 h-3" />
+                                  {supplierName}
+                                </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent>Fornecedor vinculado via API</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
                       <TableCell className="text-right font-semibold">
                         {formatCurrency(total)}
                       </TableCell>
-                      <TableCell className="text-right text-success font-medium">
-                        {formatCurrency(0)}
+                      <TableCell className="text-right text-destructive font-medium">
+                        {cost > 0 ? formatCurrency(cost) : "—"}
                       </TableCell>
                       <TableCell className="text-right font-bold text-primary">
-                        {formatCurrency(total)}
+                        {formatCurrency(net)}
                       </TableCell>
                       <TableCell className="text-muted-foreground text-sm">
                         {(() => {
