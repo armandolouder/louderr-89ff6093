@@ -124,6 +124,21 @@ export default function Api() {
     }
   };
 
+  const checkPrintbeeStatus = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke("printbee-orders?action=test-connection");
+      if (error) {
+        setPrintbeeStatus({ connected: false, error: error.message });
+      } else if (data?.connected) {
+        setPrintbeeStatus({ connected: true, supplier: data.supplier });
+      } else {
+        setPrintbeeStatus({ connected: false, error: data?.error || "Falha" });
+      }
+    } catch {
+      setPrintbeeStatus({ connected: false, error: "Erro de conexão" });
+    }
+  };
+
   const integrations = [
     {
       id: "uazapi" as IntegrationId,
@@ -152,6 +167,13 @@ export default function Api() {
       description: "E-mails de recuperação",
       icon: <Mail className="w-5 h-5" />,
       connected: brevoStatus?.connected ?? false,
+    },
+    {
+      id: "printbee" as IntegrationId,
+      name: "PrintBee",
+      description: "Fornecedor e custos",
+      icon: <Printer className="w-5 h-5" />,
+      connected: printbeeStatus?.connected ?? false,
     },
   ];
 
@@ -185,6 +207,10 @@ export default function Api() {
       
       {activeIntegration === "brevo" && (
         <BrevoConfig status={brevoStatus} onStatusChange={setBrevoStatus} />
+      )}
+
+      {activeIntegration === "printbee" && (
+        <PrintBeeConfig status={printbeeStatus} onStatusChange={setPrintbeeStatus} />
       )}
     </div>
   );
