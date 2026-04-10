@@ -86,7 +86,7 @@ Deno.serve(async (req) => {
 
     if (action === "test-connection") {
       try {
-        const token = await getToken();
+        await getToken();
         return new Response(
           JSON.stringify({ connected: true, supplier: "PrintBee" }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
