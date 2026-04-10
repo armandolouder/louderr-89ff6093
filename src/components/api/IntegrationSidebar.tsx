@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { MessageSquare, Brain, Server, CreditCard, Database, CheckCircle, XCircle, ShoppingBag, Mail, Printer } from "lucide-react";
+import { MessageSquare, Brain, Server, CreditCard, Database, CheckCircle, XCircle, ShoppingBag, Mail } from "lucide-react";
 
 export type IntegrationId = "uazapi" | "groq" | "nuvemshop" | "brevo";
 
@@ -76,8 +76,6 @@ export function getIntegrationIcon(id: IntegrationId) {
       return <ShoppingBag className={iconClass} />;
     case "brevo":
       return <Mail className={iconClass} />;
-    case "printbee":
-      return <Printer className={iconClass} />;
     default:
       return <Server className={iconClass} />;
   }
