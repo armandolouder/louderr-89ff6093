@@ -18,7 +18,11 @@ async function getToken(): Promise<string> {
   const res = await fetch(`${PRINTBEE_API}/Auth/Token`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ clientId, clientSecret }),
+    body: JSON.stringify({
+      grantType: "client_credentials",
+      clientId,
+      clientSecret,
+    }),
   });
 
   if (!res.ok) {
@@ -27,8 +31,7 @@ async function getToken(): Promise<string> {
   }
 
   const data = await res.json();
-  // The token might be in data.token, data.access_token, or the response itself
-  return data.token || data.access_token || data;
+  return data.token || data.access_token || data.accessToken || data;
 }
 
 Deno.serve(async (req) => {
