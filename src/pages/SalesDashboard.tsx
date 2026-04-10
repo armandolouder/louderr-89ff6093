@@ -1,9 +1,11 @@
 import { useState, useMemo, useEffect } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { TrendingUp, RefreshCw, ShoppingCart, DollarSign, Receipt, Settings, Download, Trash2, Eye, MessageSquare, Send, Printer } from "lucide-react";
+import { TrendingUp, RefreshCw, ShoppingCart, Trash2, Eye, Send, Printer, Pencil, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -11,6 +13,8 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
+
+const SUPPLIERS = ["PrintBee", "Outro"];
 
 const MONTHS = [
   "janeiro", "fevereiro", "março", "abril", "maio", "junho",
@@ -52,56 +56,6 @@ export default function SalesDashboard() {
   const navigate = useNavigate();
   const startDate = new Date(year, month, 1).toISOString();
   const endDate = new Date(year, month + 1, 0, 23, 59, 59).toISOString();
-
-  // PrintBee orders data
-  const { data: printbeeData } = useQuery({
-    queryKey: ["printbee-orders"],
-    queryFn: async () => {
-      try {
-        const { data, error } = await supabase.functions.invoke("printbee-orders", { body: { action: "orders", pageSize: "200" } });
-        if (error) return null;
-        return data;
-      } catch {
-        return null;
-      }
-    },
-    staleTime: 5 * 60 * 1000,
-    retry: false,
-  });
-
-  // PrintBee connection status
-  const { data: printbeeStatus } = useQuery({
-    queryKey: ["printbee-status"],
-    queryFn: async () => {
-      try {
-        const { data, error } = await supabase.functions.invoke("printbee-orders", { body: { action: "test-connection" } });
-        if (error) return { connected: false };
-        return data;
-      } catch {
-        return { connected: false };
-      }
-    },
-    staleTime: 10 * 60 * 1000,
-    retry: false,
-  });
-
-  // Build a map of PrintBee order costs by order number for cross-referencing
-  const printbeeCostMap = useMemo(() => {
-    const map = new Map<string, { supplier: string; cost: number }>();
-    if (!printbeeData) return map;
-    
-    // Handle both array and paginated response
-    const orders = Array.isArray(printbeeData) ? printbeeData : printbeeData?.items || printbeeData?.data || [];
-    
-    for (const order of orders) {
-      const orderNumber = order.externalOrderId || order.orderNumber || order.id?.toString();
-      if (orderNumber) {
-        const cost = order.totalCost || order.productionCost || order.cost || 0;
-        map.set(orderNumber.toString(), { supplier: "PrintBee", cost });
-      }
-    }
-    return map;
-  }, [printbeeData]);
 
   const { data: orders, isLoading } = useQuery({
     queryKey: ["sales-dashboard", month, year],
@@ -145,17 +99,31 @@ export default function SalesDashboard() {
       return sum + (Array.isArray(products) ? products.reduce((s, p) => s + (p.quantity || 1), 0) : 0);
     }, 0);
     
-    // Calculate total costs from PrintBee
+    // Calculate total costs from manual entries
     const totalCosts = billable.reduce((sum, o) => {
-      const orderNum = (o as any).order_number || o.nuvemshop_order_id || "";
-      const pb = printbeeCostMap.get(orderNum.toString());
-      return sum + (pb?.cost || 0);
+      return sum + ((o as any).production_cost || 0);
     }, 0);
     
     const netProfit = totalRevenue - totalCosts;
     
     return { totalRevenue, totalOrders, avgTicket, totalItems, totalCosts, netProfit };
-  }, [filteredOrders, printbeeCostMap]);
+  }, [filteredOrders]);
+
+  const updateOrderField = useMutation({
+    mutationFn: async ({ orderId, field, value }: { orderId: string; field: string; value: string | number | null }) => {
+      const { error } = await supabase
+        .from("nuvemshop_orders")
+        .update({ [field]: value } as any)
+        .eq("id", orderId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sales-dashboard"] });
+    },
+    onError: (err: any) => {
+      toast.error("Erro ao salvar: " + (err.message || "Erro desconhecido"));
+    },
+  });
 
   const [syncing, setSyncing] = useState(false);
   const [clearing, setClearing] = useState(false);
@@ -338,11 +306,8 @@ export default function SalesDashboard() {
                   const products = order.products as any[];
                   const itemCount = Array.isArray(products) ? products.reduce((s, p) => s + (p.quantity || 1), 0) : 0;
                   
-                  // PrintBee cost lookup
-                  const orderNum = (order as any).order_number || order.nuvemshop_order_id || "";
-                  const pbData = printbeeCostMap.get(orderNum.toString());
-                  const supplierName = pbData?.supplier || "—";
-                  const cost = pbData?.cost || 0;
+                  const supplierName = (order as any).supplier || "";
+                  const cost = (order as any).production_cost || 0;
                   const net = total - cost;
 
                   return (
@@ -355,27 +320,19 @@ export default function SalesDashboard() {
                         <span className="font-medium">{(order.customer_name || "Consumidor").split(" ")[0]}</span>
                       </TableCell>
                       <TableCell>
-                        {pbData ? (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger>
-                                <Badge variant="outline" className="gap-1 text-xs">
-                                  <Printer className="w-3 h-3" />
-                                  {supplierName}
-                                </Badge>
-                              </TooltipTrigger>
-                              <TooltipContent>Fornecedor vinculado via API</TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
+                        <InlineSupplierEditor
+                          value={supplierName}
+                          onSave={(val) => updateOrderField.mutate({ orderId: order.id, field: "supplier", value: val || null })}
+                        />
                       </TableCell>
                       <TableCell className="text-right font-semibold">
                         {formatCurrency(total)}
                       </TableCell>
                       <TableCell className="text-right text-destructive font-medium">
-                        {cost > 0 ? formatCurrency(cost) : "—"}
+                        <InlineCostEditor
+                          value={cost}
+                          onSave={(val) => updateOrderField.mutate({ orderId: order.id, field: "production_cost", value: val })}
+                        />
                       </TableCell>
                       <TableCell className="text-right font-bold text-primary">
                         {formatCurrency(net)}
@@ -496,6 +453,146 @@ export default function SalesDashboard() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+function InlineSupplierEditor({ value, onSave }: { value: string; onSave: (val: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [custom, setCustom] = useState("");
+
+  const handleSelect = (supplier: string) => {
+    onSave(supplier);
+    setOpen(false);
+    toast.success("Fornecedor salvo!");
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button className="flex items-center gap-1 text-sm hover:text-primary transition-colors cursor-pointer group">
+          {value ? (
+            <Badge variant="outline" className="gap-1 text-xs">
+              <Printer className="w-3 h-3" />
+              {value}
+            </Badge>
+          ) : (
+            <span className="text-muted-foreground group-hover:text-primary">
+              <Pencil className="w-3.5 h-3.5 inline mr-1" />
+              add
+            </span>
+          )}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-48 p-2 space-y-1" align="start">
+        {SUPPLIERS.map((s) => (
+          <button
+            key={s}
+            className="w-full text-left px-3 py-1.5 rounded text-sm hover:bg-accent transition-colors"
+            onClick={() => handleSelect(s)}
+          >
+            {s}
+          </button>
+        ))}
+        <div className="flex gap-1 pt-1 border-t">
+          <Input
+            placeholder="Outro..."
+            className="h-7 text-xs"
+            value={custom}
+            onChange={(e) => setCustom(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && custom.trim()) {
+                handleSelect(custom.trim());
+                setCustom("");
+              }
+            }}
+          />
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 shrink-0"
+            disabled={!custom.trim()}
+            onClick={() => {
+              handleSelect(custom.trim());
+              setCustom("");
+            }}
+          >
+            <Check className="w-3 h-3" />
+          </Button>
+        </div>
+        {value && (
+          <button
+            className="w-full text-left px-3 py-1 rounded text-xs text-destructive hover:bg-destructive/10 transition-colors"
+            onClick={() => { onSave(""); setOpen(false); toast.success("Fornecedor removido!"); }}
+          >
+            Remover
+          </button>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function InlineCostEditor({ value, onSave }: { value: number; onSave: (val: number | null) => void }) {
+  const [open, setOpen] = useState(false);
+  const [input, setInput] = useState("");
+
+  const handleOpen = (isOpen: boolean) => {
+    if (isOpen) setInput(value > 0 ? value.toString() : "");
+    setOpen(isOpen);
+  };
+
+  const handleSave = () => {
+    const parsed = parseFloat(input.replace(",", "."));
+    if (!isNaN(parsed) && parsed >= 0) {
+      onSave(parsed);
+      setOpen(false);
+      toast.success("Custo salvo!");
+    } else {
+      toast.error("Valor inválido");
+    }
+  };
+
+  return (
+    <Popover open={open} onOpenChange={handleOpen}>
+      <PopoverTrigger asChild>
+        <button className="flex items-center justify-end gap-1 text-sm hover:text-primary transition-colors cursor-pointer group w-full">
+          {value > 0 ? (
+            <span className="text-destructive font-medium">{formatCurrency(value)}</span>
+          ) : (
+            <span className="text-muted-foreground group-hover:text-primary">
+              <Pencil className="w-3.5 h-3.5 inline mr-1" />
+              add
+            </span>
+          )}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-48 p-2" align="end">
+        <div className="space-y-2">
+          <label className="text-xs text-muted-foreground">Custo (R$)</label>
+          <div className="flex gap-1">
+            <Input
+              placeholder="0,00"
+              className="h-8 text-sm"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSave()}
+              autoFocus
+            />
+            <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={handleSave}>
+              <Check className="w-4 h-4 text-primary" />
+            </Button>
+          </div>
+          {value > 0 && (
+            <button
+              className="w-full text-left px-2 py-1 rounded text-xs text-destructive hover:bg-destructive/10 transition-colors"
+              onClick={() => { onSave(null); setOpen(false); toast.success("Custo removido!"); }}
+            >
+              Remover custo
+            </button>
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
 
