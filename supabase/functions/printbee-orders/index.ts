@@ -9,8 +9,8 @@ const corsHeaders = {
 const PRINTBEE_API = "https://api.printbee.com.br/api";
 
 async function getToken(): Promise<string> {
-  const clientId = Deno.env.get("PRINTBEE_CLIENT_ID");
-  const clientSecret = Deno.env.get("PRINTBEE_CLIENT_SECRET");
+  const clientId = Deno.env.get("PRINTBEE_CLIENT_ID")?.trim();
+  const clientSecret = Deno.env.get("PRINTBEE_CLIENT_SECRET")?.trim();
   if (!clientId || !clientSecret) {
     throw new Error("PRINTBEE_CLIENT_ID ou PRINTBEE_CLIENT_SECRET não configurados");
   }
@@ -31,7 +31,19 @@ async function getToken(): Promise<string> {
   }
 
   const data = await res.json();
-  return data.token || data.access_token || data.accessToken || data;
+  const accessToken =
+    data?.data?.token ||
+    data?.data?.access_token ||
+    data?.data?.accessToken ||
+    data?.token ||
+    data?.access_token ||
+    data?.accessToken;
+
+  if (!accessToken || typeof accessToken !== "string") {
+    throw new Error("Token PrintBee não encontrado na resposta de autenticação");
+  }
+
+  return accessToken;
 }
 
 Deno.serve(async (req) => {
