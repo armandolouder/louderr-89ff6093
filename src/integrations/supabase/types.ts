@@ -994,10 +994,12 @@ export type Database = {
           order_date: string | null
           order_number: string | null
           payment_status: string | null
+          production_cost: number | null
           products: Json | null
           shipping_status: string | null
           status: string | null
           subtotal: number | null
+          supplier: string | null
           total: number | null
           updated_at: string
           user_id: string | null
@@ -1013,10 +1015,12 @@ export type Database = {
           order_date?: string | null
           order_number?: string | null
           payment_status?: string | null
+          production_cost?: number | null
           products?: Json | null
           shipping_status?: string | null
           status?: string | null
           subtotal?: number | null
+          supplier?: string | null
           total?: number | null
           updated_at?: string
           user_id?: string | null
@@ -1032,10 +1036,12 @@ export type Database = {
           order_date?: string | null
           order_number?: string | null
           payment_status?: string | null
+          production_cost?: number | null
           products?: Json | null
           shipping_status?: string | null
           status?: string | null
           subtotal?: number | null
+          supplier?: string | null
           total?: number | null
           updated_at?: string
           user_id?: string | null
