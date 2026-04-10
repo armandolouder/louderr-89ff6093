@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 
-const SUPPLIERS = ["PrintBee", "Outro"];
+const SUPPLIERS = ["PrintBee"];
 
 const MONTHS = [
   "janeiro", "fevereiro", "março", "abril", "maio", "junho",
@@ -54,6 +54,9 @@ export default function SalesDashboard() {
   const [statusFilter, setStatusFilter] = useState("all");
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const [syncing, setSyncing] = useState(false);
+  const [clearing, setClearing] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const startDate = new Date(year, month, 1).toISOString();
   const endDate = new Date(year, month + 1, 0, 23, 59, 59).toISOString();
 
@@ -89,6 +92,14 @@ export default function SalesDashboard() {
     return orders.filter(o => o.status === statusFilter);
   }, [orders, statusFilter]);
 
+  useEffect(() => {
+    if (!selectedOrder?.id || !orders) return;
+    const refreshedOrder = orders.find((order) => order.id === selectedOrder.id);
+    if (refreshedOrder) {
+      setSelectedOrder(refreshedOrder);
+    }
+  }, [orders, selectedOrder?.id]);
+
   const metrics = useMemo(() => {
     const billable = filteredOrders.filter(o => o.status !== "cancelled" && o.payment_status === "paid");
     const totalRevenue = billable.reduce((sum, o) => sum + (o.total || 0), 0);
@@ -109,13 +120,23 @@ export default function SalesDashboard() {
     return { totalRevenue, totalOrders, avgTicket, totalItems, totalCosts, netProfit };
   }, [filteredOrders]);
 
+  type EditableOrderField = "supplier" | "production_cost";
+
   const updateOrderField = useMutation({
-    mutationFn: async ({ orderId, field, value }: { orderId: string; field: string; value: string | number | null }) => {
-      const { error } = await supabase
+    mutationFn: async ({ orderId, field, value }: { orderId: string; field: EditableOrderField; value: string | number | null }) => {
+      const payload = field === "supplier"
+        ? { supplier: typeof value === "string" ? value.trim() || null : null }
+        : { production_cost: typeof value === "number" ? value : null };
+
+      const { data, error } = await supabase
         .from("nuvemshop_orders")
-        .update({ [field]: value } as any)
-        .eq("id", orderId);
+        .update(payload as any)
+        .eq("id", orderId)
+        .select("*")
+        .single();
+
       if (error) throw error;
+      return data;
     },
     onMutate: async ({ orderId, field, value }) => {
       await queryClient.cancelQueries({ queryKey: ["sales-dashboard", month, year] });
@@ -128,6 +149,11 @@ export default function SalesDashboard() {
       });
       return { previousOrders };
     },
+    onSuccess: (updatedOrder) => {
+      if (selectedOrder?.id === updatedOrder.id) {
+        setSelectedOrder(updatedOrder);
+      }
+    },
     onError: (err: any, _vars, context) => {
       if (context?.previousOrders) {
         queryClient.setQueryData(["sales-dashboard", month, year], context.previousOrders);
@@ -139,9 +165,6 @@ export default function SalesDashboard() {
     },
   });
 
-  const [syncing, setSyncing] = useState(false);
-  const [clearing, setClearing] = useState(false);
-  const [selectedOrder, setSelectedOrder] = useState<any>(null);
 
   const handleSync = async () => {
     setSyncing(true);
@@ -418,8 +441,16 @@ export default function SalesDashboard() {
               <span>{selectedOrder?.customer_name || "—"}</span>
               <span className="text-muted-foreground">Data</span>
               <span>{selectedOrder ? new Date(selectedOrder.order_date || selectedOrder.created_at).toLocaleDateString("pt-BR") : ""}</span>
+              <span className="text-muted-foreground">Fornecedor</span>
+              <span>{selectedOrder?.supplier || "—"}</span>
               <span className="text-muted-foreground">Total</span>
               <span className="font-bold">{selectedOrder ? formatCurrency(selectedOrder.total || 0) : ""}</span>
+              <span className="text-muted-foreground">Custo</span>
+              <span>{selectedOrder ? formatCurrency(selectedOrder.production_cost || 0) : "—"}</span>
+              <span className="text-muted-foreground">Líquido</span>
+              <span className="font-bold text-primary">
+                {selectedOrder ? formatCurrency((selectedOrder.total || 0) - (selectedOrder.production_cost || 0)) : ""}
+              </span>
             </div>
 
             <div>
@@ -474,14 +505,33 @@ function InlineSupplierEditor({ value, onSave }: { value: string; onSave: (val: 
   const [open, setOpen] = useState(false);
   const [custom, setCustom] = useState("");
 
+  const handleOpen = (isOpen: boolean) => {
+    if (isOpen) {
+      setCustom(SUPPLIERS.includes(value) ? "" : value);
+    }
+    setOpen(isOpen);
+  };
+
   const handleSelect = (supplier: string) => {
-    onSave(supplier);
+    const nextSupplier = supplier.trim();
+    if (!nextSupplier) {
+      toast.error("Informe um fornecedor válido");
+      return;
+    }
+
+    if (nextSupplier.length > 80) {
+      toast.error("Fornecedor muito longo");
+      return;
+    }
+
+    onSave(nextSupplier);
+    setCustom("");
     setOpen(false);
     toast.success("Fornecedor salvo!");
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={handleOpen}>
       <PopoverTrigger asChild>
         <button className="flex items-center gap-1 text-sm hover:text-primary transition-colors cursor-pointer group">
           {value ? (
@@ -497,7 +547,7 @@ function InlineSupplierEditor({ value, onSave }: { value: string; onSave: (val: 
           )}
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-48 p-2 space-y-1" align="start">
+      <PopoverContent className="w-56 p-2 space-y-2" align="start">
         {SUPPLIERS.map((s) => (
           <button
             key={s}
@@ -507,36 +557,42 @@ function InlineSupplierEditor({ value, onSave }: { value: string; onSave: (val: 
             {s}
           </button>
         ))}
-        <div className="flex gap-1 pt-1 border-t">
-          <Input
-            placeholder="Outro..."
-            className="h-7 text-xs"
-            value={custom}
-            onChange={(e) => setCustom(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && custom.trim()) {
-                handleSelect(custom.trim());
-                setCustom("");
-              }
-            }}
-          />
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 shrink-0"
-            disabled={!custom.trim()}
-            onClick={() => {
-              handleSelect(custom.trim());
-              setCustom("");
-            }}
-          >
-            <Check className="w-3 h-3" />
-          </Button>
+        <div className="space-y-1 pt-2 border-t">
+          <label className="text-xs text-muted-foreground">Outro fornecedor</label>
+          <div className="flex gap-1">
+            <Input
+              placeholder="Digite o nome"
+              className="h-8 text-sm"
+              maxLength={80}
+              value={custom}
+              onChange={(e) => setCustom(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  handleSelect(custom);
+                }
+              }}
+              autoFocus
+            />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 shrink-0"
+              disabled={!custom.trim()}
+              onClick={() => handleSelect(custom)}
+            >
+              <Check className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
         {value && (
           <button
             className="w-full text-left px-3 py-1 rounded text-xs text-destructive hover:bg-destructive/10 transition-colors"
-            onClick={() => { onSave(""); setOpen(false); toast.success("Fornecedor removido!"); }}
+            onClick={() => {
+              onSave("");
+              setCustom("");
+              setOpen(false);
+              toast.success("Fornecedor removido!");
+            }}
           >
             Remover
           </button>
