@@ -54,6 +54,9 @@ export default function SalesDashboard() {
   const [statusFilter, setStatusFilter] = useState("all");
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const [syncing, setSyncing] = useState(false);
+  const [clearing, setClearing] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const startDate = new Date(year, month, 1).toISOString();
   const endDate = new Date(year, month + 1, 0, 23, 59, 59).toISOString();
 
@@ -162,9 +165,6 @@ export default function SalesDashboard() {
     },
   });
 
-  const [syncing, setSyncing] = useState(false);
-  const [clearing, setClearing] = useState(false);
-  const [selectedOrder, setSelectedOrder] = useState<any>(null);
 
   const handleSync = async () => {
     setSyncing(true);
