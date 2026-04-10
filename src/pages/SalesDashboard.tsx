@@ -117,11 +117,25 @@ export default function SalesDashboard() {
         .eq("id", orderId);
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["sales-dashboard"] });
+    onMutate: async ({ orderId, field, value }) => {
+      await queryClient.cancelQueries({ queryKey: ["sales-dashboard", month, year] });
+      const previousOrders = queryClient.getQueryData(["sales-dashboard", month, year]);
+      queryClient.setQueryData(["sales-dashboard", month, year], (old: any[] | undefined) => {
+        if (!old) return old;
+        return old.map((order: any) =>
+          order.id === orderId ? { ...order, [field]: value } : order
+        );
+      });
+      return { previousOrders };
     },
-    onError: (err: any) => {
+    onError: (err: any, _vars, context) => {
+      if (context?.previousOrders) {
+        queryClient.setQueryData(["sales-dashboard", month, year], context.previousOrders);
+      }
       toast.error("Erro ao salvar: " + (err.message || "Erro desconhecido"));
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["sales-dashboard", month, year] });
     },
   });
 
