@@ -1,6 +1,8 @@
+import { useState, useEffect } from "react";
 import { Image, FileText, Play, Volume2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LinkPreview, extractUrls } from "./LinkPreview";
+import { resolveMediaUrl } from "@/lib/mediaUrl";
 
 interface MediaPreviewProps {
   type: "image" | "audio" | "video" | "document" | "text";
@@ -10,6 +12,20 @@ interface MediaPreviewProps {
 }
 
 export function MediaPreview({ type, url, content, isAgent }: MediaPreviewProps) {
+  const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (url) {
+      resolveMediaUrl(url).then((resolved) => {
+        if (!cancelled) setResolvedUrl(resolved);
+      });
+    } else {
+      setResolvedUrl(null);
+    }
+    return () => { cancelled = true; };
+  }, [url]);
+
   // For text messages, check if there are URLs to preview
   if (type === "text" || !url) {
     const urls = extractUrls(content);
@@ -29,8 +45,8 @@ export function MediaPreview({ type, url, content, isAgent }: MediaPreviewProps)
   }
 
   const handleClick = () => {
-    if (url) {
-      window.open(url, "_blank");
+    if (resolvedUrl) {
+      window.open(resolvedUrl, "_blank");
     }
   };
 
@@ -41,26 +57,27 @@ export function MediaPreview({ type, url, content, isAgent }: MediaPreviewProps)
           className="relative cursor-pointer rounded-lg overflow-hidden max-w-[240px]"
           onClick={handleClick}
         >
-          <img 
-            src={url} 
-            alt={content || "Imagem"} 
-            className="w-full h-auto object-cover rounded-lg"
-            loading="lazy"
-            crossOrigin="anonymous"
-            onError={(e) => {
-              // Fallback if image fails to load - replace img with placeholder
-              const target = e.target as HTMLImageElement;
-              target.style.display = "none";
-              const parent = target.parentElement;
-              if (parent) {
-                const fallback = parent.querySelector('.image-fallback') as HTMLElement;
-                if (fallback) fallback.style.display = "flex";
-              }
-            }}
-          />
+          {resolvedUrl ? (
+            <img 
+              src={resolvedUrl} 
+              alt={content || "Imagem"} 
+              className="w-full h-auto object-cover rounded-lg"
+              loading="lazy"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.style.display = "none";
+                const parent = target.parentElement;
+                if (parent) {
+                  const fallback = parent.querySelector('.image-fallback') as HTMLElement;
+                  if (fallback) fallback.style.display = "flex";
+                }
+              }}
+            />
+          ) : null}
           <div 
             className={cn(
-              "image-fallback hidden items-center justify-center gap-2 p-6 rounded-lg min-w-[120px]",
+              "image-fallback items-center justify-center gap-2 p-6 rounded-lg min-w-[120px]",
+              resolvedUrl ? "hidden" : "flex",
               isAgent ? "bg-primary-foreground/10" : "bg-background/50"
             )}
           >
@@ -79,16 +96,22 @@ export function MediaPreview({ type, url, content, isAgent }: MediaPreviewProps)
     return (
       <div className="space-y-1">
         <div className="relative rounded-lg overflow-hidden max-w-[280px]">
-          <video 
-            src={url} 
-            controls
-            className="w-full h-auto rounded-lg"
-            preload="metadata"
-            controlsList="nodownload"
-            playsInline
-          >
-            Seu navegador não suporta vídeos.
-          </video>
+          {resolvedUrl ? (
+            <video 
+              src={resolvedUrl} 
+              controls
+              className="w-full h-auto rounded-lg"
+              preload="metadata"
+              controlsList="nodownload"
+              playsInline
+            >
+              Seu navegador não suporta vídeos.
+            </video>
+          ) : (
+            <div className="flex items-center justify-center p-6">
+              <Play className="w-8 h-8 text-muted-foreground" />
+            </div>
+          )}
         </div>
         {content && content !== "[Vídeo]" && (
           <p className="text-sm whitespace-pre-wrap break-words">{content}</p>
@@ -106,15 +129,19 @@ export function MediaPreview({ type, url, content, isAgent }: MediaPreviewProps)
         )}
       >
         <Volume2 className="w-5 h-5 flex-shrink-0" />
-        <audio 
-          src={url} 
-          controls
-          className="flex-1 h-8"
-          preload="metadata"
-          controlsList="nodownload"
-        >
-          Seu navegador não suporta áudios.
-        </audio>
+        {resolvedUrl ? (
+          <audio 
+            src={resolvedUrl} 
+            controls
+            className="flex-1 h-8"
+            preload="metadata"
+            controlsList="nodownload"
+          >
+            Seu navegador não suporta áudios.
+          </audio>
+        ) : (
+          <span className="text-sm text-muted-foreground">Carregando áudio...</span>
+        )}
       </div>
     );
   }

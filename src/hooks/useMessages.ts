@@ -137,10 +137,14 @@ export function useSendMediaMessage() {
       caption?: string;
       channel?: "whatsapp" | "instagram";
     }) => {
-      // Upload file to storage
+      // Get current user for storage path ownership
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Usuário não autenticado");
+
+      // Upload file to storage with user_id prefix
       const fileExt = file.name.split('.').pop() || 'png';
       const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-      const filePath = `images/${fileName}`;
+      const filePath = `${user.id}/images/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from("whatsapp-media")
@@ -148,12 +152,8 @@ export function useSendMediaMessage() {
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
-      const { data: urlData } = supabase.storage
-        .from("whatsapp-media")
-        .getPublicUrl(filePath);
-
-      const mediaUrl = urlData.publicUrl;
+      // Store as storage path reference (bucket is private, signed URLs used for display)
+      const mediaUrl = `whatsapp-media:${filePath}`;
 
       // For WhatsApp, use the edge function to send via UAZAPI
       if (channel === "whatsapp") {

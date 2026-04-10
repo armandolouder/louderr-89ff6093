@@ -96,13 +96,26 @@ serve(async (req) => {
         body: JSON.stringify(requestBody),
       });
     } else if (mediaUrl) {
+      // Resolve storage path to a signed URL for UAZAPI to download
+      let fileUrl = mediaUrl;
+      if (mediaUrl.startsWith("whatsapp-media:")) {
+        const storagePath = mediaUrl.replace("whatsapp-media:", "");
+        const { data: signedData, error: signedError } = await supabase.storage
+          .from("whatsapp-media")
+          .createSignedUrl(storagePath, 3600);
+        if (signedError || !signedData?.signedUrl) {
+          throw new Error("Failed to create signed URL for media");
+        }
+        fileUrl = signedData.signedUrl;
+      }
+
       // UAZAPI /send/media endpoint
       // Docs: https://docs.uazapi.com/endpoint/post/send~media
       // Fields: number, type (image/video/audio/document), file (URL), text (caption)
       requestBody = {
         number: formattedPhone,
         type: messageType, // image, video, audio, document
-        file: mediaUrl,
+        file: fileUrl,
         text: content || "",
       };
 

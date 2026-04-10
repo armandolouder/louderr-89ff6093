@@ -680,18 +680,21 @@ export type Database = {
           id: string
           reason: string | null
           unsubscribed_at: string
+          user_id: string | null
         }
         Insert: {
           email: string
           id?: string
           reason?: string | null
           unsubscribed_at?: string
+          user_id?: string | null
         }
         Update: {
           email?: string
           id?: string
           reason?: string | null
           unsubscribed_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }

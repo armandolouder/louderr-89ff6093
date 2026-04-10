@@ -64,7 +64,8 @@ async function downloadAndStoreMedia(
   supabase: ReturnType<typeof createClient>,
   messageId: string,
   messageType: string,
-  mimetype: string | null
+  mimetype: string | null,
+  ownerUserId?: string | null
 ): Promise<string | null> {
   const UAZAPI_SERVER_URL = Deno.env.get("UAZAPI_SERVER_URL");
   const UAZAPI_INSTANCE_TOKEN = Deno.env.get("UAZAPI_INSTANCE_TOKEN");
@@ -109,7 +110,7 @@ async function downloadAndStoreMedia(
         for (let i = 0; i < binaryString.length; i++) {
           bytes[i] = binaryString.charCodeAt(i);
         }
-        return await uploadToStorage(supabase, bytes.buffer, messageId, messageType, mimetype || data.mimetype, SUPABASE_URL!);
+        return await uploadToStorage(supabase, bytes.buffer, messageId, messageType, mimetype || data.mimetype, SUPABASE_URL!, ownerUserId);
       }
       
       if (!mediaDownloadUrl) {
@@ -123,11 +124,11 @@ async function downloadAndStoreMedia(
         return null;
       }
       const mediaBuffer = await mediaResponse.arrayBuffer();
-      return await uploadToStorage(supabase, mediaBuffer, messageId, messageType, mimetype, SUPABASE_URL!);
+      return await uploadToStorage(supabase, mediaBuffer, messageId, messageType, mimetype, SUPABASE_URL!, ownerUserId);
     } else {
       const mediaBuffer = await response.arrayBuffer();
       const responseMimetype = contentType.split(";")[0].trim() || mimetype;
-      return await uploadToStorage(supabase, mediaBuffer, messageId, messageType, responseMimetype, SUPABASE_URL!);
+      return await uploadToStorage(supabase, mediaBuffer, messageId, messageType, responseMimetype, SUPABASE_URL!, ownerUserId);
     }
   } catch (error) {
     console.error("Error downloading/storing media:", error);
@@ -141,7 +142,8 @@ async function uploadToStorage(
   messageId: string,
   messageType: string,
   mimetype: string | null,
-  supabaseUrl: string
+  supabaseUrl: string,
+  ownerUserId?: string | null
 ): Promise<string | null> {
   const contentType = mimetype || "application/octet-stream";
   
@@ -162,7 +164,8 @@ async function uploadToStorage(
   const folder = messageType === "image" ? "images" :
                  messageType === "video" ? "videos" :
                  messageType === "audio" ? "audios" : "documents";
-  const filename = `${folder}/${timestamp}_${messageId}.${ext}`;
+  const userPrefix = ownerUserId ? `${ownerUserId}/` : "";
+  const filename = `${userPrefix}${folder}/${timestamp}_${messageId}.${ext}`;
 
   console.log(`Uploading to storage: ${filename} (${contentType})`);
 
@@ -178,10 +181,12 @@ async function uploadToStorage(
     return null;
   }
 
-  const publicUrl = `${supabaseUrl}/storage/v1/object/public/whatsapp-media/${filename}`;
-  console.log("Media stored at:", publicUrl);
+  // Store the path (not a public URL since bucket is now private)
+  // The client will generate signed URLs when displaying
+  const storagePath = `whatsapp-media:${filename}`;
+  console.log("Media stored at path:", storagePath);
   
-  return publicUrl;
+  return storagePath;
 }
 
 serve(async (req) => {
@@ -385,7 +390,7 @@ serve(async (req) => {
 
       if (messageType !== "text" && msg.messageid) {
         console.log(`Downloading ${messageType} media for message ${msg.messageid}`);
-        const storedUrl = await downloadAndStoreMedia(supabase, msg.messageid, messageType, mimetype);
+        const storedUrl = await downloadAndStoreMedia(supabase, msg.messageid, messageType, mimetype, ownerUserId);
         if (storedUrl) {
           mediaUrl = storedUrl;
         } else if (originalMediaUrl) {
