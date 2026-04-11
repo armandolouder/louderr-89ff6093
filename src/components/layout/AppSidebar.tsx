@@ -11,6 +11,7 @@ import {
   ExternalLink,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Megaphone,
   TrendingUp,
   ShoppingCart,
@@ -19,22 +20,36 @@ import {
   Grid3X3,
   Mail,
   Eye,
+  FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 
-const navigation = [
+interface NavItem {
+  name: string;
+  href?: string;
+  icon: any;
+  children?: { name: string; href: string; icon: any }[];
+}
+
+const navigation: NavItem[] = [
   { name: "Atendimentos", href: "/inbox", icon: MessageSquare },
   { name: "Painel de Vendas", href: "/sales", icon: TrendingUp },
   { name: "Clientes", href: "/customers", icon: Users },
   { name: "Matriz RFM", href: "/rfm", icon: Grid3X3 },
   { name: "Campanhas", href: "/campaigns", icon: Megaphone },
-  { name: "Email Marketing", href: "/email-marketing", icon: Mail },
+  { name: "Jornada do Cliente", href: "/journeys", icon: Route },
+  {
+    name: "Templates",
+    icon: FileText,
+    children: [
+      { name: "WhatsApp", href: "/automations", icon: MessageSquare },
+      { name: "Email Builder", href: "/email-marketing", icon: Mail },
+    ],
+  },
   { name: "Carrinhos", href: "/abandoned-checkouts", icon: ShoppingCart },
   { name: "Recovery Engine", href: "/recovery", icon: Rocket },
-  { name: "Automações", href: "/automations", icon: Workflow },
-  { name: "Jornada do Cliente", href: "/journeys", icon: Route },
   { name: "Rastreamento", href: "/tracking", icon: Eye },
   { name: "Bot", href: "/bot", icon: Bot },
   { name: "APIs", href: "/apis", icon: Zap },
@@ -45,6 +60,14 @@ const META_INBOX_URL = "https://business.facebook.com/latest/inbox/all";
 export function AppSidebar() {
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
+  const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
+
+  const toggleMenu = (name: string) => {
+    setOpenMenus((prev) => ({ ...prev, [name]: !prev[name] }));
+  };
+
+  const isChildActive = (children?: { href: string }[]) =>
+    children?.some((c) => location.pathname === c.href) || false;
 
   return (
     <aside
@@ -72,13 +95,84 @@ export function AppSidebar() {
         </Button>
       </div>
 
-      <nav className="flex-1 p-2 space-y-1">
+      <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
         {navigation.map((item) => {
+          if (item.children) {
+            const childActive = isChildActive(item.children);
+            const isOpen = openMenus[item.name] ?? childActive;
+
+            if (collapsed) {
+              // In collapsed mode, show children as direct icons
+              return item.children.map((child) => {
+                const isActive = location.pathname === child.href;
+                return (
+                  <Link
+                    key={child.href}
+                    to={child.href}
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
+                      isActive
+                        ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-glow"
+                        : "text-sidebar-foreground hover:bg-sidebar-accent"
+                    )}
+                  >
+                    <child.icon className="w-5 h-5 flex-shrink-0" />
+                  </Link>
+                );
+              });
+            }
+
+            return (
+              <div key={item.name}>
+                <button
+                  onClick={() => toggleMenu(item.name)}
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 w-full",
+                    childActive
+                      ? "text-sidebar-primary-foreground bg-sidebar-accent"
+                      : "text-sidebar-foreground hover:bg-sidebar-accent"
+                  )}
+                >
+                  <item.icon className="w-5 h-5 flex-shrink-0" />
+                  <span className="flex-1 text-left">{item.name}</span>
+                  <ChevronDown
+                    className={cn(
+                      "w-4 h-4 transition-transform duration-200",
+                      isOpen && "rotate-180"
+                    )}
+                  />
+                </button>
+                {isOpen && (
+                  <div className="ml-4 mt-1 space-y-0.5 border-l border-border pl-3">
+                    {item.children.map((child) => {
+                      const isActive = location.pathname === child.href;
+                      return (
+                        <Link
+                          key={child.href}
+                          to={child.href}
+                          className={cn(
+                            "flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+                            isActive
+                              ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-glow"
+                              : "text-sidebar-foreground hover:bg-sidebar-accent"
+                          )}
+                        >
+                          <child.icon className="w-4 h-4 flex-shrink-0" />
+                          <span>{child.name}</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          }
+
           const isActive = location.pathname === item.href;
           return (
             <Link
               key={item.name}
-              to={item.href}
+              to={item.href!}
               className={cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
                 isActive
@@ -92,7 +186,7 @@ export function AppSidebar() {
           );
         })}
 
-        {/* Meta Inbox - abre em nova aba */}
+        {/* Meta Inbox */}
         <a
           href={META_INBOX_URL}
           target="_blank"
