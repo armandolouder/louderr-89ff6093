@@ -217,124 +217,184 @@ Deno.serve(async (req) => {
 
     const triggerEvent = triggerMap[event];
     if (triggerEvent && customerPhone) {
-      const { data: flows } = await supabase
-        .from("automation_flows")
-        .select("*")
-        .eq("trigger_event", triggerEvent)
-        .eq("status", "active");
+      const phone = customerPhone.replace(/\D/g, "");
 
-      if (flows && flows.length > 0) {
-        const phone = customerPhone.replace(/\D/g, "");
-        console.log(`Found ${flows.length} active flows for event ${triggerEvent}, phone: ${phone}`);
-        
-        for (const flow of flows) {
-          // Deduplication: skip if execution already exists for this flow + order
-          const { data: existingExec } = await supabase
-            .from("automation_executions")
-            .select("id")
-            .eq("flow_id", flow.id)
-            .eq("phone", phone)
-            .filter("trigger_data->>order_id", "eq", String(orderId))
-            .limit(1);
+      // ── Journey trigger (priority over automations) ──
+      const journeyTriggerMap: Record<string, string> = {
+        "order/created": "purchase",
+        "order/paid": "purchase",
+        "order/packed": "delivered",
+        "order/fulfilled": "shipped",
+      };
+      const journeyTrigger = journeyTriggerMap[event];
+      let journeyHandled = false;
 
-          if (existingExec && existingExec.length > 0) {
-            console.log(`Skipping duplicate: flow ${flow.name} already scheduled for order ${orderId}`);
-            continue;
-          }
+      if (journeyTrigger) {
+        const { data: journeys } = await supabase
+          .from("customer_journeys")
+          .select("id, nodes, trigger_event")
+          .eq("trigger_event", journeyTrigger)
+          .eq("is_active", true)
+          .eq("status", "active");
 
-          // Calculate scheduled time based on delay
-          const now = new Date();
-          let delayMs = 0;
-          if (flow.delay_unit === "minutes") delayMs = flow.delay_value * 60 * 1000;
-          else if (flow.delay_unit === "hours") delayMs = flow.delay_value * 3600 * 1000;
-          else if (flow.delay_unit === "days") delayMs = flow.delay_value * 86400 * 1000;
-          
-          const scheduledAt = new Date(now.getTime() + delayMs);
+        if (journeys && journeys.length > 0) {
+          journeyHandled = true;
+          for (const journey of journeys) {
+            // Dedup: skip if execution exists for this journey + order
+            const { data: existingJExec } = await supabase
+              .from("journey_executions")
+              .select("id")
+              .eq("journey_id", journey.id)
+              .eq("customer_phone", phone)
+              .gte("started_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+              .limit(1);
 
-          // Replace variables in message
-          const productsList = products.map((p: any) => `${p.quantity}x ${p.name}`).join("\n");
-          const trackingCode = order.shipping_tracking_number || order.tracking_number || "";
-          const firstName = (customerName || "Cliente").split(" ")[0];
+            if (existingJExec && existingJExec.length > 0) {
+              console.log(`Journey dedup: ${journey.id} already running for ${phone}`);
+              continue;
+            }
 
-          const messageContent = (flow.message_content || "")
-            .replace(/\[nome_cliente\]/g, firstName)
-            .replace(/\[numero_pedido\]/g, order.number || String(orderId))
-            .replace(/\[total_pedido\]/g, `R$ ${total.toFixed(2).replace(".", ",")}`)
-            .replace(/\[link_pagamento\]/g, order.checkout_url || "")
-            .replace(/\[link_boleto\]/g, order.payment_details?.boleto_url || "")
-            .replace(/\[url_sucesso_pedido\]/g, checkoutSuccessUrl)
-            .replace(/\[url_sucesso\]/g, checkoutSuccessUrl || "https://www.louder.ink")
-            .replace(/\[lista_produtos\]/g, productsList)
-            .replace(/\[codigo_rastreio\]/g, trackingCode);
-
-          const { error: execError } = await supabase.from("automation_executions").insert({
-            flow_id: flow.id,
-            trigger_data: {
-              order_id: orderId,
-              event,
-              customer_name: customerName,
+            const { error: jExecErr } = await supabase.from("journey_executions").insert({
+              journey_id: journey.id,
               customer_phone: phone,
-              message_content: messageContent,
-              media_url: flow.media_url,
-              media_type: flow.media_type,
-            },
-            scheduled_at: scheduledAt.toISOString(),
-            phone,
-            customer_name: customerName,
-            status: "pending",
-          });
+              customer_email: customerEmail,
+              customer_name: customerName,
+              user_id: ownerUserId,
+              status: "active",
+              started_at: new Date().toISOString(),
+              next_action_at: new Date().toISOString(),
+              execution_data: { trigger_order_id: orderId, trigger_event: event },
+            });
 
-          if (execError) {
-            console.error(`Error scheduling automation ${flow.name}:`, execError);
-          } else {
-            console.log(`Automation scheduled: ${flow.name} for ${phone} at ${scheduledAt.toISOString()}`);
-          }
-        }
-
-        // Also schedule post-sale follow-ups if event is order/fulfilled
-        if (event === "order/fulfilled") {
-          const postSaleEvents = ["post_sale_15d", "post_sale_30d", "post_sale_45d", "post_sale_60d"];
-          const postSaleDays = [15, 30, 45, 60];
-
-          for (let i = 0; i < postSaleEvents.length; i++) {
-            const { data: postFlows } = await supabase
-              .from("automation_flows")
-              .select("*")
-              .eq("trigger_event", postSaleEvents[i])
-              .eq("status", "active");
-
-            if (postFlows && postFlows.length > 0) {
-              for (const flow of postFlows) {
-                const scheduledAt = new Date(Date.now() + postSaleDays[i] * 86400 * 1000);
-                const postFirstName = (customerName || "Cliente").split(" ")[0];
-                const messageContent = (flow.message_content || "")
-                  .replace(/\[nome_cliente\]/g, postFirstName)
-                  .replace(/\[numero_pedido\]/g, order.number || String(orderId));
-
-                await supabase.from("automation_executions").insert({
-                  flow_id: flow.id,
-                  trigger_data: {
-                    order_id: orderId,
-                    event: postSaleEvents[i],
-                    customer_name: customerName,
-                    customer_phone: phone,
-                    message_content: messageContent,
-                    media_url: flow.media_url,
-                    media_type: flow.media_type,
-                  },
-                  scheduled_at: scheduledAt.toISOString(),
-                  phone,
-                  customer_name: customerName,
-                  status: "pending",
-                });
-
-                console.log(`Post-sale scheduled: ${flow.name} for ${phone} at ${scheduledAt.toISOString()}`);
-              }
+            if (jExecErr) {
+              console.error(`Error creating journey execution:`, jExecErr);
+            } else {
+              console.log(`Journey execution created: ${journey.id} for ${phone}`);
             }
           }
         }
-      } else {
-        console.log(`No active flows found for event ${triggerEvent}`);
+      }
+
+      // Only trigger legacy automations if no journey handled this event
+      if (!journeyHandled) {
+        const { data: flows } = await supabase
+          .from("automation_flows")
+          .select("*")
+          .eq("trigger_event", triggerEvent)
+          .eq("status", "active");
+
+        if (flows && flows.length > 0) {
+          console.log(`Found ${flows.length} active flows for event ${triggerEvent}, phone: ${phone}`);
+          
+          for (const flow of flows) {
+            // Deduplication: skip if execution already exists for this flow + order
+            const { data: existingExec } = await supabase
+              .from("automation_executions")
+              .select("id")
+              .eq("flow_id", flow.id)
+              .eq("phone", phone)
+              .filter("trigger_data->>order_id", "eq", String(orderId))
+              .limit(1);
+
+            if (existingExec && existingExec.length > 0) {
+              console.log(`Skipping duplicate: flow ${flow.name} already scheduled for order ${orderId}`);
+              continue;
+            }
+
+            // Calculate scheduled time based on delay
+            const now = new Date();
+            let delayMs = 0;
+            if (flow.delay_unit === "minutes") delayMs = flow.delay_value * 60 * 1000;
+            else if (flow.delay_unit === "hours") delayMs = flow.delay_value * 3600 * 1000;
+            else if (flow.delay_unit === "days") delayMs = flow.delay_value * 86400 * 1000;
+            
+            const scheduledAt = new Date(now.getTime() + delayMs);
+
+            // Replace variables in message
+            const productsList = products.map((p: any) => `${p.quantity}x ${p.name}`).join("\n");
+            const trackingCode = order.shipping_tracking_number || order.tracking_number || "";
+            const firstName = (customerName || "Cliente").split(" ")[0];
+
+            const messageContent = (flow.message_content || "")
+              .replace(/\[nome_cliente\]/g, firstName)
+              .replace(/\[numero_pedido\]/g, order.number || String(orderId))
+              .replace(/\[total_pedido\]/g, `R$ ${total.toFixed(2).replace(".", ",")}`)
+              .replace(/\[link_pagamento\]/g, order.checkout_url || "")
+              .replace(/\[link_boleto\]/g, order.payment_details?.boleto_url || "")
+              .replace(/\[url_sucesso_pedido\]/g, checkoutSuccessUrl)
+              .replace(/\[url_sucesso\]/g, checkoutSuccessUrl || "https://www.louder.ink")
+              .replace(/\[lista_produtos\]/g, productsList)
+              .replace(/\[codigo_rastreio\]/g, trackingCode);
+
+            const { error: execError } = await supabase.from("automation_executions").insert({
+              flow_id: flow.id,
+              trigger_data: {
+                order_id: orderId,
+                event,
+                customer_name: customerName,
+                customer_phone: phone,
+                message_content: messageContent,
+                media_url: flow.media_url,
+                media_type: flow.media_type,
+              },
+              scheduled_at: scheduledAt.toISOString(),
+              phone,
+              customer_name: customerName,
+              status: "pending",
+            });
+
+            if (execError) {
+              console.error(`Error scheduling automation ${flow.name}:`, execError);
+            } else {
+              console.log(`Automation scheduled: ${flow.name} for ${phone} at ${scheduledAt.toISOString()}`);
+            }
+          }
+
+          // Also schedule post-sale follow-ups if event is order/fulfilled
+          if (event === "order/fulfilled") {
+            const postSaleEvents = ["post_sale_15d", "post_sale_30d", "post_sale_45d", "post_sale_60d"];
+            const postSaleDays = [15, 30, 45, 60];
+
+            for (let i = 0; i < postSaleEvents.length; i++) {
+              const { data: postFlows } = await supabase
+                .from("automation_flows")
+                .select("*")
+                .eq("trigger_event", postSaleEvents[i])
+                .eq("status", "active");
+
+              if (postFlows && postFlows.length > 0) {
+                for (const flow of postFlows) {
+                  const scheduledAt = new Date(Date.now() + postSaleDays[i] * 86400 * 1000);
+                  const postFirstName = (customerName || "Cliente").split(" ")[0];
+                  const messageContent = (flow.message_content || "")
+                    .replace(/\[nome_cliente\]/g, postFirstName)
+                    .replace(/\[numero_pedido\]/g, order.number || String(orderId));
+
+                  await supabase.from("automation_executions").insert({
+                    flow_id: flow.id,
+                    trigger_data: {
+                      order_id: orderId,
+                      event: postSaleEvents[i],
+                      customer_name: customerName,
+                      customer_phone: phone,
+                      message_content: messageContent,
+                      media_url: flow.media_url,
+                      media_type: flow.media_type,
+                    },
+                    scheduled_at: scheduledAt.toISOString(),
+                    phone,
+                    customer_name: customerName,
+                    status: "pending",
+                  });
+
+                  console.log(`Post-sale scheduled: ${flow.name} for ${phone} at ${scheduledAt.toISOString()}`);
+                }
+              }
+            }
+          }
+        } else {
+          console.log(`No active flows found for event ${triggerEvent}`);
+        }
       }
     } else {
       console.log(`Skipping automation: triggerEvent=${triggerEvent}, customerPhone=${customerPhone}`);
