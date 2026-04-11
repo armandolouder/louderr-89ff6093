@@ -47,8 +47,8 @@ export function EmailTemplatePreview() {
       const { data, error } = await supabase
         .from("email_templates")
         .select("id, name, subject, html_content")
-        .eq("category", "recuperacao")
         .eq("is_active", true)
+        .or("category.eq.recuperacao,name.ilike.%Recupera%")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data || [];

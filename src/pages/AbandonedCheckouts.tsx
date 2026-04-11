@@ -42,8 +42,8 @@ export default function AbandonedCheckouts() {
       const { data, error } = await supabase
         .from("email_templates")
         .select("id, name, subject, category")
-        .eq("category", "recuperacao")
         .eq("is_active", true)
+        .or("category.eq.recuperacao,name.ilike.%Recupera%")
         .order("name");
       if (error) throw error;
       return data || [];
@@ -225,9 +225,14 @@ export default function AbandonedCheckouts() {
     }
   };
 
-  const sendEmail = async (checkout: any, templateName?: string) => {
+  const sendEmail = async (checkout: any, templateId?: string) => {
     if (!checkout.customer_email) {
       toast.error("Este cliente não tem e-mail cadastrado");
+      return;
+    }
+
+    if (!templateId) {
+      toast.error("Selecione um template de recuperação");
       return;
     }
 
@@ -238,16 +243,6 @@ export default function AbandonedCheckouts() {
       const total = checkout.total || 0;
       const recoveryUrl = checkout.recovery_url || "";
 
-      // Derive stepType from template name
-      let stepType = "emocional";
-      if (templateName) {
-        const lower = templateName.toLowerCase();
-        if (lower.includes("urgência") || lower.includes("urgencia")) stepType = "urgencia";
-        else if (lower.includes("incentivo")) stepType = "incentivo";
-        else if (lower.includes("última chamada") || lower.includes("ultima")) stepType = "ultima_chamada";
-        else if (lower.includes("leve")) stepType = "leve";
-      }
-
       const res = await supabase.functions.invoke("send-brevo-email", {
         body: {
           action: "send-recovery",
@@ -256,7 +251,7 @@ export default function AbandonedCheckouts() {
           products,
           total,
           recoveryUrl,
-          stepType,
+          templateId,
           variant: "A",
         },
       });
@@ -562,9 +557,8 @@ export default function AbandonedCheckouts() {
                 size="sm"
                 disabled={!selectedTemplateId || sendingEmailId === emailPickerCheckout?.id}
                 onClick={() => {
-                  const template = recoveryTemplates?.find((t) => t.id === selectedTemplateId);
-                  if (template && emailPickerCheckout) {
-                    sendEmail(emailPickerCheckout, template.name);
+                  if (emailPickerCheckout) {
+                    sendEmail(emailPickerCheckout, selectedTemplateId);
                   }
                 }}
               >

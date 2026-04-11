@@ -8,20 +8,30 @@ const STEP_NAME_MAP: Record<string, string> = {
   leve: "Leve",
 };
 
-async function fetchTemplateFromDB(stepType: string, userId: string | null): Promise<{ subject: string; html: string } | null> {
+async function fetchTemplateFromDB(options: { templateId?: string; stepType?: string; userId?: string }): Promise<{ subject: string; html: string } | null> {
   try {
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
-    const keyword = STEP_NAME_MAP[stepType] || "Emocional";
-    const { data, error } = await supabaseAdmin
+
+    let query = supabaseAdmin
       .from("email_templates")
-      .select("subject, html_content")
-      .eq("category", "recuperacao")
-      .ilike("name", `%${keyword}%`)
-      .limit(1)
-      .maybeSingle();
+      .select("subject, html_content, name")
+      .eq("is_active", true);
+
+    if (options.userId) {
+      query = query.eq("user_id", options.userId);
+    }
+
+    if (options.templateId) {
+      query = query.eq("id", options.templateId);
+    } else {
+      const keyword = STEP_NAME_MAP[options.stepType || "emocional"] || "Emocional";
+      query = query.ilike("name", `%${keyword}%`);
+    }
+
+    const { data, error } = await query.limit(1).maybeSingle();
 
     if (error || !data) return null;
     return { subject: data.subject, html: data.html_content };
@@ -381,7 +391,7 @@ Deno.serve(async (req) => {
 
     // Send recovery email with branded template
     if (action === "send-recovery") {
-      const { to, customerName, products, total, recoveryUrl, variant, stepType } = body;
+      const { to, customerName, products, total, recoveryUrl, variant, stepType, templateId } = body;
 
       if (!to) {
         return new Response(
@@ -390,7 +400,6 @@ Deno.serve(async (req) => {
         );
       }
 
-      // Get default sender
       const sendersRes = await fetch("https://api.brevo.com/v3/senders", {
         headers: { "api-key": brevoApiKey, "Content-Type": "application/json" },
       });
@@ -409,25 +418,24 @@ Deno.serve(async (req) => {
 
       const firstName = (customerName || "").split(" ")[0] || "Cliente";
       const currentStepType = stepType || "emocional";
+      const userId = claimsData.claims.sub as string | undefined;
       const productGrid = buildProductGrid(products || []);
       const totalFormatted = `R$ ${Number(total || 0).toFixed(2).replace(".", ",")}`;
 
-      // Try to fetch template from DB first (edited in Email Builder)
       let emailContent: { subject: string; html: string };
-      const dbTemplate = await fetchTemplateFromDB(currentStepType, null);
+      const dbTemplate = await fetchTemplateFromDB({ templateId, stepType: currentStepType, userId });
 
       if (dbTemplate) {
-        // Replace variables in the DB template
         let html = dbTemplate.html;
         let subject = dbTemplate.subject;
         html = html.replace(/\{\{nome\}\}/gi, firstName);
         html = html.replace(/\{\{total\}\}/gi, totalFormatted);
         html = html.replace(/\{\{produtos\}\}/gi, productGrid);
         html = html.replace(/\{\{recovery_url\}\}/gi, recoveryUrl || "#");
+        html = html.replace(/\{\{unsubscribe_url\}\}/gi, "#");
         subject = subject.replace(/\{\{nome\}\}/gi, firstName);
         emailContent = { subject, html };
       } else {
-        // Fallback to hardcoded template
         emailContent = buildRecoveryEmail(currentStepType, firstName, products || [], total || 0, recoveryUrl);
       }
 
@@ -436,7 +444,7 @@ Deno.serve(async (req) => {
         to: [{ email: to }],
         subject: emailContent.subject,
         htmlContent: emailContent.html,
-        tags: ["recovery-engine", currentStepType, variant || "A"],
+        tags: ["recovery-engine", templateId || currentStepType, variant || "A"],
       };
 
       const res = await fetch("https://api.brevo.com/v3/smtp/email", {
@@ -460,17 +468,16 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Preview email template (for dashboard)
     if (action === "preview-template") {
-      const { stepType, customerName, products, total, recoveryUrl } = body;
+      const { stepType, customerName, products, total, recoveryUrl, templateId } = body;
       const firstName = (customerName || "").split(" ")[0] || "Cliente";
       const currentStepType = stepType || "emocional";
+      const userId = claimsData.claims.sub as string | undefined;
       const sampleProducts = products || [];
       const sampleTotal = total || 0;
       const sampleUrl = recoveryUrl || "https://louder.ink/checkout/exemplo";
 
-      // Try DB template first
-      const dbTemplate = await fetchTemplateFromDB(currentStepType, null);
+      const dbTemplate = await fetchTemplateFromDB({ templateId, stepType: currentStepType, userId });
       let emailContent: { subject: string; html: string };
 
       if (dbTemplate) {
@@ -482,6 +489,7 @@ Deno.serve(async (req) => {
         html = html.replace(/\{\{total\}\}/gi, totalFormatted);
         html = html.replace(/\{\{produtos\}\}/gi, productGrid);
         html = html.replace(/\{\{recovery_url\}\}/gi, sampleUrl);
+        html = html.replace(/\{\{unsubscribe_url\}\}/gi, "#");
         subject = subject.replace(/\{\{nome\}\}/gi, firstName);
         emailContent = { subject, html };
       } else {
