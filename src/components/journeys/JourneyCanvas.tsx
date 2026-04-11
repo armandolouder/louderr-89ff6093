@@ -115,7 +115,7 @@ export function JourneyCanvas({ initialNodes, initialEdges, onNodesChange, onEdg
           triggerEvent: type === "trigger" ? "visit" : undefined,
           delayValue: type === "delay" ? 1 : undefined,
           delayUnit: type === "delay" ? "hours" : undefined,
-        } as JourneyNodeData,
+        } as Record<string, unknown>,
       };
 
       setNodes((nds) => {
@@ -192,7 +192,7 @@ export function JourneyCanvas({ initialNodes, initialEdges, onNodesChange, onEdg
       {selectedNode && (
         <JourneyNodeProperties
           nodeId={selectedNode.id}
-          data={selectedNode.data as JourneyNodeData}
+          data={selectedNode.data as unknown as JourneyNodeData}
           onUpdate={updateNodeData}
           onDelete={deleteNode}
           onClose={() => setSelectedNodeId(null)}
