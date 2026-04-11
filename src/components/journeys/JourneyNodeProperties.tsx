@@ -1,9 +1,11 @@
+import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Trash2, X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Trash2, X, Mail, MessageSquare } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import type { JourneyNodeData } from "@/stores/journeyStore";
 
 const TRIGGERS = [
@@ -22,8 +24,37 @@ interface Props {
   onClose: () => void;
 }
 
+interface EmailTemplate {
+  id: string;
+  name: string;
+  subject: string;
+  category: string | null;
+}
+
+interface WaTemplate {
+  id: string;
+  content: string;
+  campaign_id: string;
+  media_url: string | null;
+}
+
 export function JourneyNodeProperties({ nodeId, data, onUpdate, onDelete, onClose }: Props) {
   const nodeType = data.type;
+  const [emailTemplates, setEmailTemplates] = useState<EmailTemplate[]>([]);
+  const [waTemplates, setWaTemplates] = useState<WaTemplate[]>([]);
+
+  useEffect(() => {
+    if (nodeType !== "message") return;
+
+    supabase.from("email_templates").select("id, name, subject, category").eq("is_active", true)
+      .order("name").then(({ data: d }) => { if (d) setEmailTemplates(d); });
+
+    supabase.from("campaign_messages").select("id, content, campaign_id, media_url").eq("is_active", true)
+      .order("created_at", { ascending: false }).then(({ data: d }) => { if (d) setWaTemplates(d); });
+  }, [nodeType]);
+
+  const showEmailPicker = nodeType === "message" && (data.channel === "email" || data.channel === "both");
+  const showWaPicker = nodeType === "message" && (data.channel === "whatsapp" || data.channel === "both");
 
   return (
     <div className="w-72 border-l border-border bg-card/50 p-4 space-y-4 flex-shrink-0 overflow-y-auto">
@@ -81,16 +112,82 @@ export function JourneyNodeProperties({ nodeId, data, onUpdate, onDelete, onClos
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label className="text-xs">Conteúdo da mensagem</Label>
-              <Textarea
-                value={data.messageContent || ""}
-                onChange={(e) => onUpdate(nodeId, { messageContent: e.target.value })}
-                rows={4}
-                className="text-sm"
-                placeholder="Olá {{nome}}, temos novidades..."
-              />
-            </div>
+
+            {showEmailPicker && (
+              <div>
+                <Label className="text-xs flex items-center gap-1.5">
+                  <Mail className="w-3 h-3 text-blue-500" />
+                  Template de Email
+                </Label>
+                {emailTemplates.length === 0 ? (
+                  <p className="text-[11px] text-muted-foreground mt-1">Nenhum template encontrado. Crie um no Email Marketing.</p>
+                ) : (
+                  <Select
+                    value={data.templateId || ""}
+                    onValueChange={(v) => {
+                      const tpl = emailTemplates.find((t) => t.id === v);
+                      onUpdate(nodeId, { templateId: v, templateName: tpl?.name || "" });
+                    }}
+                  >
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue placeholder="Selecionar template..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {emailTemplates.map((t) => (
+                        <SelectItem key={t.id} value={t.id}>
+                          <div className="flex items-center gap-1.5">
+                            <span className="truncate">{t.name}</span>
+                            {t.category && (
+                              <Badge variant="outline" className="text-[9px] ml-1">{t.category}</Badge>
+                            )}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                {data.templateName && (
+                  <p className="text-[10px] text-muted-foreground mt-1">Selecionado: {data.templateName}</p>
+                )}
+              </div>
+            )}
+
+            {showWaPicker && (
+              <div>
+                <Label className="text-xs flex items-center gap-1.5">
+                  <MessageSquare className="w-3 h-3 text-green-500" />
+                  Mensagem WhatsApp
+                </Label>
+                {waTemplates.length === 0 ? (
+                  <p className="text-[11px] text-muted-foreground mt-1">Nenhuma mensagem encontrada. Crie uma em Campanhas.</p>
+                ) : (
+                  <Select
+                    value={data.waTemplateId || ""}
+                    onValueChange={(v) => {
+                      const tpl = waTemplates.find((t) => t.id === v);
+                      onUpdate(nodeId, {
+                        waTemplateId: v,
+                        messageContent: tpl?.content?.substring(0, 80) || "",
+                      });
+                    }}
+                  >
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue placeholder="Selecionar mensagem..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {waTemplates.map((t) => (
+                        <SelectItem key={t.id} value={t.id}>
+                          <span className="truncate text-xs">{t.content?.substring(0, 50)}...</span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                {data.messageContent && (
+                  <p className="text-[10px] text-muted-foreground mt-1 line-clamp-2">{data.messageContent}</p>
+                )}
+              </div>
+            )}
           </>
         )}
 
