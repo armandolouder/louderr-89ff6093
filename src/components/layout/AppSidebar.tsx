@@ -90,19 +90,11 @@ export function AppSidebar() {
           );
         })}
 
-        {/* Meta Inbox - abre como app em nova janela */}
+        {/* Meta Inbox - abre em nova aba */}
         <a
           href={META_INBOX_URL}
           target="_blank"
           rel="noopener noreferrer"
-          onClick={(e) => {
-            e.preventDefault();
-            window.open(
-              META_INBOX_URL,
-              "meta-inbox",
-              "width=1200,height=800,menubar=no,toolbar=no,location=no,status=no"
-            );
-          }}
           className={cn(
             "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
             "text-sidebar-foreground hover:bg-sidebar-accent"
