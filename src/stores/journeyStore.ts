@@ -8,6 +8,7 @@ export interface JourneyNodeData {
   channel?: "email" | "whatsapp" | "both";
   templateId?: string;
   templateName?: string;
+  waTemplateId?: string;
   messageContent?: string;
   delayValue?: number;
   delayUnit?: "minutes" | "hours" | "days";
