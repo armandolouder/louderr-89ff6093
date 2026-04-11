@@ -8,7 +8,7 @@ const STEP_NAME_MAP: Record<string, string> = {
   leve: "Leve",
 };
 
-async function fetchTemplateFromDB(options: { templateId?: string; stepType?: string }): Promise<{ subject: string; html: string } | null> {
+async function fetchTemplateFromDB(options: { templateId?: string; stepType?: string; userId?: string }): Promise<{ subject: string; html: string } | null> {
   try {
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -20,11 +20,15 @@ async function fetchTemplateFromDB(options: { templateId?: string; stepType?: st
       .select("subject, html_content, name")
       .eq("is_active", true);
 
+    if (options.userId) {
+      query = query.eq("user_id", options.userId);
+    }
+
     if (options.templateId) {
       query = query.eq("id", options.templateId);
     } else {
       const keyword = STEP_NAME_MAP[options.stepType || "emocional"] || "Emocional";
-      query = query.eq("category", "recuperacao").ilike("name", `%${keyword}%`);
+      query = query.ilike("name", `%${keyword}%`);
     }
 
     const { data, error } = await query.limit(1).maybeSingle();
@@ -414,11 +418,12 @@ Deno.serve(async (req) => {
 
       const firstName = (customerName || "").split(" ")[0] || "Cliente";
       const currentStepType = stepType || "emocional";
+      const userId = claimsData.claims.sub as string | undefined;
       const productGrid = buildProductGrid(products || []);
       const totalFormatted = `R$ ${Number(total || 0).toFixed(2).replace(".", ",")}`;
 
       let emailContent: { subject: string; html: string };
-      const dbTemplate = await fetchTemplateFromDB({ templateId, stepType: currentStepType });
+      const dbTemplate = await fetchTemplateFromDB({ templateId, stepType: currentStepType, userId });
 
       if (dbTemplate) {
         let html = dbTemplate.html;
@@ -467,11 +472,12 @@ Deno.serve(async (req) => {
       const { stepType, customerName, products, total, recoveryUrl, templateId } = body;
       const firstName = (customerName || "").split(" ")[0] || "Cliente";
       const currentStepType = stepType || "emocional";
+      const userId = claimsData.claims.sub as string | undefined;
       const sampleProducts = products || [];
       const sampleTotal = total || 0;
       const sampleUrl = recoveryUrl || "https://louder.ink/checkout/exemplo";
 
-      const dbTemplate = await fetchTemplateFromDB({ templateId, stepType: currentStepType });
+      const dbTemplate = await fetchTemplateFromDB({ templateId, stepType: currentStepType, userId });
       let emailContent: { subject: string; html: string };
 
       if (dbTemplate) {

@@ -42,8 +42,8 @@ export default function AbandonedCheckouts() {
       const { data, error } = await supabase
         .from("email_templates")
         .select("id, name, subject, category")
-        .eq("category", "recuperacao")
         .eq("is_active", true)
+        .or("category.eq.recuperacao,name.ilike.%Recupera%")
         .order("name");
       if (error) throw error;
       return data || [];
