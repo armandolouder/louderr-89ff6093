@@ -45,6 +45,8 @@ export function useSaveJourney() {
         status: journey.status,
         is_active: journey.is_active,
       };
+
+      let result;
       if (journey.id) {
         const { data, error } = await supabase
           .from("customer_journeys")
@@ -53,7 +55,7 @@ export function useSaveJourney() {
           .select()
           .single();
         if (error) throw error;
-        return data;
+        result = data;
       } else {
         const { data, error } = await supabase
           .from("customer_journeys")
@@ -61,10 +63,34 @@ export function useSaveJourney() {
           .select()
           .single();
         if (error) throw error;
-        return data;
+        result = data;
       }
+
+      // MIGRATION: When activating a journey, auto-disable automations with the same trigger
+      if (journey.is_active && journey.trigger_event) {
+        // Map journey triggers to automation trigger_events
+        const triggerMap: Record<string, string[]> = {
+          visit: [],
+          cart: ["abandoned_checkout"],
+          purchase: ["order/created", "order/paid"],
+          shipped: ["order/fulfilled"],
+          delivered: ["order/packed"],
+        };
+        const automationTriggers = triggerMap[journey.trigger_event] || [];
+        if (automationTriggers.length > 0) {
+          await supabase
+            .from("automation_flows")
+            .update({ status: "inactive", is_active: false })
+            .in("trigger_event", automationTriggers);
+        }
+      }
+
+      return result;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["customer-journeys"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["customer-journeys"] });
+      qc.invalidateQueries({ queryKey: ["automation-flows"] });
+    },
   });
 }
 
