@@ -182,10 +182,14 @@ export function JourneyCanvas({ initialNodes, initialEdges, onNodesChange, onEdg
           onPaneClick={onPaneClick}
           nodeTypes={nodeTypes}
           fitView
+          fitViewOptions={{ padding: 0.5 }}
+          defaultViewport={{ x: 0, y: 0, zoom: 0.7 }}
+          minZoom={0.3}
+          maxZoom={2}
           deleteKeyCode="Delete"
           className="bg-background"
         >
-          <Controls className="!bg-card !border-border !rounded-lg" />
+          <Controls className="!bg-card !border-border !rounded-lg [&>button]:!bg-card [&>button]:!border-border [&>button]:!text-foreground [&>button]:hover:!bg-muted [&>button>svg]:!fill-foreground" />
           <Background variant={BackgroundVariant.Dots} gap={20} size={1} className="!bg-background" />
         </ReactFlow>
       </div>
