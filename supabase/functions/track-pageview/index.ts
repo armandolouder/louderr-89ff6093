@@ -148,6 +148,46 @@ Deno.serve(async (req) => {
       );
     }
 
+    // ── Journey trigger for "visit" ──
+    try {
+      const { data: visitJourneys } = await supabase
+        .from("customer_journeys")
+        .select("id")
+        .eq("trigger_event", "visit")
+        .eq("is_active", true)
+        .eq("status", "active");
+
+      if (visitJourneys && visitJourneys.length > 0 && visitorId) {
+        for (const journey of visitJourneys) {
+          // Dedup: max 1 execution per visitor per journey per 24h
+          const { data: existingExec } = await supabase
+            .from("journey_executions")
+            .select("id")
+            .eq("journey_id", journey.id)
+            .eq("customer_phone", visitorId)
+            .gte("started_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+            .limit(1);
+
+          if (existingExec && existingExec.length > 0) continue;
+
+          await supabase.from("journey_executions").insert({
+            journey_id: journey.id,
+            customer_phone: record.customer_phone || visitorId,
+            customer_email: record.customer_email,
+            customer_name: record.customer_name,
+            user_id: ownerUserId,
+            status: "active",
+            started_at: new Date().toISOString(),
+            next_action_at: new Date().toISOString(),
+            execution_data: { trigger_event: "visit", visitor_id: visitorId, page_url: pageUrl },
+          });
+          console.log(`Visit journey execution created: ${journey.id} for ${visitorId}`);
+        }
+      }
+    } catch (journeyErr) {
+      console.warn("Journey trigger error (non-blocking):", journeyErr);
+    }
+
     return new Response(JSON.stringify({ ok: true }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "no-store" },

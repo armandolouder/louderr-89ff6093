@@ -164,66 +164,112 @@ Deno.serve(async (req) => {
         // Track new checkouts with phone for automation
         if (isNew && customerPhone) {
           newCheckoutIds.push(checkout.id);
+          const phone = customerPhone.replace(/\D/g, "");
+          const firstName = (customerName || "Cliente").split(" ")[0];
+          const productsList = products.map((p: any) => `${p.quantity}x ${p.name}`).join("\n");
+          const recoveryUrl = checkout.checkout_url || checkout.recovery_url || "";
 
-          // Trigger abandoned checkout automations
-          const { data: flows } = await supabase
-            .from("automation_flows")
-            .select("*")
-            .eq("trigger_event", "abandoned_checkout")
+          // ── Journey trigger (priority over automations) ──
+          let journeyHandled = false;
+          const { data: journeys } = await supabase
+            .from("customer_journeys")
+            .select("id")
+            .eq("trigger_event", "cart")
+            .eq("is_active", true)
             .eq("status", "active");
 
-          if (flows && flows.length > 0) {
-            const phone = customerPhone.replace(/\D/g, "");
-            const firstName = (customerName || "Cliente").split(" ")[0];
-            const productsList = products.map((p: any) => `${p.quantity}x ${p.name}`).join("\n");
-            const recoveryUrl = checkout.checkout_url || checkout.recovery_url || "";
+          if (journeys && journeys.length > 0) {
+            journeyHandled = true;
+            for (const journey of journeys) {
+              // Dedup
+              const { data: existingJExec } = await supabase
+                .from("journey_executions")
+                .select("id")
+                .eq("journey_id", journey.id)
+                .eq("customer_phone", phone)
+                .gte("started_at", new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString())
+                .limit(1);
 
-            for (const flow of flows) {
-              const now = new Date();
-              let delayMs = 0;
-              if (flow.delay_unit === "minutes") delayMs = flow.delay_value * 60 * 1000;
-              else if (flow.delay_unit === "hours") delayMs = flow.delay_value * 3600 * 1000;
-              else if (flow.delay_unit === "days") delayMs = flow.delay_value * 86400 * 1000;
-
-              const scheduledAt = new Date(now.getTime() + delayMs);
-
-              const messageContent = (flow.message_content || "")
-                .replace(/\[nome_cliente\]/g, firstName)
-                .replace(/\[lista_produtos\]/g, productsList)
-                .replace(/\[total_pedido\]/g, `R$ ${total.toFixed(2).replace(".", ",")}`)
-                .replace(/\[link_recuperacao\]/g, recoveryUrl)
-                .replace(/\[link_checkout\]/g, recoveryUrl);
-
-              const { error: execError } = await supabase.from("automation_executions").insert({
-                flow_id: flow.id,
-                user_id: ownerUserId,
-                trigger_data: {
-                  checkout_id: checkout.id,
-                  event: "abandoned_checkout",
-                  customer_name: customerName,
-                  customer_phone: phone,
-                  message_content: messageContent,
-                  media_url: flow.media_url,
-                  media_type: flow.media_type,
-                },
-                scheduled_at: scheduledAt.toISOString(),
-                phone,
-                customer_name: customerName,
-                status: "pending",
-              });
-
-              if (execError) {
-                console.error(`Error scheduling abandoned checkout automation: ${execError.message}`);
-              } else {
-                console.log(`Abandoned checkout automation scheduled: ${flow.name} for ${phone}`);
+              if (existingJExec && existingJExec.length > 0) {
+                console.log(`Journey dedup: cart journey ${journey.id} already running for ${phone}`);
+                continue;
               }
+
+              await supabase.from("journey_executions").insert({
+                journey_id: journey.id,
+                customer_phone: phone,
+                customer_email: customerEmail,
+                customer_name: customerName,
+                user_id: ownerUserId,
+                status: "active",
+                started_at: new Date().toISOString(),
+                next_action_at: new Date().toISOString(),
+                execution_data: { trigger_checkout_id: checkout.id, trigger_event: "cart", recovery_url: recoveryUrl },
+              });
+              console.log(`Journey execution created for cart: ${journey.id} for ${phone}`);
             }
 
-            // Mark as contacted
             await supabase
               .from("nuvemshop_abandoned_checkouts")
-              .update({ contacted_at: new Date().toISOString(), contact_channel: "whatsapp" })
+              .update({ contacted_at: new Date().toISOString(), contact_channel: "journey" })
               .eq("nuvemshop_checkout_id", String(checkout.id));
+          }
+
+          // Only trigger legacy automations if no journey handled
+          if (!journeyHandled) {
+            const { data: flows } = await supabase
+              .from("automation_flows")
+              .select("*")
+              .eq("trigger_event", "abandoned_checkout")
+              .eq("status", "active");
+
+            if (flows && flows.length > 0) {
+              for (const flow of flows) {
+                const now = new Date();
+                let delayMs = 0;
+                if (flow.delay_unit === "minutes") delayMs = flow.delay_value * 60 * 1000;
+                else if (flow.delay_unit === "hours") delayMs = flow.delay_value * 3600 * 1000;
+                else if (flow.delay_unit === "days") delayMs = flow.delay_value * 86400 * 1000;
+
+                const scheduledAt = new Date(now.getTime() + delayMs);
+
+                const messageContent = (flow.message_content || "")
+                  .replace(/\[nome_cliente\]/g, firstName)
+                  .replace(/\[lista_produtos\]/g, productsList)
+                  .replace(/\[total_pedido\]/g, `R$ ${total.toFixed(2).replace(".", ",")}`)
+                  .replace(/\[link_recuperacao\]/g, recoveryUrl)
+                  .replace(/\[link_checkout\]/g, recoveryUrl);
+
+                const { error: execError } = await supabase.from("automation_executions").insert({
+                  flow_id: flow.id,
+                  user_id: ownerUserId,
+                  trigger_data: {
+                    checkout_id: checkout.id,
+                    event: "abandoned_checkout",
+                    customer_name: customerName,
+                    customer_phone: phone,
+                    message_content: messageContent,
+                    media_url: flow.media_url,
+                    media_type: flow.media_type,
+                  },
+                  scheduled_at: scheduledAt.toISOString(),
+                  phone,
+                  customer_name: customerName,
+                  status: "pending",
+                });
+
+                if (execError) {
+                  console.error(`Error scheduling abandoned checkout automation: ${execError.message}`);
+                } else {
+                  console.log(`Abandoned checkout automation scheduled: ${flow.name} for ${phone}`);
+                }
+              }
+
+              await supabase
+                .from("nuvemshop_abandoned_checkouts")
+                .update({ contacted_at: new Date().toISOString(), contact_channel: "whatsapp" })
+                .eq("nuvemshop_checkout_id", String(checkout.id));
+            }
           }
         }
       }
