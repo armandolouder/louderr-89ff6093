@@ -33,9 +33,10 @@ interface EmailTemplate {
 
 interface WaTemplate {
   id: string;
-  content: string;
-  campaign_id: string;
+  name: string;
+  message_content: string | null;
   media_url: string | null;
+  trigger_event: string;
 }
 
 export function JourneyNodeProperties({ nodeId, data, onUpdate, onDelete, onClose }: Props) {
@@ -49,8 +50,8 @@ export function JourneyNodeProperties({ nodeId, data, onUpdate, onDelete, onClos
     supabase.from("email_templates").select("id, name, subject, category").eq("is_active", true)
       .order("name").then(({ data: d }) => { if (d) setEmailTemplates(d); });
 
-    supabase.from("campaign_messages").select("id, content, campaign_id, media_url").eq("is_active", true)
-      .order("created_at", { ascending: false }).then(({ data: d }) => { if (d) setWaTemplates(d); });
+    supabase.from("automation_flows").select("id, name, message_content, media_url, trigger_event")
+      .order("name").then(({ data: d }) => { if (d) setWaTemplates(d); });
   }, [nodeType]);
 
   const showEmailPicker = nodeType === "message" && (data.channel === "email" || data.channel === "both");
@@ -159,7 +160,7 @@ export function JourneyNodeProperties({ nodeId, data, onUpdate, onDelete, onClos
                   Mensagem WhatsApp
                 </Label>
                 {waTemplates.length === 0 ? (
-                  <p className="text-[11px] text-muted-foreground mt-1">Nenhuma mensagem encontrada. Crie uma em Campanhas.</p>
+                  <p className="text-[11px] text-muted-foreground mt-1">Nenhuma automação encontrada. Crie uma em Automações.</p>
                 ) : (
                   <Select
                     value={data.waTemplateId || ""}
@@ -167,17 +168,18 @@ export function JourneyNodeProperties({ nodeId, data, onUpdate, onDelete, onClos
                       const tpl = waTemplates.find((t) => t.id === v);
                       onUpdate(nodeId, {
                         waTemplateId: v,
-                        messageContent: tpl?.content?.substring(0, 80) || "",
+                        messageContent: tpl?.message_content?.substring(0, 80) || "",
+                        templateName: tpl?.name || "",
                       });
                     }}
                   >
                     <SelectTrigger className="h-8 text-sm">
-                      <SelectValue placeholder="Selecionar mensagem..." />
+                      <SelectValue placeholder="Selecionar automação..." />
                     </SelectTrigger>
                     <SelectContent>
                       {waTemplates.map((t) => (
                         <SelectItem key={t.id} value={t.id}>
-                          <span className="truncate text-xs">{t.content?.substring(0, 50)}...</span>
+                          <span className="truncate text-xs">{t.name}</span>
                         </SelectItem>
                       ))}
                     </SelectContent>
