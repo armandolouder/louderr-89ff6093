@@ -471,6 +471,57 @@ export type Database = {
         }
         Relationships: []
       }
+      customer_journeys: {
+        Row: {
+          created_at: string
+          description: string | null
+          edges: Json
+          execution_count: number
+          id: string
+          is_active: boolean
+          kill_conditions: Json
+          last_executed_at: string | null
+          name: string
+          nodes: Json
+          status: string
+          trigger_event: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          edges?: Json
+          execution_count?: number
+          id?: string
+          is_active?: boolean
+          kill_conditions?: Json
+          last_executed_at?: string | null
+          name: string
+          nodes?: Json
+          status?: string
+          trigger_event: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          edges?: Json
+          execution_count?: number
+          id?: string
+          is_active?: boolean
+          kill_conditions?: Json
+          last_executed_at?: string | null
+          name?: string
+          nodes?: Json
+          status?: string
+          trigger_event?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       email_campaigns: {
         Row: {
           bounced_count: number | null
@@ -859,6 +910,68 @@ export type Database = {
             columns: ["import_batch_id"]
             isOneToOne: false
             referencedRelation: "import_batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      journey_executions: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          current_node_id: string | null
+          customer_email: string | null
+          customer_name: string | null
+          customer_phone: string | null
+          error_message: string | null
+          execution_data: Json
+          id: string
+          journey_id: string
+          next_action_at: string | null
+          started_at: string
+          status: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          current_node_id?: string | null
+          customer_email?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          error_message?: string | null
+          execution_data?: Json
+          id?: string
+          journey_id: string
+          next_action_at?: string | null
+          started_at?: string
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          current_node_id?: string | null
+          customer_email?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          error_message?: string | null
+          execution_data?: Json
+          id?: string
+          journey_id?: string
+          next_action_at?: string | null
+          started_at?: string
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "journey_executions_journey_id_fkey"
+            columns: ["journey_id"]
+            isOneToOne: false
+            referencedRelation: "customer_journeys"
             referencedColumns: ["id"]
           },
         ]
