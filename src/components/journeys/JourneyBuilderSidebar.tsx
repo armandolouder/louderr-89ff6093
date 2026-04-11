@@ -17,7 +17,7 @@ export function JourneyBuilderSidebar() {
   };
 
   return (
-    <div className="w-56 border-r border-border bg-card/50 p-3 space-y-2 flex-shrink-0">
+    <div className="w-44 md:w-52 border-r border-border bg-card/50 p-2.5 space-y-1.5 flex-shrink-0 overflow-y-auto">
       <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Componentes</h3>
       {blocks.map((block) => (
         <div

@@ -66,7 +66,7 @@ export function JourneyEditor({ journey, onBack }: Props) {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-64px)]">
+    <div className="flex flex-col h-[calc(100vh-56px)] md:h-screen">
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-card/50">
         <Button variant="ghost" size="icon" onClick={onBack}>
