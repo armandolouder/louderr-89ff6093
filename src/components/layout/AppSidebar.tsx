@@ -7,6 +7,7 @@ import {
   Settings,
   Zap,
   LogOut,
+  ExternalLink,
   ChevronLeft,
   ChevronRight,
   Megaphone,
