@@ -2,9 +2,8 @@ import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { ArrowLeft, Save, Loader2, ScrollText } from "lucide-react";
+import { ArrowLeft, Save, Loader2 } from "lucide-react";
 import { JourneyCanvas } from "./JourneyCanvas";
-import { JourneyExecutionLogs } from "./JourneyExecutionLogs";
 import { useSaveJourney, type JourneyRow } from "@/hooks/useJourneys";
 import { useToast } from "@/hooks/use-toast";
 import type { Node, Edge } from "@xyflow/react";
@@ -17,7 +16,6 @@ interface Props {
 export function JourneyEditor({ journey, onBack }: Props) {
   const { toast } = useToast();
   const saveJourney = useSaveJourney();
-  const [showLogs, setShowLogs] = useState(false);
 
   const [name, setName] = useState(journey?.name || "Nova Jornada");
   const [isActive, setIsActive] = useState(journey?.is_active || false);
@@ -78,16 +76,6 @@ export function JourneyEditor({ journey, onBack }: Props) {
           className="h-8 max-w-xs text-sm font-semibold border-none bg-transparent focus-visible:ring-1"
         />
         <div className="flex items-center gap-2 ml-auto">
-          {journey?.id && (
-            <Button
-              variant={showLogs ? "secondary" : "ghost"}
-              size="sm"
-              onClick={() => setShowLogs(!showLogs)}
-            >
-              <ScrollText className="w-3.5 h-3.5 mr-1" />
-              Logs
-            </Button>
-          )}
           <span className="text-xs text-muted-foreground">{isActive ? "Ativo" : "Inativo"}</span>
           <Switch checked={isActive} onCheckedChange={setIsActive} />
           <Button size="sm" onClick={handleSave} disabled={saveJourney.isPending}>
@@ -99,26 +87,12 @@ export function JourneyEditor({ journey, onBack }: Props) {
 
       {/* Canvas + Logs */}
       <div className="flex flex-1 overflow-hidden">
-        <div className="flex-1">
-          <JourneyCanvas
-            initialNodes={nodes}
-            initialEdges={edges}
-            onNodesChange={handleNodesChange}
-            onEdgesChange={handleEdgesChange}
-          />
-        </div>
-        {showLogs && journey?.id && (
-          <div className="w-80 border-l border-border bg-card/50 flex flex-col">
-            <div className="px-3 py-2 border-b border-border">
-              <h3 className="text-sm font-semibold flex items-center gap-1.5">
-                <ScrollText className="w-4 h-4 text-primary" />
-                Log de Disparos
-              </h3>
-              <p className="text-[10px] text-muted-foreground">Últimas 50 execuções</p>
-            </div>
-            <JourneyExecutionLogs journeyId={journey.id} />
-          </div>
-        )}
+        <JourneyCanvas
+          initialNodes={nodes}
+          initialEdges={edges}
+          onNodesChange={handleNodesChange}
+          onEdgesChange={handleEdgesChange}
+        />
       </div>
     </div>
   );
