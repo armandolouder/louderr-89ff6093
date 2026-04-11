@@ -38,6 +38,8 @@ const navigation = [
   { name: "APIs", href: "/apis", icon: Zap },
 ];
 
+const META_INBOX_URL = "https://business.facebook.com/latest/inbox/all";
+
 export function AppSidebar() {
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
