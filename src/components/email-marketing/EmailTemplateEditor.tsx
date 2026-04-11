@@ -29,14 +29,26 @@ export function EmailTemplateEditor() {
 
   const saveMutation = useMutation({
     mutationFn: async ({ html, name, subject, blocks }: { html: string; name: string; subject: string; blocks: EmailBlock[] }) => {
+      const inferredCategory = editing?.category === "recuperacao" || /recupera[cç][aã]o/i.test(name)
+        ? "recuperacao"
+        : "geral";
+
       if (editing?.id) {
         const { error } = await supabase.from("email_templates").update({
-          name, subject, html_content: html, category: "geral", variables: { blocks } as any,
+          name,
+          subject,
+          html_content: html,
+          category: inferredCategory,
+          variables: { blocks } as any,
         }).eq("id", editing.id);
         if (error) throw error;
       } else {
         const { error } = await supabase.from("email_templates").insert({
-          name, subject, html_content: html, category: "geral", variables: { blocks } as any,
+          name,
+          subject,
+          html_content: html,
+          category: inferredCategory,
+          variables: { blocks } as any,
         });
         if (error) throw error;
       }
