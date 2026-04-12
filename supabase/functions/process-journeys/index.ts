@@ -7,6 +7,92 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+// Send email directly via Brevo API (no auth needed, server-to-server)
+async function sendJourneyEmail(options: {
+  to: string;
+  subject: string;
+  htmlContent: string;
+  customerName?: string;
+}): Promise<{ success: boolean; error?: string; messageId?: string }> {
+  const brevoApiKey = Deno.env.get("BREVO_API_KEY");
+  if (!brevoApiKey) return { success: false, error: "BREVO_API_KEY not configured" };
+
+  try {
+    // Get sender
+    const sendersRes = await fetch("https://api.brevo.com/v3/senders", {
+      headers: { "api-key": brevoApiKey, "Content-Type": "application/json" },
+    });
+    if (!sendersRes.ok) {
+      const t = await sendersRes.text();
+      return { success: false, error: `Senders error: ${t}` };
+    }
+    const sendersData = await sendersRes.json();
+    const fromEmail = sendersData.senders?.[0]?.email;
+    if (!fromEmail) return { success: false, error: "No sender configured" };
+
+    const res = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: { "api-key": brevoApiKey, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sender: { name: "LOUDER.ink", email: fromEmail },
+        to: [{ email: options.to, name: options.customerName || undefined }],
+        subject: options.subject,
+        htmlContent: options.htmlContent,
+        tags: ["journey-engine"],
+      }),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      return { success: false, error: errText };
+    }
+    const result = await res.json();
+    return { success: true, messageId: result.messageId };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+// Try to resolve email from imported_customers by phone/visitor_id
+async function resolveCustomerEmail(
+  supabase: any,
+  exec: any
+): Promise<{ email: string | null; name: string | null }> {
+  // Already has email
+  if (exec.customer_email) return { email: exec.customer_email, name: exec.customer_name };
+
+  const phone = exec.customer_phone;
+  if (!phone) return { email: null, name: null };
+
+  // Try matching by phone in imported_customers
+  const { data: customer } = await supabase
+    .from("imported_customers")
+    .select("email, name, phone")
+    .or(`phone.eq.${phone},phone.ilike.%${phone.slice(-8)}`)
+    .not("email", "is", null)
+    .limit(1)
+    .maybeSingle();
+
+  if (customer?.email) {
+    return { email: customer.email, name: customer.name || exec.customer_name };
+  }
+
+  // Try matching by phone in contacts
+  const { data: contact } = await supabase
+    .from("contacts")
+    .select("email, name, phone")
+    .or(`phone.eq.${phone},phone.ilike.%${phone.slice(-8)}`)
+    .not("email", "is", null)
+    .limit(1)
+    .maybeSingle();
+
+  if (contact?.email) {
+    return { email: contact.email, name: contact.name || exec.customer_name };
+  }
+
+  return { email: null, name: exec.customer_name };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -42,6 +128,8 @@ serve(async (req) => {
 
     let processed = 0;
     let errors = 0;
+    let emailsSent = 0;
+    let emailsSkipped = 0;
 
     for (const exec of executions || []) {
       try {
@@ -102,7 +190,6 @@ serve(async (req) => {
         // Check kill conditions
         const killConditions = journey.kill_conditions as string[];
         if (killConditions && killConditions.length > 0) {
-          // Check if customer has completed a kill-condition event
           const customerPhone = exec.customer_phone;
           const customerEmail = exec.customer_email;
 
@@ -129,12 +216,10 @@ serve(async (req) => {
 
         if (currentNode.type === "message") {
           // DEDUPLICATION: Check if we already sent for this node
-          const dedupKey = `${exec.id}_${currentNodeId}`;
           const execData = exec.execution_data as any;
           const sentNodes = execData?.sent_nodes || [];
 
           if (sentNodes.includes(currentNodeId)) {
-            // Already sent, skip to next node
             const nextEdge = edges.find((e: any) => e.source === currentNodeId);
             if (nextEdge) {
               await supabase
@@ -152,26 +237,66 @@ serve(async (req) => {
 
           const channel = nodeData.channel || "email";
 
+          // Resolve customer email if needed
+          const resolved = await resolveCustomerEmail(supabase, exec);
+          const customerEmail = resolved.email;
+          const customerName = resolved.name || exec.customer_name;
+
+          // Update execution with resolved email if found
+          if (resolved.email && !exec.customer_email) {
+            await supabase
+              .from("journey_executions")
+              .update({ customer_email: resolved.email, customer_name: customerName })
+              .eq("id", exec.id);
+          }
+
           // Send email
           if ((channel === "email" || channel === "both") && nodeData.templateId) {
-            try {
-              await supabase.functions.invoke("send-brevo-email", {
-                body: {
-                  templateId: nodeData.templateId,
-                  to: exec.customer_email,
-                  customerName: exec.customer_name,
-                  userId: exec.user_id,
-                },
-              });
-            } catch (emailErr: any) {
-              console.error("Email send error:", emailErr.message);
+            if (!customerEmail) {
+              console.warn(`Journey ${journey.id}: No email for visitor ${exec.customer_phone}, skipping email`);
+              emailsSkipped++;
+            } else {
+              try {
+                // Fetch template from DB
+                const { data: template } = await supabase
+                  .from("email_templates")
+                  .select("subject, html_content")
+                  .eq("id", nodeData.templateId)
+                  .eq("is_active", true)
+                  .maybeSingle();
+
+                if (template) {
+                  const firstName = (customerName || "").split(" ")[0] || "Cliente";
+                  let html = template.html_content;
+                  let subject = template.subject;
+                  html = html.replace(/\{\{nome\}\}/gi, firstName);
+                  subject = subject.replace(/\{\{nome\}\}/gi, firstName);
+
+                  const result = await sendJourneyEmail({
+                    to: customerEmail,
+                    subject,
+                    htmlContent: html,
+                    customerName,
+                  });
+
+                  if (result.success) {
+                    console.log(`Journey email sent to ${customerEmail} (messageId: ${result.messageId})`);
+                    emailsSent++;
+                  } else {
+                    console.error(`Journey email failed for ${customerEmail}: ${result.error}`);
+                  }
+                } else {
+                  console.warn(`Template ${nodeData.templateId} not found or inactive`);
+                }
+              } catch (emailErr: any) {
+                console.error("Email send error:", emailErr.message);
+              }
             }
           }
 
           // Send WhatsApp
           if ((channel === "whatsapp" || channel === "both") && nodeData.waTemplateId && exec.customer_phone) {
             try {
-              // Fetch the automation flow template
               const { data: flow } = await supabase
                 .from("automation_flows")
                 .select("message_content, media_url, media_type")
@@ -180,7 +305,7 @@ serve(async (req) => {
 
               if (flow) {
                 let content = flow.message_content || "";
-                content = content.replace(/\[nome_cliente\]/g, exec.customer_name?.split(" ")[0] || "");
+                content = content.replace(/\[nome_cliente\]/g, customerName?.split(" ")[0] || "");
 
                 await supabase.functions.invoke("send-whatsapp", {
                   body: {
@@ -220,11 +345,10 @@ serve(async (req) => {
               .eq("id", exec.id);
           }
         } else if (currentNode.type === "delay") {
-          // Calculate delay and set next_action_at
           const delayValue = nodeData.delayValue || 1;
           const delayUnit = nodeData.delayUnit || "hours";
 
-          let delayMs = delayValue * 60 * 1000; // default minutes
+          let delayMs = delayValue * 60 * 1000;
           if (delayUnit === "hours") delayMs = delayValue * 60 * 60 * 1000;
           if (delayUnit === "days") delayMs = delayValue * 24 * 60 * 60 * 1000;
 
@@ -249,7 +373,6 @@ serve(async (req) => {
             .update({ status: "completed", completed_at: new Date().toISOString() })
             .eq("id", exec.id);
         } else {
-          // Unknown node type, skip to next
           const nextEdge = edges.find((e: any) => e.source === currentNodeId);
           if (nextEdge) {
             await supabase
@@ -289,7 +412,7 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ processed, errors, total_executions: executions?.length || 0 }),
+      JSON.stringify({ processed, errors, emailsSent, emailsSkipped, total_executions: executions?.length || 0 }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err: any) {
