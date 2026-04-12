@@ -17,11 +17,32 @@ const BOT_PATTERNS = [
   /screaming frog/i, /nutch/i, /archive\.org_bot/i, /mediapartners-google/i,
   /adsbot-google/i, /apis-google/i, /google-inspectiontool/i,
   /chrome-lighthouse/i, /speed insights/i, /webpagetest/i,
+  // Facebook/Meta crawlers (Open Graph previews)
+  /facebookexternalhit/i, /facebookcatalog/i, /meta-externalagent/i,
+  // WhatsApp/Telegram/Discord link previews
+  /whatsapp/i, /telegrambot/i, /discordbot/i, /slackbot/i,
+  // Microsoft/Bing crawlers
+  /bingpreview/i, /msnbot/i, /adidxbot/i,
+  // Other common crawlers
+  /dataforseo/i, /zoominfobot/i, /coccocbot/i, /seznambot/i,
+  /rogerbot/i, /exabot/i, /blexbot/i, /linkdexbot/i,
 ];
+
+// Known data center cities (Meta, Google, Microsoft, Amazon)
+const DATACENTER_CITIES = new Set([
+  "prineville", "forest city", "luleå", "lulea", "clonee",
+  "fort worth", "altoona", "new albany", "papillion",
+  "council bluffs", "the dalles", "lenoir", "maiden",
+]);
 
 function isBot(userAgent: string): boolean {
   if (!userAgent) return false;
   return BOT_PATTERNS.some((pattern) => pattern.test(userAgent));
+}
+
+function isDataCenterCity(city: string | null): boolean {
+  if (!city) return false;
+  return DATACENTER_CITIES.has(city.toLowerCase().trim());
 }
 
 Deno.serve(async (req) => {
@@ -111,6 +132,14 @@ Deno.serve(async (req) => {
       } catch (geoErr) {
         console.warn("Geo lookup failed (non-blocking):", geoErr);
       }
+    }
+
+    // Filter out requests from known data center cities (crawlers/bots)
+    if (isDataCenterCity(geoCity)) {
+      return new Response(JSON.stringify({ ok: true, filtered: "datacenter" }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "no-store" },
+      });
     }
 
     const record = {
