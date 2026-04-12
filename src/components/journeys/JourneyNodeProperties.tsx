@@ -10,8 +10,10 @@ import type { JourneyNodeData } from "@/stores/journeyStore";
 
 const TRIGGERS = [
   { value: "visit", label: "Visita ao site" },
-  { value: "cart", label: "Add ao carrinho" },
+  { value: "cart", label: "Carrinho abandonado" },
   { value: "purchase", label: "Compra realizada" },
+  { value: "payment_pending", label: "Pagamento pendente (Boleto/Pix)" },
+  { value: "payment_confirmed", label: "Pagamento confirmado" },
   { value: "shipped", label: "Pedido enviado" },
   { value: "delivered", label: "Pedido entregue" },
 ];
