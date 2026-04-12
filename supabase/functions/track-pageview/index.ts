@@ -176,8 +176,11 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Resolve email: from body (LS.customer), previous pageviews, or imported_customers
+    // Resolve email: from body (LS.customer / URL param), previous pageviews, or imported_customers
     const rawEmail = sanitize(body.customer_email, 320);
+    // Validate email format server-side
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const validatedEmail = rawEmail && emailRegex.test(rawEmail) ? rawEmail : null;
     const rawPhone = sanitize(body.customer_phone, 30);
     const rawName = sanitize(body.customer_name, 200);
 

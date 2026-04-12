@@ -216,9 +216,10 @@ export default function Tracking() {
   }
   // Try to get customer info from multiple Nuvemshop sources
   function getCustomer(){
+    // 0. URL parameter email (persisted in localStorage)
+    if(savedEmail&&!data.customer_email){data.customer_email=savedEmail;}
+    if(data.customer_email)return;
     // 1. LS.customer (logged-in customer object)
-    if(window.LS&&LS.customer&&LS.customer.email){
-      data.customer_email=LS.customer.email;data.customer_name=LS.customer.name;data.customer_phone=LS.customer.phone;
       return;
     }
     // 2. LS.store.customer (alternative location)
