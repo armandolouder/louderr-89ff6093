@@ -251,6 +251,26 @@ export default function Tracking() {
   if(!data.customer_email){setTimeout(function(){getCustomer();if(data.customer_email){fetch(ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)}).catch(function(){});}},2000);}
   // Also retry after 5s (some themes load customer data very late)
   if(!data.customer_email){setTimeout(function(){getCustomer();if(data.customer_email){fetch(ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)}).catch(function(){});}},5000);}
+  // 6. Live capture: listen for email input on checkout forms (blur/change)
+  function watchEmailInputs(){
+    var inputs=document.querySelectorAll('input[type="email"],input[name*="email"],input[placeholder*="mail"],input[id*="email"]');
+    for(var k=0;k<inputs.length;k++){
+      if(inputs[k]._od_watched)continue;
+      inputs[k]._od_watched=true;
+      inputs[k].addEventListener("blur",function(){
+        var v=this.value;
+        if(v&&v.indexOf("@")>0&&/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(v)&&v!==data.customer_email){
+          data.customer_email=v;
+          localStorage.setItem("_od_email",v);
+          fetch(ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)}).catch(function(){});
+        }
+      });
+    }
+  }
+  watchEmailInputs();
+  // Re-scan for dynamically added email inputs (SPA checkout)
+  setTimeout(watchEmailInputs,3000);
+  setTimeout(watchEmailInputs,8000);
   var t0=Date.now();
   window.addEventListener("beforeunload",function(){
     getCustomer();
