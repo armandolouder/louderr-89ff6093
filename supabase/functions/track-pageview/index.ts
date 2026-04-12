@@ -17,18 +17,13 @@ const BOT_PATTERNS = [
   /screaming frog/i, /nutch/i, /archive\.org_bot/i, /mediapartners-google/i,
   /adsbot-google/i, /apis-google/i, /google-inspectiontool/i,
   /chrome-lighthouse/i, /speed insights/i, /webpagetest/i,
-  // Facebook/Meta crawlers (Open Graph previews)
   /facebookexternalhit/i, /facebookcatalog/i, /meta-externalagent/i,
-  // WhatsApp/Telegram/Discord link previews
   /whatsapp/i, /telegrambot/i, /discordbot/i, /slackbot/i,
-  // Microsoft/Bing crawlers
   /bingpreview/i, /msnbot/i, /adidxbot/i,
-  // Other common crawlers
   /dataforseo/i, /zoominfobot/i, /coccocbot/i, /seznambot/i,
   /rogerbot/i, /exabot/i, /blexbot/i, /linkdexbot/i,
 ];
 
-// Known data center cities (Meta, Google, Microsoft, Amazon)
 const DATACENTER_CITIES = new Set([
   "prineville", "forest city", "luleå", "lulea", "clonee",
   "fort worth", "altoona", "new albany", "papillion",
@@ -45,13 +40,63 @@ function isDataCenterCity(city: string | null): boolean {
   return DATACENTER_CITIES.has(city.toLowerCase().trim());
 }
 
+const sanitize = (val: any, maxLen = 500) => {
+  if (val === null || val === undefined) return null;
+  return String(val).substring(0, maxLen).trim() || null;
+};
+
+// Try to resolve email from previous pageviews or imported_customers
+async function resolveVisitorEmail(
+  supabase: any,
+  visitorId: string,
+  customerEmail: string | null,
+  customerPhone: string | null,
+): Promise<{ email: string | null; name: string | null; phone: string | null }> {
+  // Already have email from LS.customer
+  if (customerEmail) return { email: customerEmail, name: null, phone: customerPhone };
+
+  // 1. Check previous pageviews from this visitor that had an email
+  const { data: prevView } = await supabase
+    .from("page_views")
+    .select("customer_email, customer_name, customer_phone")
+    .eq("visitor_id", visitorId)
+    .not("customer_email", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (prevView?.customer_email) {
+    return {
+      email: prevView.customer_email,
+      name: prevView.customer_name,
+      phone: prevView.customer_phone || customerPhone,
+    };
+  }
+
+  // 2. Try matching phone in imported_customers
+  if (customerPhone) {
+    const { data: customer } = await supabase
+      .from("imported_customers")
+      .select("email, name, phone")
+      .or(`phone.eq.${customerPhone},phone.ilike.%${customerPhone.slice(-8)}`)
+      .not("email", "is", null)
+      .limit(1)
+      .maybeSingle();
+
+    if (customer?.email) {
+      return { email: customer.email, name: customer.name, phone: customerPhone };
+    }
+  }
+
+  return { email: null, name: null, phone: customerPhone };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    // Check user-agent from headers first (most reliable)
     const headerUA = req.headers.get("user-agent") || "";
     if (isBot(headerUA)) {
       return new Response(JSON.stringify({ ok: true, filtered: "bot" }), {
@@ -67,7 +112,6 @@ Deno.serve(async (req) => {
 
     const body = await req.json();
 
-    // Also check user-agent sent from client-side script
     const clientUA = String(body.user_agent || "");
     if (isBot(clientUA)) {
       return new Response(JSON.stringify({ ok: true, filtered: "bot" }), {
@@ -76,7 +120,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Validate required fields
     const visitorId = String(body.visitor_id || "").trim();
     const pageUrl = String(body.page_url || "").trim();
     const shopId = String(body.shop_id || "").trim();
@@ -88,7 +131,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Resolve owner user_id from the webhook helper (same multi-tenant pattern)
     const { data: ownerUserId, error: ownerError } = await supabase.rpc("get_webhook_owner_user_id");
     if (ownerError || !ownerUserId) {
       console.error("Could not resolve owner user_id:", ownerError);
@@ -98,18 +140,11 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Sanitize and limit input lengths
-    const sanitize = (val: any, maxLen = 500) => {
-      if (val === null || val === undefined) return null;
-      return String(val).substring(0, maxLen).trim() || null;
-    };
-
     // Try to get visitor geolocation from IP via free API
     let geoState = sanitize(body.state, 50);
     let geoCity = sanitize(body.city, 100);
     let geoCountry = sanitize(body.country, 10) || "BR";
 
-    // If no state/city from client, try IP geolocation
     if (!geoState) {
       try {
         const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
@@ -134,13 +169,22 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Filter out requests from known data center cities (crawlers/bots)
     if (isDataCenterCity(geoCity)) {
       return new Response(JSON.stringify({ ok: true, filtered: "datacenter" }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "no-store" },
       });
     }
+
+    // Resolve email: from body (LS.customer), previous pageviews, or imported_customers
+    const rawEmail = sanitize(body.customer_email, 320);
+    const rawPhone = sanitize(body.customer_phone, 30);
+    const rawName = sanitize(body.customer_name, 200);
+
+    const resolved = await resolveVisitorEmail(supabase, visitorId, rawEmail, rawPhone);
+    const finalEmail = resolved.email || rawEmail;
+    const finalName = resolved.name || rawName;
+    const finalPhone = resolved.phone || rawPhone;
 
     const record = {
       user_id: ownerUserId,
@@ -153,9 +197,9 @@ Deno.serve(async (req) => {
       product_price: body.product_price ? Number(body.product_price) || null : null,
       product_category: sanitize(body.product_category, 200),
       product_image_url: sanitize(body.product_image_url, 2000),
-      customer_email: sanitize(body.customer_email, 320),
-      customer_phone: sanitize(body.customer_phone, 30),
-      customer_name: sanitize(body.customer_name, 200),
+      customer_email: finalEmail,
+      customer_phone: finalPhone,
+      customer_name: finalName,
       state: geoState,
       city: geoCity,
       country: geoCountry,
@@ -197,20 +241,30 @@ Deno.serve(async (req) => {
             .gte("started_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
             .limit(1);
 
-          if (existingExec && existingExec.length > 0) continue;
+          if (existingExec && existingExec.length > 0) {
+            // Update existing execution with resolved email if it was missing
+            if (finalEmail) {
+              await supabase
+                .from("journey_executions")
+                .update({ customer_email: finalEmail, customer_name: finalName })
+                .eq("id", existingExec[0].id)
+                .is("customer_email", null);
+            }
+            continue;
+          }
 
           await supabase.from("journey_executions").insert({
             journey_id: journey.id,
-            customer_phone: record.customer_phone || visitorId,
-            customer_email: record.customer_email,
-            customer_name: record.customer_name,
+            customer_phone: finalPhone || visitorId,
+            customer_email: finalEmail,
+            customer_name: finalName,
             user_id: ownerUserId,
             status: "active",
             started_at: new Date().toISOString(),
             next_action_at: new Date().toISOString(),
             execution_data: { trigger_event: "visit", visitor_id: visitorId, page_url: pageUrl },
           });
-          console.log(`Visit journey execution created: ${journey.id} for ${visitorId}`);
+          console.log(`Visit journey execution created: ${journey.id} for ${visitorId} (email: ${finalEmail || 'none'})`);
         }
       }
     } catch (journeyErr) {
