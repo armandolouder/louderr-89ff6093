@@ -222,10 +222,27 @@ Deno.serve(async (req) => {
       // ── Journey trigger (priority over automations) ──
       const journeyTriggerMap: Record<string, string> = {
         "order/created": "purchase",
-        "order/paid": "purchase",
+        "order/paid": "payment_confirmed",
         "order/packed": "delivered",
         "order/fulfilled": "shipped",
       };
+
+      // Also check payment_status for pending payments (boleto/pix)
+      const journeyTriggers: string[] = [];
+      const jt = journeyTriggerMap[event];
+      if (jt) journeyTriggers.push(jt);
+
+      // order/created with pending payment → also trigger payment_pending
+      if (event === "order/created") {
+        journeyTriggers.push("purchase");
+        if (paymentStatus === "pending" || paymentStatus === "authorized") {
+          journeyTriggers.push("payment_pending");
+        }
+      }
+      // order/paid → payment_confirmed
+      if (event === "order/paid") {
+        journeyTriggers.push("purchase");
+      }
       const journeyTrigger = journeyTriggerMap[event];
       let journeyHandled = false;
 
