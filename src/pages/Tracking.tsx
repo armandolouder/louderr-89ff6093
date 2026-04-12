@@ -251,19 +251,36 @@ export default function Tracking() {
   if(!data.customer_email){setTimeout(function(){getCustomer();if(data.customer_email){fetch(ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)}).catch(function(){});}},2000);}
   // Also retry after 5s (some themes load customer data very late)
   if(!data.customer_email){setTimeout(function(){getCustomer();if(data.customer_email){fetch(ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)}).catch(function(){});}},5000);}
-  // 6. Live capture: listen for email input on checkout forms (blur/change)
+  // 6. Live capture: detect email as soon as the customer types or submits the form
+  function syncEmail(value){
+    var v=(value||"").trim();
+    if(!v||v===data.customer_email||!/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(v))return;
+    data.customer_email=v;
+    localStorage.setItem("_od_email",v);
+    fetch(ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)}).catch(function(){});
+  }
   function watchEmailInputs(){
-    var inputs=document.querySelectorAll('input[type="email"],input[name*="email"],input[placeholder*="mail"],input[id*="email"]');
+    var inputs=document.querySelectorAll('input[type="email"],input[autocomplete="email"],input[inputmode="email"],input[name*="email" i],input[placeholder*="mail" i],input[id*="email" i]');
     for(var k=0;k<inputs.length;k++){
       if(inputs[k]._od_watched)continue;
       inputs[k]._od_watched=true;
-      inputs[k].addEventListener("blur",function(){
-        var v=this.value;
-        if(v&&v.indexOf("@")>0&&/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(v)&&v!==data.customer_email){
-          data.customer_email=v;
-          localStorage.setItem("_od_email",v);
-          fetch(ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)}).catch(function(){});
-        }
+      var debounceTimer=null;
+      var onSync=function(){syncEmail(this.value)};
+      inputs[k].addEventListener("blur",onSync);
+      inputs[k].addEventListener("change",onSync);
+      inputs[k].addEventListener("input",function(){
+        var input=this;
+        if(debounceTimer)clearTimeout(debounceTimer);
+        debounceTimer=setTimeout(function(){syncEmail(input.value)},400);
+      });
+    }
+    var forms=document.querySelectorAll("form");
+    for(var f=0;f<forms.length;f++){
+      if(forms[f]._od_email_submit_watched)continue;
+      forms[f]._od_email_submit_watched=true;
+      forms[f].addEventListener("submit",function(){
+        var field=this.querySelector('input[type="email"],input[autocomplete="email"],input[inputmode="email"],input[name*="email" i],input[placeholder*="mail" i],input[id*="email" i]');
+        if(field)syncEmail(field.value);
       });
     }
   }
