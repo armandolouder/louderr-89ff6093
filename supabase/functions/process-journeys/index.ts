@@ -53,7 +53,7 @@ async function sendJourneyEmail(options: {
   }
 }
 
-// Try to resolve email from imported_customers by phone/visitor_id
+// Try to resolve email from page_views, imported_customers, or contacts
 async function resolveCustomerEmail(
   supabase: any,
   exec: any
@@ -61,14 +61,28 @@ async function resolveCustomerEmail(
   // Already has email
   if (exec.customer_email) return { email: exec.customer_email, name: exec.customer_name };
 
-  const phone = exec.customer_phone;
-  if (!phone) return { email: null, name: null };
+  const visitorOrPhone = exec.customer_phone;
+  if (!visitorOrPhone) return { email: null, name: null };
 
-  // Try matching by phone in imported_customers
+  // 1. Try matching by visitor_id in page_views (most common for visit triggers)
+  const { data: pageView } = await supabase
+    .from("page_views")
+    .select("customer_email, customer_name")
+    .eq("visitor_id", visitorOrPhone)
+    .not("customer_email", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (pageView?.customer_email) {
+    return { email: pageView.customer_email, name: pageView.customer_name || exec.customer_name };
+  }
+
+  // 2. Try matching by phone in imported_customers
   const { data: customer } = await supabase
     .from("imported_customers")
     .select("email, name, phone")
-    .or(`phone.eq.${phone},phone.ilike.%${phone.slice(-8)}`)
+    .or(`phone.eq.${visitorOrPhone},phone.ilike.%${visitorOrPhone.slice(-8)}`)
     .not("email", "is", null)
     .limit(1)
     .maybeSingle();
@@ -77,11 +91,11 @@ async function resolveCustomerEmail(
     return { email: customer.email, name: customer.name || exec.customer_name };
   }
 
-  // Try matching by phone in contacts
+  // 3. Try matching by phone in contacts
   const { data: contact } = await supabase
     .from("contacts")
     .select("email, name, phone")
-    .or(`phone.eq.${phone},phone.ilike.%${phone.slice(-8)}`)
+    .or(`phone.eq.${visitorOrPhone},phone.ilike.%${visitorOrPhone.slice(-8)}`)
     .not("email", "is", null)
     .limit(1)
     .maybeSingle();
