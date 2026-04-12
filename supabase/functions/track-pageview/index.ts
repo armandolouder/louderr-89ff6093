@@ -134,6 +134,14 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Filter out requests from known data center cities (crawlers/bots)
+    if (isDataCenterCity(geoCity)) {
+      return new Response(JSON.stringify({ ok: true, filtered: "datacenter" }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "no-store" },
+      });
+    }
+
     const record = {
       user_id: ownerUserId,
       visitor_id: visitorId.substring(0, 100),
