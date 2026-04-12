@@ -135,13 +135,18 @@ export default function Tracking() {
     var img=document.querySelector(".product-image img, .js-product-image");
     if(img)data.product_image_url=img.src;
   }
-  // Try to get customer info from Nuvemshop
-  if(window.LS&&LS.customer){
-    data.customer_email=LS.customer.email;data.customer_name=LS.customer.name;data.customer_phone=LS.customer.phone;
+  // Try to get customer info from Nuvemshop (with retry for async load)
+  function getCustomer(){
+    if(window.LS&&LS.customer){
+      data.customer_email=LS.customer.email;data.customer_name=LS.customer.name;data.customer_phone=LS.customer.phone;
+    }
   }
+  getCustomer();
+  if(!data.customer_email){setTimeout(function(){getCustomer();if(data.customer_email){fetch(ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)}).catch(function(){});}},2000);}
   // Geolocation is resolved server-side via IP
   var t0=Date.now();
   window.addEventListener("beforeunload",function(){
+    getCustomer();
     data.duration_seconds=Math.round((Date.now()-t0)/1000);
     navigator.sendBeacon(ENDPOINT,JSON.stringify(data));
   });
