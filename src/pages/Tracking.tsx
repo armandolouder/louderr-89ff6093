@@ -193,9 +193,6 @@ export default function Tracking() {
   var u=new URLSearchParams(location.search);
   var ua=navigator.userAgent;
   if(/bot|crawl|spider|slurp|Googlebot|Bingbot|Applebot|Yandex|Baidu|facebot|ia_archiver|GPTBot/i.test(ua))return;
-  // 0. Detect email from URL parameter (?email=xxx or ?od_email=xxx) and persist it
-  var urlEmail=u.get("od_email")||u.get("email");
-  if(urlEmail&&urlEmail.indexOf("@")>0&&/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(urlEmail)){localStorage.setItem("_od_email",urlEmail);}
   var savedEmail=localStorage.getItem("_od_email");
   var data={
     shop_id:SHOP_ID,visitor_id:vid,session_id:sid,
@@ -216,7 +213,7 @@ export default function Tracking() {
   }
   // Try to get customer info from multiple Nuvemshop sources
   function getCustomer(){
-    // 0. URL parameter email (persisted in localStorage)
+    // 0. Previously identified email (from manual binding or prior detection)
     if(savedEmail&&!data.customer_email){data.customer_email=savedEmail;}
     if(data.customer_email)return;
     // 1. LS.customer (logged-in customer object)
