@@ -73,6 +73,8 @@ export function useSaveJourney() {
           visit: [],
           cart: ["abandoned_checkout"],
           purchase: ["order/created", "order/paid"],
+          payment_pending: ["order/created"],
+          payment_confirmed: ["order/paid"],
           shipped: ["order/fulfilled"],
           delivered: ["order/packed"],
         };
