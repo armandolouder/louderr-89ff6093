@@ -222,54 +222,73 @@ Deno.serve(async (req) => {
       // ── Journey trigger (priority over automations) ──
       const journeyTriggerMap: Record<string, string> = {
         "order/created": "purchase",
-        "order/paid": "purchase",
+        "order/paid": "payment_confirmed",
         "order/packed": "delivered",
         "order/fulfilled": "shipped",
       };
-      const journeyTrigger = journeyTriggerMap[event];
-      let journeyHandled = false;
 
-      if (journeyTrigger) {
-        const { data: journeys } = await supabase
-          .from("customer_journeys")
-          .select("id, nodes, trigger_event")
-          .eq("trigger_event", journeyTrigger)
-          .eq("is_active", true)
-          .eq("status", "active");
+      // Also check payment_status for pending payments (boleto/pix)
+      const journeyTriggers: string[] = [];
+      const jt = journeyTriggerMap[event];
+      if (jt) journeyTriggers.push(jt);
 
-        if (journeys && journeys.length > 0) {
-          journeyHandled = true;
-          for (const journey of journeys) {
-            // Dedup: skip if execution exists for this journey + order
-            const { data: existingJExec } = await supabase
-              .from("journey_executions")
-              .select("id")
-              .eq("journey_id", journey.id)
-              .eq("customer_phone", phone)
-              .gte("started_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
-              .limit(1);
+      // order/created with pending payment → also trigger payment_pending
+      if (event === "order/created") {
+        journeyTriggers.push("purchase");
+        if (paymentStatus === "pending" || paymentStatus === "authorized") {
+          journeyTriggers.push("payment_pending");
+        }
+      }
+      // order/paid → payment_confirmed
+      if (event === "order/paid") {
+        journeyTriggers.push("purchase");
+      }
+      // Deduplicate triggers
+      const uniqueTriggers = [...new Set(journeyTriggers)];
+      
+      if (uniqueTriggers.length > 0) {
+        for (const journeyTrigger of uniqueTriggers) {
+          const { data: journeys } = await supabase
+            .from("customer_journeys")
+            .select("id, nodes, trigger_event")
+            .eq("trigger_event", journeyTrigger)
+            .eq("is_active", true)
+            .eq("status", "active");
 
-            if (existingJExec && existingJExec.length > 0) {
-              console.log(`Journey dedup: ${journey.id} already running for ${phone}`);
-              continue;
-            }
+          if (journeys && journeys.length > 0) {
+            journeyHandled = true;
+            for (const journey of journeys) {
+              // Dedup: skip if execution exists for this journey + order
+              const { data: existingJExec } = await supabase
+                .from("journey_executions")
+                .select("id")
+                .eq("journey_id", journey.id)
+                .eq("customer_phone", phone)
+                .gte("started_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+                .limit(1);
 
-            const { error: jExecErr } = await supabase.from("journey_executions").insert({
-              journey_id: journey.id,
-              customer_phone: phone,
-              customer_email: customerEmail,
-              customer_name: customerName,
-              user_id: ownerUserId,
-              status: "active",
-              started_at: new Date().toISOString(),
-              next_action_at: new Date().toISOString(),
-              execution_data: { trigger_order_id: orderId, trigger_event: event },
-            });
+              if (existingJExec && existingJExec.length > 0) {
+                console.log(`Journey dedup: ${journey.id} already running for ${phone}`);
+                continue;
+              }
 
-            if (jExecErr) {
-              console.error(`Error creating journey execution:`, jExecErr);
-            } else {
-              console.log(`Journey execution created: ${journey.id} for ${phone}`);
+              const { error: jExecErr } = await supabase.from("journey_executions").insert({
+                journey_id: journey.id,
+                customer_phone: phone,
+                customer_email: customerEmail,
+                customer_name: customerName,
+                user_id: ownerUserId,
+                status: "active",
+                started_at: new Date().toISOString(),
+                next_action_at: new Date().toISOString(),
+                execution_data: { trigger_order_id: orderId, trigger_event: event, payment_status: paymentStatus },
+              });
+
+              if (jExecErr) {
+                console.error(`Error creating journey execution:`, jExecErr);
+              } else {
+                console.log(`Journey execution created: ${journey.id} (trigger: ${journeyTrigger}) for ${phone}`);
+              }
             }
           }
         }
