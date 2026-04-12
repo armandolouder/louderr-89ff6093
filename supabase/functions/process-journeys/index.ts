@@ -251,13 +251,35 @@ serve(async (req) => {
           }
 
           // Send email
-          if ((channel === "email" || channel === "both") && nodeData.templateId) {
+          let emailRequired = (channel === "email" || channel === "both") && nodeData.templateId;
+          let emailSentOk = false;
+
+          if (emailRequired) {
             if (!customerEmail) {
-              console.warn(`Journey ${journey.id}: No email for visitor ${exec.customer_phone}, skipping email`);
-              emailsSkipped++;
+              // PAUSE: Don't advance past email node if no email yet — retry in 2 min
+              const waitCount = (execData?.email_wait_count || 0) + 1;
+              const maxWaits = 30; // ~1 hour of retries (30 x 2min)
+              
+              if (waitCount >= maxWaits) {
+                console.warn(`Journey ${journey.id}: No email after ${maxWaits} retries for visitor ${exec.customer_phone}, skipping`);
+                emailsSkipped++;
+                // Force advance after max waits
+                emailSentOk = true;
+              } else {
+                console.log(`Journey ${journey.id}: No email for visitor ${exec.customer_phone}, waiting (attempt ${waitCount}/${maxWaits})`);
+                await supabase
+                  .from("journey_executions")
+                  .update({
+                    next_action_at: new Date(Date.now() + 2 * 60 * 1000).toISOString(),
+                    execution_data: { ...execData, email_wait_count: waitCount },
+                  })
+                  .eq("id", exec.id);
+                emailsSkipped++;
+                processed++;
+                continue; // Don't advance — wait for email to be captured
+              }
             } else {
               try {
-                // Fetch template from DB
                 const { data: template } = await supabase
                   .from("email_templates")
                   .select("subject, html_content")
@@ -282,16 +304,22 @@ serve(async (req) => {
                   if (result.success) {
                     console.log(`Journey email sent to ${customerEmail} (messageId: ${result.messageId})`);
                     emailsSent++;
+                    emailSentOk = true;
                   } else {
                     console.error(`Journey email failed for ${customerEmail}: ${result.error}`);
+                    emailSentOk = true; // advance anyway on send failure
                   }
                 } else {
                   console.warn(`Template ${nodeData.templateId} not found or inactive`);
+                  emailSentOk = true;
                 }
               } catch (emailErr: any) {
                 console.error("Email send error:", emailErr.message);
+                emailSentOk = true;
               }
             }
+          } else {
+            emailSentOk = true; // no email required, can advance
           }
 
           // Send WhatsApp
