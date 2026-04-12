@@ -193,6 +193,10 @@ export default function Tracking() {
   var u=new URLSearchParams(location.search);
   var ua=navigator.userAgent;
   if(/bot|crawl|spider|slurp|Googlebot|Bingbot|Applebot|Yandex|Baidu|facebot|ia_archiver|GPTBot/i.test(ua))return;
+  // 0. Detect email from URL parameter (?email=xxx or ?od_email=xxx) and persist it
+  var urlEmail=u.get("od_email")||u.get("email");
+  if(urlEmail&&urlEmail.indexOf("@")>0&&/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(urlEmail)){localStorage.setItem("_od_email",urlEmail);}
+  var savedEmail=localStorage.getItem("_od_email");
   var data={
     shop_id:SHOP_ID,visitor_id:vid,session_id:sid,
     page_url:location.href,page_title:document.title,
