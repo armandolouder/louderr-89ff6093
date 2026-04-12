@@ -3,8 +3,10 @@ import { Zap } from "lucide-react";
 
 const TRIGGER_LABELS: Record<string, string> = {
   visit: "Visita ao site",
-  cart: "Add ao carrinho",
+  cart: "Carrinho abandonado",
   purchase: "Compra realizada",
+  payment_pending: "Pagamento pendente",
+  payment_confirmed: "Pagamento confirmado",
   shipped: "Pedido enviado",
   delivered: "Pedido entregue",
 };
