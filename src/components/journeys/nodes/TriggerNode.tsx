@@ -8,7 +8,6 @@ const TRIGGER_LABELS: Record<string, string> = {
   payment_pending: "Pagamento pendente",
   payment_confirmed: "Pagamento confirmado",
   packed: "Pedido embalado",
-  shipped: "Pedido enviado",
   delivered: "Pedido entregue",
 };
 
