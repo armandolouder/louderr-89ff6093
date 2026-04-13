@@ -223,8 +223,8 @@ Deno.serve(async (req) => {
       const journeyTriggerMap: Record<string, string> = {
         "order/created": "purchase",
         "order/paid": "payment_confirmed",
-        "order/packed": "shipped",
-        "order/fulfilled": "delivered",
+        "order/packed": "packed",
+        "order/fulfilled": "shipped",
       };
 
       // Also check payment_status for pending payments (boleto/pix)
