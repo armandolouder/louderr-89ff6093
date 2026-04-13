@@ -336,30 +336,68 @@ serve(async (req) => {
             emailSentOk = true; // no email required, can advance
           }
 
-          // Send WhatsApp
-          if ((channel === "whatsapp" || channel === "both") && nodeData.waTemplateId && exec.customer_phone) {
-            try {
-              const { data: flow } = await supabase
-                .from("automation_flows")
-                .select("message_content, media_url, media_type")
-                .eq("id", nodeData.waTemplateId)
-                .single();
+          // Send WhatsApp directly via UAZAPI
+          if ((channel === "whatsapp" || channel === "both") && exec.customer_phone) {
+            const UAZAPI_SERVER_URL = Deno.env.get("UAZAPI_SERVER_URL");
+            const UAZAPI_INSTANCE_TOKEN = Deno.env.get("UAZAPI_INSTANCE_TOKEN");
 
-              if (flow) {
-                let content = flow.message_content || "";
-                content = content.replace(/\[nome_cliente\]/g, customerName?.split(" ")[0] || "");
+            if (UAZAPI_SERVER_URL && UAZAPI_INSTANCE_TOKEN) {
+              try {
+                // Get message content from automation_flows template or node data
+                let waContent = "";
+                if (nodeData.waTemplateId) {
+                  const { data: flow } = await supabase
+                    .from("automation_flows")
+                    .select("message_content, media_url, media_type")
+                    .eq("id", nodeData.waTemplateId)
+                    .single();
 
-                await supabase.functions.invoke("send-whatsapp", {
-                  body: {
-                    phone: exec.customer_phone,
-                    message: content,
-                    mediaUrl: flow.media_url,
-                    userId: exec.user_id,
-                  },
-                });
+                  if (flow) {
+                    waContent = flow.message_content || "";
+                  }
+                }
+                if (!waContent && nodeData.messageContent) {
+                  waContent = nodeData.messageContent;
+                }
+
+                if (waContent) {
+                  // Replace variables
+                  const firstName = (customerName || "").split(" ")[0] || "";
+                  waContent = waContent.replace(/\[nome_cliente\]/g, firstName);
+
+                  // Get order data from execution_data if available
+                  const execDataObj = exec.execution_data as any;
+                  if (execDataObj?.order_number) {
+                    waContent = waContent.replace(/\[numero_pedido\]/g, execDataObj.order_number);
+                  }
+
+                  const formattedPhone = exec.customer_phone.replace(/\D/g, "");
+                  console.log(`Journey WhatsApp: Sending to ${formattedPhone}`);
+
+                  const uazRes = await fetch(`${UAZAPI_SERVER_URL}/send/text`, {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                      "token": UAZAPI_INSTANCE_TOKEN,
+                    },
+                    body: JSON.stringify({
+                      number: formattedPhone,
+                      text: waContent,
+                    }),
+                  });
+
+                  const uazText = await uazRes.text();
+                  if (uazRes.ok) {
+                    console.log(`Journey WhatsApp sent to ${formattedPhone}: ${uazText.substring(0, 100)}`);
+                  } else {
+                    console.error(`Journey WhatsApp failed for ${formattedPhone}: ${uazRes.status} ${uazText}`);
+                  }
+                }
+              } catch (waErr: any) {
+                console.error("WhatsApp send error:", waErr.message);
               }
-            } catch (waErr: any) {
-              console.error("WhatsApp send error:", waErr.message);
+            } else {
+              console.warn("UAZAPI credentials not configured, skipping WhatsApp");
             }
           }
 
