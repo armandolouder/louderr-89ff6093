@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,7 +6,6 @@ import {
   DollarSign,
   TrendingUp,
   TrendingDown,
-  ShoppingCart,
   Package,
   Users,
   Percent,
@@ -15,32 +14,36 @@ import {
   MessageSquare,
   Mail,
   RefreshCw,
+  ChevronLeft,
+  ChevronRight,
+  ShoppingBag,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 }
 
-function useHomeDashboard() {
+function useHomeDashboard(year: number, month: number) {
   return useQuery({
-    queryKey: ["home-dashboard"],
+    queryKey: ["home-dashboard", year, month],
     queryFn: async () => {
-      const now = new Date();
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString();
+      const startOfMonth = new Date(year, month, 1).toISOString();
+      const endOfMonth = new Date(year, month + 1, 0, 23, 59, 59).toISOString();
 
-      const [ordersRes, abandonedRes, customersRes, conversationsRes, campaignsRes, sendLogsRes] = await Promise.all([
+      const [ordersRes, abandonedRes, customersRes, conversationsRes, campaignsRes, brevoCreditsRes] = await Promise.all([
         supabase
           .from("nuvemshop_orders")
           .select("*")
           .gte("order_date", startOfMonth)
           .lte("order_date", endOfMonth)
           .not("status", "in", '("cancelled","closed")')
+          .order("order_date", { ascending: false })
           .limit(1000),
         supabase
           .from("nuvemshop_abandoned_checkouts")
@@ -49,7 +52,8 @@ function useHomeDashboard() {
           .lte("created_at", endOfMonth),
         supabase
           .from("imported_customers")
-          .select("*", { count: "exact", head: true }),
+          .select("id", { count: "exact", head: true })
+          .gt("total_spent", 0),
         supabase
           .from("conversations")
           .select("id, status")
@@ -58,11 +62,9 @@ function useHomeDashboard() {
           .from("campaigns")
           .select("id, status")
           .in("status", ["running", "scheduled"]),
-        supabase
-          .from("send_logs")
-          .select("status")
-          .gte("sent_at", startOfMonth)
-          .lte("sent_at", endOfMonth),
+        supabase.functions.invoke("send-brevo-email", {
+          body: { action: "check-credits" },
+        }),
       ]);
 
       const orders = ordersRes.data || [];
@@ -70,7 +72,15 @@ function useHomeDashboard() {
       const totalCustomers = customersRes.count || 0;
       const conversations = conversationsRes.data || [];
       const campaigns = campaignsRes.data || [];
-      const sendLogs = sendLogsRes.data || [];
+
+      // Brevo credits
+      let brevoCreditsRemaining = 0;
+      try {
+        if (brevoCreditsRes.data?.success && brevoCreditsRes.data.credits) {
+          const emailPlan = brevoCreditsRes.data.credits.find((c: any) => c.type === "sendLimit");
+          if (emailPlan) brevoCreditsRemaining = emailPlan.credits;
+        }
+      } catch {}
 
       // Financial metrics - only paid orders
       const paidOrders = orders.filter((o: any) => o.payment_status === "paid");
@@ -80,7 +90,7 @@ function useHomeDashboard() {
       const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
       const avgTicket = paidOrders.length > 0 ? revenue / paidOrders.length : 0;
 
-      // Pending orders (not paid yet)
+      // Pending orders
       const pendingOrders = orders.filter((o: any) => o.payment_status === "pending" || o.payment_status === "authorized");
       const pendingRevenue = pendingOrders.reduce((s: number, o: any) => s + (o.total || 0), 0);
 
@@ -89,9 +99,16 @@ function useHomeDashboard() {
       const recoveredCount = abandoned.filter((c: any) => c.recovered).length;
       const recoveryRate = abandoned.length > 0 ? (recoveredCount / abandoned.length) * 100 : 0;
 
-      // Messages
-      const sentMessages = sendLogs.filter((l: any) => l.status === "sent").length;
-      const failedMessages = sendLogs.filter((l: any) => l.status === "failed").length;
+      // Recent orders with products
+      const recentOrders = orders.slice(0, 10).map((o: any) => ({
+        id: o.id,
+        orderNumber: o.order_number,
+        customerName: o.customer_name || "—",
+        total: o.total || 0,
+        status: o.payment_status,
+        date: o.order_date,
+        products: Array.isArray(o.products) ? o.products : [],
+      }));
 
       return {
         revenue,
@@ -109,9 +126,9 @@ function useHomeDashboard() {
         totalCustomers,
         activeConversations: conversations.length,
         activeCampaigns: campaigns.length,
-        sentMessages,
-        failedMessages,
+        brevoCreditsRemaining,
         totalOrders: orders.length,
+        recentOrders,
       };
     },
     staleTime: 30000,
@@ -119,10 +136,33 @@ function useHomeDashboard() {
 }
 
 export default function HomeDashboard() {
-  const { data, isLoading } = useHomeDashboard();
-  const navigate = useNavigate();
   const now = new Date();
-  const monthLabel = now.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+  const [selectedYear, setSelectedYear] = useState(now.getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState(now.getMonth());
+  const { data, isLoading } = useHomeDashboard(selectedYear, selectedMonth);
+  const navigate = useNavigate();
+
+  const monthLabel = new Date(selectedYear, selectedMonth).toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+
+  const goToPrevMonth = () => {
+    if (selectedMonth === 0) {
+      setSelectedMonth(11);
+      setSelectedYear(y => y - 1);
+    } else {
+      setSelectedMonth(m => m - 1);
+    }
+  };
+
+  const goToNextMonth = () => {
+    if (selectedMonth === 11) {
+      setSelectedMonth(0);
+      setSelectedYear(y => y + 1);
+    } else {
+      setSelectedMonth(m => m + 1);
+    }
+  };
+
+  const isCurrentMonth = selectedYear === now.getFullYear() && selectedMonth === now.getMonth();
 
   if (isLoading) {
     return (
@@ -139,19 +179,35 @@ export default function HomeDashboard() {
 
   return (
     <div className="p-6 lg:p-8 space-y-6">
-      {/* Header */}
+      {/* Header with month selector */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Resumo Geral</h1>
-          <p className="text-muted-foreground capitalize">{monthLabel}</p>
+          <div className="flex items-center gap-2 mt-1">
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={goToPrevMonth}>
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+            <p className="text-muted-foreground capitalize font-medium min-w-[160px] text-center">{monthLabel}</p>
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={goToNextMonth} disabled={isCurrentMonth}>
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
         <Button variant="outline" size="icon" onClick={() => window.location.reload()}>
           <RefreshCw className="w-4 h-4" />
         </Button>
       </div>
 
-      {/* Row 1: Financial KPIs */}
+      {/* Row 1: Financial KPIs - Lucro primeiro */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <KPICard
+          title="Lucro Líquido"
+          value={formatCurrency(d.profit)}
+          subtitle={`Margem ${d.margin.toFixed(1)}%`}
+          icon={d.profit >= 0 ? TrendingUp : TrendingDown}
+          color={d.profit >= 0 ? "text-emerald-500" : "text-destructive"}
+          bg={d.profit >= 0 ? "bg-emerald-500/10" : "bg-destructive/10"}
+        />
         <KPICard
           title="Receita (Pagos)"
           value={formatCurrency(d.revenue)}
@@ -169,14 +225,6 @@ export default function HomeDashboard() {
           bg="bg-orange-500/10"
         />
         <KPICard
-          title="Lucro Líquido"
-          value={formatCurrency(d.profit)}
-          subtitle={`Margem ${d.margin.toFixed(1)}%`}
-          icon={d.profit >= 0 ? TrendingUp : TrendingDown}
-          color={d.profit >= 0 ? "text-emerald-500" : "text-destructive"}
-          bg={d.profit >= 0 ? "bg-emerald-500/10" : "bg-destructive/10"}
-        />
-        <KPICard
           title="Ticket Médio"
           value={formatCurrency(d.avgTicket)}
           subtitle={`${d.totalOrders} pedidos no total`}
@@ -188,7 +236,6 @@ export default function HomeDashboard() {
 
       {/* Row 2: Pending & Abandoned */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {/* Pending Orders */}
         <Card className="border-warning/30">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
@@ -205,7 +252,6 @@ export default function HomeDashboard() {
           </CardContent>
         </Card>
 
-        {/* Abandoned Carts */}
         <Card className="border-destructive/30">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
@@ -225,7 +271,6 @@ export default function HomeDashboard() {
           </CardContent>
         </Card>
 
-        {/* Margin Overview */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Margem de Lucro</CardTitle>
@@ -258,10 +303,11 @@ export default function HomeDashboard() {
       {/* Row 3: Operational */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <MiniCard
-          title="Clientes"
+          title="Clientes (RFM)"
           value={d.totalCustomers}
           icon={Users}
           onClick={() => navigate("/customers")}
+          subtitle="com compras realizadas"
         />
         <MiniCard
           title="Conversas Ativas"
@@ -276,12 +322,64 @@ export default function HomeDashboard() {
           onClick={() => navigate("/campaigns")}
         />
         <MiniCard
-          title="Mensagens Enviadas"
-          value={d.sentMessages}
-          icon={TrendingUp}
-          subtitle={d.failedMessages > 0 ? `${d.failedMessages} falharam` : undefined}
+          title="Créditos Brevo"
+          value={d.brevoCreditsRemaining}
+          icon={Mail}
+          subtitle="e-mails restantes"
         />
       </div>
+
+      {/* Row 4: Recent Orders */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <ShoppingBag className="w-4 h-4 text-primary" />
+              Últimos Pedidos do Mês
+            </CardTitle>
+            <Button variant="link" className="p-0 h-auto text-xs" onClick={() => navigate("/sales")}>
+              Ver todos <ArrowRight className="w-3 h-3 ml-1" />
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {d.recentOrders.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">Nenhum pedido neste mês</p>
+          ) : (
+            <ScrollArea className="max-h-[320px]">
+              <div className="space-y-3">
+                {d.recentOrders.map((order: any) => (
+                  <div key={order.id} className="flex items-center justify-between border-b border-border pb-3 last:border-0 last:pb-0">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-foreground">#{order.orderNumber}</span>
+                        <Badge variant={order.status === "paid" ? "default" : "secondary"} className="text-[10px] px-1.5 py-0">
+                          {order.status === "paid" ? "Pago" : order.status === "pending" ? "Pendente" : order.status}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground truncate">{order.customerName}</p>
+                      {order.products.length > 0 && (
+                        <p className="text-[11px] text-muted-foreground/70 truncate mt-0.5">
+                          {order.products.slice(0, 2).map((p: any) => p.name || p.product_name || "Produto").join(", ")}
+                          {order.products.length > 2 && ` +${order.products.length - 2}`}
+                        </p>
+                      )}
+                    </div>
+                    <div className="text-right ml-3">
+                      <p className="text-sm font-semibold text-foreground">{formatCurrency(order.total)}</p>
+                      {order.date && (
+                        <p className="text-[10px] text-muted-foreground">
+                          {new Date(order.date).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -320,7 +418,7 @@ function MiniCard({ title, value, icon: Icon, onClick, subtitle }: {
           <div>
             <p className="text-xs text-muted-foreground">{title}</p>
             <p className="text-xl font-bold text-foreground">{value}</p>
-            {subtitle && <p className="text-xs text-destructive">{subtitle}</p>}
+            {subtitle && <p className="text-[11px] text-muted-foreground">{subtitle}</p>}
           </div>
         </div>
       </CardContent>
