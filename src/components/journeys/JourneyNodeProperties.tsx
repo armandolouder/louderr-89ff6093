@@ -11,11 +11,11 @@ import type { JourneyNodeData } from "@/stores/journeyStore";
 const TRIGGERS = [
   { value: "visit", label: "Visita ao site" },
   { value: "cart", label: "Carrinho abandonado" },
-  { value: "purchase", label: "Compra realizada" },
+  { value: "purchase", label: "Pedido Criado (order/created)" },
   { value: "payment_pending", label: "Pagamento pendente (Boleto/Pix)" },
-  { value: "payment_confirmed", label: "Pagamento confirmado" },
-  { value: "packed", label: "Pedido embalado" },
-  { value: "delivered", label: "Pedido entregue" },
+  { value: "payment_confirmed", label: "Pedido Pago (order/paid)" },
+  { value: "packed", label: "Pedido Embalado (order/packed)" },
+  { value: "delivered", label: "Pedido Entregue (order/fulfilled)" },
 ];
 
 interface Props {
