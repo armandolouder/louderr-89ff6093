@@ -15,7 +15,6 @@ const TRIGGERS = [
   { value: "payment_pending", label: "Pagamento pendente (Boleto/Pix)" },
   { value: "payment_confirmed", label: "Pagamento confirmado" },
   { value: "packed", label: "Pedido embalado" },
-  { value: "shipped", label: "Pedido enviado" },
   { value: "delivered", label: "Pedido entregue" },
 ];
 

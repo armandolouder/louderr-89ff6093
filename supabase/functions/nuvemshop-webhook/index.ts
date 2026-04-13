@@ -224,7 +224,7 @@ Deno.serve(async (req) => {
         "order/created": "purchase",
         "order/paid": "payment_confirmed",
         "order/packed": "packed",
-        "order/fulfilled": "shipped",
+        "order/fulfilled": "delivered",
       };
 
       // Also check payment_status for pending payments (boleto/pix)
