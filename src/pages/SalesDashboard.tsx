@@ -68,6 +68,7 @@ export default function SalesDashboard() {
         .select("*")
         .gte("order_date", startDate)
         .lte("order_date", endDate)
+        .not("status", "in", '("cancelled","closed")')
         .order("order_date", { ascending: false })
         .limit(1000);
       if (e1) throw e1;
@@ -78,6 +79,7 @@ export default function SalesDashboard() {
         .is("order_date", null)
         .gte("created_at", startDate)
         .lte("created_at", endDate)
+        .not("status", "in", '("cancelled","closed")')
         .order("created_at", { ascending: false })
         .limit(1000);
       if (e2) throw e2;
