@@ -76,8 +76,8 @@ function useHomeDashboard(year: number, month: number) {
       // Brevo credits
       let brevoCreditsRemaining = 0;
       try {
-        if (brevoCreditsRes.data?.success && brevoCreditsRes.data.credits) {
-          const emailPlan = brevoCreditsRes.data.credits.find((c: any) => c.type === "sendLimit");
+        if (brevoCreditsRes.data?.success && brevoCreditsRes.data.plans) {
+          const emailPlan = brevoCreditsRes.data.plans.find((c: any) => c.type === "sendLimit");
           if (emailPlan) brevoCreditsRemaining = emailPlan.credits;
         }
       } catch {}
