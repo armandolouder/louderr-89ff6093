@@ -259,17 +259,17 @@ Deno.serve(async (req) => {
           if (journeys && journeys.length > 0) {
             journeyHandled = true;
             for (const journey of journeys) {
-              // Dedup: skip if execution exists for this journey + order
+              // Dedup: skip if execution exists for this journey + same order_id
               const { data: existingJExec } = await supabase
                 .from("journey_executions")
                 .select("id")
                 .eq("journey_id", journey.id)
                 .eq("customer_phone", phone)
-                .gte("started_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+                .filter("execution_data->>trigger_order_id", "eq", String(orderId))
                 .limit(1);
 
               if (existingJExec && existingJExec.length > 0) {
-                console.log(`Journey dedup: ${journey.id} already running for ${phone}`);
+                console.log(`Journey dedup: ${journey.id} already executed for order ${orderId} + ${phone}`);
                 continue;
               }
 
