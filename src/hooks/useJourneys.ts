@@ -75,8 +75,9 @@ export function useSaveJourney() {
           purchase: ["order/created", "order/paid"],
           payment_pending: ["order/created"],
           payment_confirmed: ["order/paid"],
+          packed: ["order/packed"],
           shipped: ["order/fulfilled"],
-          delivered: ["order/packed"],
+          delivered: [],
         };
         const automationTriggers = triggerMap[journey.trigger_event] || [];
         if (automationTriggers.length > 0) {
