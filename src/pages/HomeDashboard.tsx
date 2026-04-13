@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,16 +15,12 @@ import {
   MessageSquare,
   Mail,
   RefreshCw,
-  Search,
-  Info,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
@@ -76,7 +72,7 @@ function useHomeDashboard() {
       const campaigns = campaignsRes.data || [];
       const sendLogs = sendLogsRes.data || [];
 
-      // Financial - paid only
+      // Financial metrics - only paid orders
       const paidOrders = orders.filter((o: any) => o.payment_status === "paid");
       const revenue = paidOrders.reduce((s: number, o: any) => s + (o.total || 0), 0);
       const totalCosts = paidOrders.reduce((s: number, o: any) => s + (o.production_cost || 0), 0);
@@ -84,56 +80,38 @@ function useHomeDashboard() {
       const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
       const avgTicket = paidOrders.length > 0 ? revenue / paidOrders.length : 0;
 
-      // Pending
+      // Pending orders (not paid yet)
       const pendingOrders = orders.filter((o: any) => o.payment_status === "pending" || o.payment_status === "authorized");
       const pendingRevenue = pendingOrders.reduce((s: number, o: any) => s + (o.total || 0), 0);
 
-      // Abandoned
+      // Abandoned carts
       const abandonedTotal = abandoned.reduce((s: number, c: any) => s + (c.total || 0), 0);
       const recoveredCount = abandoned.filter((c: any) => c.recovered).length;
       const recoveryRate = abandoned.length > 0 ? (recoveredCount / abandoned.length) * 100 : 0;
-
-      // Products sold
-      const productMap = new Map<string, { name: string; qty: number; revenue: number }>();
-      paidOrders.forEach((o: any) => {
-        const prods = o.products as any[];
-        if (Array.isArray(prods)) {
-          prods.forEach((p: any) => {
-            const name = p.name || "Produto";
-            const variant = [p.variant_values || p.variant, p.size].filter(Boolean).join(", ");
-            const fullName = variant ? `${name} (${variant})` : name;
-            const qty = p.quantity || 1;
-            const price = (p.price || 0) * qty;
-            const existing = productMap.get(fullName);
-            if (existing) {
-              existing.qty += qty;
-              existing.revenue += price;
-            } else {
-              productMap.set(fullName, { name: fullName, qty, revenue: price });
-            }
-          });
-        }
-      });
-      const products = Array.from(productMap.values()).sort((a, b) => b.qty - a.qty);
-      const totalProductQty = products.reduce((s, p) => s + p.qty, 0);
 
       // Messages
       const sentMessages = sendLogs.filter((l: any) => l.status === "sent").length;
       const failedMessages = sendLogs.filter((l: any) => l.status === "failed").length;
 
       return {
-        revenue, totalCosts, profit, margin, avgTicket,
+        revenue,
+        totalCosts,
+        profit,
+        margin,
+        avgTicket,
         paidOrdersCount: paidOrders.length,
         pendingOrdersCount: pendingOrders.length,
         pendingRevenue,
         abandonedCount: abandoned.length,
-        abandonedTotal, recoveredCount, recoveryRate,
+        abandonedTotal,
+        recoveredCount,
+        recoveryRate,
         totalCustomers,
         activeConversations: conversations.length,
         activeCampaigns: campaigns.length,
-        sentMessages, failedMessages,
+        sentMessages,
+        failedMessages,
         totalOrders: orders.length,
-        products, totalProductQty,
       };
     },
     staleTime: 30000,
@@ -143,23 +121,16 @@ function useHomeDashboard() {
 export default function HomeDashboard() {
   const { data, isLoading } = useHomeDashboard();
   const navigate = useNavigate();
-  const [search, setSearch] = useState("");
   const now = new Date();
   const monthLabel = now.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
-
-  const filteredProducts = useMemo(() => {
-    if (!data?.products) return [];
-    if (!search.trim()) return data.products;
-    const q = search.toLowerCase();
-    return data.products.filter(p => p.name.toLowerCase().includes(q));
-  }, [data?.products, search]);
 
   if (isLoading) {
     return (
       <div className="p-6 lg:p-8 space-y-6">
         <Skeleton className="h-10 w-64" />
-        <Skeleton className="h-24" />
-        <Skeleton className="h-64" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4, 5, 6, 7, 8].map(i => <Skeleton key={i} className="h-32" />)}
+        </div>
       </div>
     );
   }
@@ -168,114 +139,18 @@ export default function HomeDashboard() {
 
   return (
     <div className="p-6 lg:p-8 space-y-6">
-      {/* Header with search */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Resumo Geral</h1>
           <p className="text-muted-foreground capitalize">{monthLabel}</p>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar produto..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="pl-9 w-64"
-            />
-          </div>
-          <Button variant="outline" size="icon" onClick={() => window.location.reload()}>
-            <RefreshCw className="w-4 h-4" />
-          </Button>
-        </div>
+        <Button variant="outline" size="icon" onClick={() => window.location.reload()}>
+          <RefreshCw className="w-4 h-4" />
+        </Button>
       </div>
 
-      {/* Lucro Líquido - Hero Card */}
-      <Card className="border-primary/20">
-        <CardContent className="pt-6 pb-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="flex items-center gap-2">
-                <p className="text-sm font-medium text-muted-foreground">Faturamento Líquido</p>
-                <Tooltip>
-                  <TooltipTrigger>
-                    <Info className="w-4 h-4 text-muted-foreground" />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Receita total menos custos de produção (CPV)</p>
-                  </TooltipContent>
-                </Tooltip>
-              </div>
-              <p className="text-4xl font-bold text-foreground mt-1">{formatCurrency(d.profit)}</p>
-            </div>
-            <div className={`p-3 rounded-lg ${d.profit >= 0 ? "bg-emerald-500/10" : "bg-destructive/10"}`}>
-              {d.profit >= 0 ? (
-                <TrendingUp className="w-6 h-6 text-emerald-500" />
-              ) : (
-                <TrendingDown className="w-6 h-6 text-destructive" />
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Vendas por Produto */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <CardTitle className="text-base font-semibold">Vendas por Produto</CardTitle>
-              <Tooltip>
-                <TooltipTrigger>
-                  <Info className="w-4 h-4 text-muted-foreground" />
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Produtos vendidos no mês atual (somente pedidos pagos)</p>
-                </TooltipContent>
-              </Tooltip>
-            </div>
-            <Badge variant="secondary">{d.totalProductQty} itens</Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-1">
-          {filteredProducts.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-4 text-center">
-              {search ? "Nenhum produto encontrado" : "Nenhum produto vendido no período"}
-            </p>
-          ) : (
-            filteredProducts.slice(0, 15).map((product, i) => {
-              const pct = d.totalProductQty > 0 ? (product.qty / d.totalProductQty) * 100 : 0;
-              return (
-                <div key={i} className="flex items-center justify-between py-2.5 border-b border-border/50 last:border-0">
-                  <p className="text-sm text-foreground flex-1 pr-4 truncate">{product.name}</p>
-                  <div className="flex items-center gap-4 shrink-0">
-                    <span className="text-sm font-medium text-foreground w-6 text-right">{product.qty}</span>
-                    <div className="w-8 h-8 relative">
-                      <svg viewBox="0 0 36 36" className="w-8 h-8 -rotate-90">
-                        <circle cx="18" cy="18" r="15.9" fill="none" stroke="hsl(var(--muted))" strokeWidth="3" />
-                        <circle
-                          cx="18" cy="18" r="15.9" fill="none"
-                          stroke="hsl(var(--primary))" strokeWidth="3"
-                          strokeDasharray={`${pct} ${100 - pct}`}
-                          strokeLinecap="round"
-                        />
-                      </svg>
-                    </div>
-                    <span className="text-sm text-muted-foreground w-14 text-right">{pct.toFixed(1)}%</span>
-                  </div>
-                </div>
-              );
-            })
-          )}
-          {filteredProducts.length > 15 && (
-            <p className="text-xs text-muted-foreground text-center pt-2">
-              +{filteredProducts.length - 15} produtos...
-            </p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Financial Details */}
+      {/* Row 1: Financial KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <KPICard
           title="Receita (Pagos)"
@@ -288,18 +163,18 @@ export default function HomeDashboard() {
         <KPICard
           title="Custos de Produto (CPV)"
           value={formatCurrency(d.totalCosts)}
-          subtitle={d.totalCosts > 0 ? `${((d.totalCosts / (d.revenue || 1)) * 100).toFixed(1)}% da receita` : "Sem custos lançados"}
+          subtitle={d.totalCosts > 0 ? `${((d.totalCosts / d.revenue) * 100).toFixed(1)}% da receita` : "Sem custos lançados"}
           icon={Package}
           color="text-orange-500"
           bg="bg-orange-500/10"
         />
         <KPICard
-          title="Margem de Lucro"
-          value={`${d.margin.toFixed(1)}%`}
-          subtitle={`Ticket médio ${formatCurrency(d.avgTicket)}`}
-          icon={Percent}
-          color={d.margin >= 30 ? "text-emerald-500" : d.margin >= 15 ? "text-warning" : "text-destructive"}
-          bg={d.margin >= 30 ? "bg-emerald-500/10" : d.margin >= 15 ? "bg-warning/10" : "bg-destructive/10"}
+          title="Lucro Líquido"
+          value={formatCurrency(d.profit)}
+          subtitle={`Margem ${d.margin.toFixed(1)}%`}
+          icon={d.profit >= 0 ? TrendingUp : TrendingDown}
+          color={d.profit >= 0 ? "text-emerald-500" : "text-destructive"}
+          bg={d.profit >= 0 ? "bg-emerald-500/10" : "bg-destructive/10"}
         />
         <KPICard
           title="Ticket Médio"
@@ -311,8 +186,9 @@ export default function HomeDashboard() {
         />
       </div>
 
-      {/* Pending & Abandoned */}
+      {/* Row 2: Pending & Abandoned */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* Pending Orders */}
         <Card className="border-warning/30">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
@@ -329,6 +205,7 @@ export default function HomeDashboard() {
           </CardContent>
         </Card>
 
+        {/* Abandoned Carts */}
         <Card className="border-destructive/30">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
@@ -348,22 +225,29 @@ export default function HomeDashboard() {
           </CardContent>
         </Card>
 
+        {/* Margin Overview */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Resumo Financeiro</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Margem de Lucro</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
+            <div className="flex items-end gap-2">
+              <p className={`text-4xl font-bold ${d.margin >= 30 ? "text-emerald-500" : d.margin >= 15 ? "text-warning" : "text-destructive"}`}>
+                {d.margin.toFixed(1)}%
+              </p>
+              <Percent className="w-5 h-5 text-muted-foreground mb-1" />
+            </div>
+            <div className="mt-3 space-y-1">
+              <div className="flex justify-between text-xs">
                 <span className="text-muted-foreground">Receita</span>
                 <span className="font-medium">{formatCurrency(d.revenue)}</span>
               </div>
-              <div className="flex justify-between text-sm">
+              <div className="flex justify-between text-xs">
                 <span className="text-muted-foreground">(-) Custos</span>
                 <span className="font-medium text-destructive">-{formatCurrency(d.totalCosts)}</span>
               </div>
-              <div className="border-t border-border pt-2 flex justify-between text-sm">
-                <span className="font-semibold">(=) Lucro Líquido</span>
+              <div className="border-t border-border pt-1 flex justify-between text-xs">
+                <span className="text-muted-foreground font-semibold">(=) Lucro</span>
                 <span className="font-bold text-emerald-500">{formatCurrency(d.profit)}</span>
               </div>
             </div>
@@ -371,12 +255,32 @@ export default function HomeDashboard() {
         </Card>
       </div>
 
-      {/* Operational */}
+      {/* Row 3: Operational */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <MiniCard title="Clientes" value={d.totalCustomers} icon={Users} onClick={() => navigate("/customers")} />
-        <MiniCard title="Conversas Ativas" value={d.activeConversations} icon={MessageSquare} onClick={() => navigate("/inbox")} />
-        <MiniCard title="Campanhas Ativas" value={d.activeCampaigns} icon={Mail} onClick={() => navigate("/campaigns")} />
-        <MiniCard title="Mensagens Enviadas" value={d.sentMessages} icon={TrendingUp} subtitle={d.failedMessages > 0 ? `${d.failedMessages} falharam` : undefined} />
+        <MiniCard
+          title="Clientes"
+          value={d.totalCustomers}
+          icon={Users}
+          onClick={() => navigate("/customers")}
+        />
+        <MiniCard
+          title="Conversas Ativas"
+          value={d.activeConversations}
+          icon={MessageSquare}
+          onClick={() => navigate("/inbox")}
+        />
+        <MiniCard
+          title="Campanhas Ativas"
+          value={d.activeCampaigns}
+          icon={Mail}
+          onClick={() => navigate("/campaigns")}
+        />
+        <MiniCard
+          title="Mensagens Enviadas"
+          value={d.sentMessages}
+          icon={TrendingUp}
+          subtitle={d.failedMessages > 0 ? `${d.failedMessages} falharam` : undefined}
+        />
       </div>
     </div>
   );
