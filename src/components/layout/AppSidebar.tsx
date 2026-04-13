@@ -34,6 +34,7 @@ interface NavItem {
 }
 
 const navigation: NavItem[] = [
+  { name: "Resumo Geral", href: "/home", icon: LayoutDashboard },
   { name: "Atendimentos", href: "/inbox", icon: MessageSquare },
   { name: "Painel de Vendas", href: "/sales", icon: TrendingUp },
   { name: "Clientes", href: "/customers", icon: Users },
