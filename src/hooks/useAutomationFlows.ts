@@ -17,16 +17,16 @@ export interface AutomationFlow {
 }
 
 export const TRIGGER_EVENTS = [
-  { value: "order/created", label: "Pedido Realizado" },
-  { value: "order/paid", label: "Pedido Pago" },
-  { value: "order/packed", label: "Pedido Embalado" },
-  { value: "order/fulfilled", label: "Pedido Enviado (Saiu para Entrega)" },
-  { value: "order/cancelled", label: "Pedido Cancelado" },
+  { value: "order/created", label: "Pedido Criado (order/created)" },
+  { value: "order/paid", label: "Pedido Pago (order/paid)" },
+  { value: "order/packed", label: "Pedido Embalado (order/packed)" },
+  { value: "order/fulfilled", label: "Pedido Entregue (order/fulfilled)" },
+  { value: "order/cancelled", label: "Pedido Cancelado (order/cancelled)" },
   { value: "abandoned_checkout", label: "Carrinho Abandonado" },
-  { value: "post_sale_15d", label: "Pós-venda: 15 dias após envio" },
-  { value: "post_sale_30d", label: "Pós-venda: 30 dias após envio" },
-  { value: "post_sale_45d", label: "Pós-venda: 45 dias após envio" },
-  { value: "post_sale_60d", label: "Pós-venda: 60 dias após envio" },
+  { value: "post_sale_15d", label: "Pós-venda: 15 dias após entrega" },
+  { value: "post_sale_30d", label: "Pós-venda: 30 dias após entrega" },
+  { value: "post_sale_45d", label: "Pós-venda: 45 dias após entrega" },
+  { value: "post_sale_60d", label: "Pós-venda: 60 dias após entrega" },
 ];
 
 export const AVAILABLE_VARIABLES = [
