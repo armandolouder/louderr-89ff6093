@@ -15,6 +15,7 @@ const TRIGGER_LABELS: Record<string, string> = {
   visit: "Visita",
   cart: "Carrinho",
   purchase: "Compra",
+  packed: "Embalado",
   shipped: "Enviado",
   delivered: "Entregue",
 };
