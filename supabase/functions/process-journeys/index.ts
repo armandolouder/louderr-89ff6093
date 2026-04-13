@@ -361,15 +361,34 @@ serve(async (req) => {
                 }
 
                 if (waContent) {
-                  // Replace variables
+                  // Replace ALL variables using execution_data
                   const firstName = (customerName || "").split(" ")[0] || "";
+                  const execDataObj = exec.execution_data as any;
+
                   waContent = waContent.replace(/\[nome_cliente\]/g, firstName);
 
-                  // Get order data from execution_data if available
-                  const execDataObj = exec.execution_data as any;
                   if (execDataObj?.order_number) {
                     waContent = waContent.replace(/\[numero_pedido\]/g, execDataObj.order_number);
                   }
+
+                  // Total do pedido
+                  if (execDataObj?.total !== undefined) {
+                    waContent = waContent.replace(/\[total_pedido\]/g, `R$ ${Number(execDataObj.total).toFixed(2).replace(".", ",")}`);
+                  }
+
+                  // Lista de produtos
+                  if (execDataObj?.products && Array.isArray(execDataObj.products)) {
+                    const productsList = execDataObj.products.map((p: any) => `${p.quantity}x ${p.name}`).join("\n");
+                    waContent = waContent.replace(/\[lista_produtos\]/g, productsList);
+                  }
+
+                  // URLs
+                  waContent = waContent.replace(/\[url_sucesso_pedido\]/g, execDataObj?.checkout_success_url || "");
+                  waContent = waContent.replace(/\[url_sucesso\]/g, execDataObj?.checkout_success_url || "");
+                  waContent = waContent.replace(/\[link_pagamento\]/g, execDataObj?.checkout_url || "");
+                  waContent = waContent.replace(/\[link_boleto\]/g, execDataObj?.boleto_url || "");
+                  waContent = waContent.replace(/\[link_recuperacao\]/g, execDataObj?.checkout_url || "");
+                  waContent = waContent.replace(/\[codigo_rastreio\]/g, execDataObj?.tracking_code || "");
 
                   const formattedPhone = exec.customer_phone.replace(/\D/g, "");
                   console.log(`Journey WhatsApp: Sending to ${formattedPhone}`);

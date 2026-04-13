@@ -282,7 +282,19 @@ Deno.serve(async (req) => {
                 status: "active",
                 started_at: new Date().toISOString(),
                 next_action_at: new Date().toISOString(),
-                execution_data: { trigger_order_id: orderId, trigger_event: event, payment_status: paymentStatus, order_number: order?.number?.toString() || orderId.toString() },
+                execution_data: {
+                  trigger_order_id: orderId,
+                  trigger_event: event,
+                  payment_status: paymentStatus,
+                  order_number: order?.number?.toString() || orderId.toString(),
+                  total: total,
+                  currency: currency,
+                  products: products,
+                  checkout_url: order.checkout_url || "",
+                  checkout_success_url: checkoutSuccessUrl || "",
+                  boleto_url: order.payment_details?.boleto_url || "",
+                  tracking_code: order.shipping_tracking_number || order.tracking_number || "",
+                },
               });
 
               if (jExecErr) {
