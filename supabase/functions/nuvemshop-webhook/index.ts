@@ -282,7 +282,7 @@ Deno.serve(async (req) => {
                 status: "active",
                 started_at: new Date().toISOString(),
                 next_action_at: new Date().toISOString(),
-                execution_data: { trigger_order_id: orderId, trigger_event: event, payment_status: paymentStatus },
+                execution_data: { trigger_order_id: orderId, trigger_event: event, payment_status: paymentStatus, order_number: order?.number?.toString() || orderId.toString() },
               });
 
               if (jExecErr) {
