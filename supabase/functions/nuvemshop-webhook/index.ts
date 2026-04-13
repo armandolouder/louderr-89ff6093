@@ -246,6 +246,7 @@ Deno.serve(async (req) => {
       // Deduplicate triggers
       const uniqueTriggers = [...new Set(journeyTriggers)];
       
+      let journeyHandled = false;
       if (uniqueTriggers.length > 0) {
         for (const journeyTrigger of uniqueTriggers) {
           const { data: journeys } = await supabase
