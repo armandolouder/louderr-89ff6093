@@ -12,11 +12,13 @@ interface Props {
 }
 
 const TRIGGER_LABELS: Record<string, string> = {
-  visit: "Visita",
-  cart: "Carrinho",
-  purchase: "Compra",
-  packed: "Embalado",
-  delivered: "Entregue",
+  visit: "Visita ao site",
+  cart: "Carrinho abandonado",
+  purchase: "order/created",
+  payment_pending: "Pagamento pendente",
+  payment_confirmed: "order/paid",
+  packed: "order/packed",
+  delivered: "order/fulfilled",
 };
 
 export function JourneysList({ onEdit, onNew }: Props) {
