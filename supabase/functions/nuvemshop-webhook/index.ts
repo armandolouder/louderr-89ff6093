@@ -239,10 +239,6 @@ Deno.serve(async (req) => {
           journeyTriggers.push("payment_pending");
         }
       }
-      // order/paid → payment_confirmed
-      if (event === "order/paid") {
-        journeyTriggers.push("purchase");
-      }
       // Deduplicate triggers
       const uniqueTriggers = [...new Set(journeyTriggers)];
       
