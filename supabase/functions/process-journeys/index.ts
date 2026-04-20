@@ -1,11 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+import { corsHeaders, handleCorsPreflightRequest, jsonResponse } from "../_shared/cors.ts";
+import { sendUazapiText, hasUazapiCredentials } from "../_shared/uazapi.ts";
+import { replaceWhatsappVariables } from "../_shared/variables.ts";
+import { digitsOnly } from "../_shared/phone.ts";
 
 // Send email directly via Brevo API (no auth needed, server-to-server)
 async function sendJourneyEmail(options: {
