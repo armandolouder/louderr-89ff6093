@@ -1,11 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+import { handleCorsPreflightRequest, jsonResponse } from "../_shared/cors.ts";
+import { verifyUserJwt } from "../_shared/auth.ts";
+import { sendUazapiText, sendUazapiMedia, hasUazapiCredentials, UazapiMediaType } from "../_shared/uazapi.ts";
+import { digitsOnly } from "../_shared/phone.ts";
 
 interface QueueItem {
   id: string;
@@ -31,35 +29,20 @@ interface Campaign {
 }
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const preflight = handleCorsPreflightRequest(req);
+  if (preflight) return preflight;
 
   try {
-    // Auth check
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
-    const anonClient = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: authHeader } } });
-    const { data: claimsData, error: claimsError } = await anonClient.auth.getClaims(authHeader.replace('Bearer ', ''));
-    if (claimsError || !claimsData?.claims) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
+    const authResult = await verifyUserJwt(req);
+    if (!authResult.ok) return authResult.response;
 
-    const UAZAPI_SERVER_URL = Deno.env.get("UAZAPI_SERVER_URL");
-    const UAZAPI_INSTANCE_TOKEN = Deno.env.get("UAZAPI_INSTANCE_TOKEN");
+    if (!hasUazapiCredentials()) throw new Error("UAZAPI credentials not configured");
+
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-
-    if (!UAZAPI_SERVER_URL || !UAZAPI_INSTANCE_TOKEN) {
-      throw new Error("UAZAPI credentials not configured");
-    }
-
     if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
       throw new Error("Supabase credentials not configured");
     }
-
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     // Resolve owner user_id for multi-tenant data isolation
@@ -108,63 +91,22 @@ serve(async (req) => {
           })
           .eq("id", item.id);
 
-        const formattedPhone = item.phone.replace(/\D/g, "");
-        
-        let uazapiResponse;
-        let requestBody: Record<string, unknown>;
-
-        // Check if message has media
+        const formattedPhone = digitsOnly(item.phone);
         const hasMedia = item.metadata?.media_url && item.metadata?.media_type && item.metadata.media_type !== "none";
 
-        if (hasMedia) {
-          // Send media message
-          requestBody = {
-            number: formattedPhone,
-            type: item.metadata.media_type,
-            file: item.metadata.media_url,
-            text: item.content || "",
-          };
+        const uazapiResult = hasMedia
+          ? await sendUazapiMedia({
+              phone: formattedPhone,
+              mediaType: item.metadata.media_type as UazapiMediaType,
+              fileUrl: item.metadata.media_url!,
+              caption: item.content || "",
+            })
+          : await sendUazapiText(formattedPhone, item.content);
 
-          console.log(`Sending ${item.metadata.media_type} to ${formattedPhone}`);
+        console.log(`UAZAPI response for ${formattedPhone}: ${uazapiResult.status}`);
+        const responseData = uazapiResult.data;
 
-          uazapiResponse = await fetch(`${UAZAPI_SERVER_URL}/send/media`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "token": UAZAPI_INSTANCE_TOKEN,
-            },
-            body: JSON.stringify(requestBody),
-          });
-        } else {
-          // Send text message
-          requestBody = {
-            number: formattedPhone,
-            text: item.content,
-          };
-
-          console.log(`Sending text to ${formattedPhone}`);
-
-          uazapiResponse = await fetch(`${UAZAPI_SERVER_URL}/send/text`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "token": UAZAPI_INSTANCE_TOKEN,
-            },
-            body: JSON.stringify(requestBody),
-          });
-        }
-
-        const responseText = await uazapiResponse.text();
-        console.log(`UAZAPI response for ${formattedPhone}: ${uazapiResponse.status}`);
-
-        let responseData;
-        try {
-          responseData = JSON.parse(responseText);
-        } catch {
-          responseData = { raw: responseText };
-        }
-
-        if (uazapiResponse.ok) {
+        if (uazapiResult.ok) {
           // Success - update queue and create log
           await supabase
             .from("whatsapp_queue")
@@ -203,7 +145,7 @@ serve(async (req) => {
           results.push({ id: item.id, success: true });
         } else {
           // Failed
-          const errorMessage = responseData?.message || responseText || "Unknown error";
+          const errorMessage = (responseData as any)?.message || uazapiResult.raw || "Unknown error";
           
           await supabase
             .from("whatsapp_queue")
@@ -247,11 +189,11 @@ serve(async (req) => {
           .from("whatsapp_queue")
           .update({ 
             status: item.attempts >= 2 ? "failed" : "pending",
-            error_message: error.message
+            error_message: (error as Error).message
           })
           .eq("id", item.id);
 
-        results.push({ id: item.id, success: false, error: error.message });
+        results.push({ id: item.id, success: false, error: (error as Error).message });
       }
     }
 
@@ -285,21 +227,15 @@ serve(async (req) => {
     const successful = results.filter(r => r.success).length;
     const failed = results.filter(r => !r.success).length;
 
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        processed: results.length,
-        sent: successful,
-        failed,
-        results 
-      }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return jsonResponse({
+      success: true,
+      processed: results.length,
+      sent: successful,
+      failed,
+      results,
+    });
   } catch (error) {
     console.error("Error processing WhatsApp queue:", error);
-    return new Response(
-      JSON.stringify({ success: false, error: error.message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return jsonResponse({ success: false, error: (error as Error).message }, { status: 500 });
   }
 });

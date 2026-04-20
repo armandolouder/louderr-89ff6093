@@ -1,11 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+import { corsHeaders, handleCorsPreflightRequest, jsonResponse } from "../_shared/cors.ts";
+import { verifyUserJwt, createServiceClient } from "../_shared/auth.ts";
+import { sendUazapiText, sendUazapiMedia, hasUazapiCredentials, UazapiMediaType } from "../_shared/uazapi.ts";
+import { digitsOnly } from "../_shared/phone.ts";
 
 interface SendMessageRequest {
   conversationId: string;
@@ -15,37 +12,19 @@ interface SendMessageRequest {
 }
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const preflight = handleCorsPreflightRequest(req);
+  if (preflight) return preflight;
 
   try {
-    // Auth check
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
-    const anonClient = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: authHeader } } });
-    const { data: claimsData, error: claimsError } = await anonClient.auth.getClaims(authHeader.replace('Bearer ', ''));
-    if (claimsError || !claimsData?.claims) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
-    const authenticatedUserId = claimsData.claims.sub;
+    const authResult = await verifyUserJwt(req);
+    if (!authResult.ok) return authResult.response;
+    const authenticatedUserId = authResult.auth.userId;
 
-    const UAZAPI_SERVER_URL = Deno.env.get("UAZAPI_SERVER_URL");
-    const UAZAPI_INSTANCE_TOKEN = Deno.env.get("UAZAPI_INSTANCE_TOKEN");
-    const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
-    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-
-    if (!UAZAPI_SERVER_URL || !UAZAPI_INSTANCE_TOKEN) {
+    if (!hasUazapiCredentials()) {
       throw new Error("UAZAPI credentials not configured");
     }
 
-    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-      throw new Error("Supabase credentials not configured");
-    }
-
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const supabase = createServiceClient();
 
     const { conversationId, content, messageType = "text", mediaUrl }: SendMessageRequest = await req.json();
 
@@ -69,32 +48,12 @@ serve(async (req) => {
       throw new Error("Contact phone number not found");
     }
 
-    // Format phone for UAZAPI - just the number without formatting
-    const formattedPhone = phone.replace(/\D/g, "");
-
+    const formattedPhone = digitsOnly(phone);
     console.log(`Sending ${messageType} message to ${formattedPhone}`);
 
-    let uazapiResponse;
-    let requestBody: Record<string, unknown>;
-
+    let result;
     if (messageType === "text") {
-      // Send text message via UAZAPI - endpoint: /send/text
-      requestBody = {
-        number: formattedPhone,
-        text: content,
-      };
-
-      console.log(`Sending text message to ${formattedPhone}`);
-      console.log("Request body:", JSON.stringify(requestBody));
-
-      uazapiResponse = await fetch(`${UAZAPI_SERVER_URL}/send/text`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "token": UAZAPI_INSTANCE_TOKEN,
-        },
-        body: JSON.stringify(requestBody),
-      });
+      result = await sendUazapiText(formattedPhone, content);
     } else if (mediaUrl) {
       // Resolve storage path to a signed URL for UAZAPI to download
       let fileUrl = mediaUrl;
@@ -109,46 +68,24 @@ serve(async (req) => {
         fileUrl = signedData.signedUrl;
       }
 
-      // UAZAPI /send/media endpoint
-      // Docs: https://docs.uazapi.com/endpoint/post/send~media
-      // Fields: number, type (image/video/audio/document), file (URL), text (caption)
-      requestBody = {
-        number: formattedPhone,
-        type: messageType, // image, video, audio, document
-        file: fileUrl,
-        text: content || "",
-      };
-
-      console.log(`Sending ${messageType} message to ${formattedPhone}`);
-      console.log("Request body:", JSON.stringify(requestBody));
-
-      uazapiResponse = await fetch(`${UAZAPI_SERVER_URL}/send/media`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "token": UAZAPI_INSTANCE_TOKEN,
-        },
-        body: JSON.stringify(requestBody),
+      result = await sendUazapiMedia({
+        phone: formattedPhone,
+        mediaType: messageType as UazapiMediaType,
+        fileUrl,
+        caption: content || "",
       });
     } else {
       throw new Error("Media URL required for non-text messages");
     }
 
-    const responseText = await uazapiResponse.text();
-    console.log("UAZAPI response status:", uazapiResponse.status);
-    console.log("UAZAPI response:", responseText);
+    console.log("UAZAPI response status:", result.status);
+    console.log("UAZAPI response:", result.raw);
 
-    if (!uazapiResponse.ok) {
-      console.error("UAZAPI error:", responseText);
-      throw new Error(`Failed to send message via UAZAPI: ${uazapiResponse.status} - ${responseText}`);
+    if (!result.ok) {
+      console.error("UAZAPI error:", result.raw);
+      throw new Error(`Failed to send message via UAZAPI: ${result.status} - ${result.raw}`);
     }
-
-    let uazapiData;
-    try {
-      uazapiData = JSON.parse(responseText);
-    } catch {
-      uazapiData = { raw: responseText };
-    }
+    const uazapiData = result.data;
 
     // Save message to database
     const { data: message, error: msgError } = await supabase
@@ -180,15 +117,9 @@ serve(async (req) => {
       })
       .eq("id", conversationId);
 
-    return new Response(
-      JSON.stringify({ success: true, message, uazapiData }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return jsonResponse({ success: true, message, uazapiData });
   } catch (error) {
     console.error("Error sending WhatsApp message:", error);
-    return new Response(
-      JSON.stringify({ success: false, error: error.message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return jsonResponse({ success: false, error: (error as Error).message }, { status: 500 });
   }
 });

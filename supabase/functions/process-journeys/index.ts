@@ -1,11 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+import { corsHeaders, handleCorsPreflightRequest, jsonResponse } from "../_shared/cors.ts";
+import { sendUazapiText, hasUazapiCredentials } from "../_shared/uazapi.ts";
+import { replaceWhatsappVariables } from "../_shared/variables.ts";
+import { digitsOnly } from "../_shared/phone.ts";
 
 // Send email directly via Brevo API (no auth needed, server-to-server)
 async function sendJourneyEmail(options: {
@@ -108,9 +106,8 @@ async function resolveCustomerEmail(
 }
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const preflight = handleCorsPreflightRequest(req);
+  if (preflight) return preflight;
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -338,10 +335,7 @@ serve(async (req) => {
 
           // Send WhatsApp directly via UAZAPI
           if ((channel === "whatsapp" || channel === "both") && exec.customer_phone) {
-            const UAZAPI_SERVER_URL = Deno.env.get("UAZAPI_SERVER_URL");
-            const UAZAPI_INSTANCE_TOKEN = Deno.env.get("UAZAPI_INSTANCE_TOKEN");
-
-            if (UAZAPI_SERVER_URL && UAZAPI_INSTANCE_TOKEN) {
+            if (hasUazapiCredentials()) {
               try {
                 // Get message content from automation_flows template or node data
                 let waContent = "";
@@ -361,55 +355,26 @@ serve(async (req) => {
                 }
 
                 if (waContent) {
-                  // Replace ALL variables using execution_data
-                  const firstName = (customerName || "").split(" ")[0] || "";
-                  const execDataObj = exec.execution_data as any;
-
-                  waContent = waContent.replace(/\[nome_cliente\]/g, firstName);
-
-                  if (execDataObj?.order_number) {
-                    waContent = waContent.replace(/\[numero_pedido\]/g, execDataObj.order_number);
-                  }
-
-                  // Total do pedido
-                  if (execDataObj?.total !== undefined) {
-                    waContent = waContent.replace(/\[total_pedido\]/g, `R$ ${Number(execDataObj.total).toFixed(2).replace(".", ",")}`);
-                  }
-
-                  // Lista de produtos
-                  if (execDataObj?.products && Array.isArray(execDataObj.products)) {
-                    const productsList = execDataObj.products.map((p: any) => `${p.quantity}x ${p.name}`).join("\n");
-                    waContent = waContent.replace(/\[lista_produtos\]/g, productsList);
-                  }
-
-                  // URLs
-                  waContent = waContent.replace(/\[url_sucesso_pedido\]/g, execDataObj?.checkout_success_url || "");
-                  waContent = waContent.replace(/\[url_sucesso\]/g, execDataObj?.checkout_success_url || "");
-                  waContent = waContent.replace(/\[link_pagamento\]/g, execDataObj?.checkout_url || "");
-                  waContent = waContent.replace(/\[link_boleto\]/g, execDataObj?.boleto_url || "");
-                  waContent = waContent.replace(/\[link_recuperacao\]/g, execDataObj?.checkout_url || "");
-                  waContent = waContent.replace(/\[codigo_rastreio\]/g, execDataObj?.tracking_code || "");
-
-                  const formattedPhone = exec.customer_phone.replace(/\D/g, "");
-                  console.log(`Journey WhatsApp: Sending to ${formattedPhone}`);
-
-                  const uazRes = await fetch(`${UAZAPI_SERVER_URL}/send/text`, {
-                    method: "POST",
-                    headers: {
-                      "Content-Type": "application/json",
-                      "token": UAZAPI_INSTANCE_TOKEN,
-                    },
-                    body: JSON.stringify({
-                      number: formattedPhone,
-                      text: waContent,
-                    }),
+                  const execDataObj = (exec.execution_data ?? {}) as any;
+                  waContent = replaceWhatsappVariables(waContent, {
+                    customerName,
+                    orderNumber: execDataObj.order_number,
+                    total: execDataObj.total,
+                    products: execDataObj.products,
+                    checkoutSuccessUrl: execDataObj.checkout_success_url,
+                    checkoutUrl: execDataObj.checkout_url,
+                    boletoUrl: execDataObj.boleto_url,
+                    trackingCode: execDataObj.tracking_code,
                   });
 
-                  const uazText = await uazRes.text();
-                  if (uazRes.ok) {
-                    console.log(`Journey WhatsApp sent to ${formattedPhone}: ${uazText.substring(0, 100)}`);
+                  const formattedPhone = digitsOnly(exec.customer_phone);
+                  console.log(`Journey WhatsApp: Sending to ${formattedPhone}`);
+
+                  const uazResult = await sendUazapiText(formattedPhone, waContent);
+                  if (uazResult.ok) {
+                    console.log(`Journey WhatsApp sent to ${formattedPhone}: ${uazResult.raw.substring(0, 100)}`);
                   } else {
-                    console.error(`Journey WhatsApp failed for ${formattedPhone}: ${uazRes.status} ${uazText}`);
+                    console.error(`Journey WhatsApp failed for ${formattedPhone}: ${uazResult.status} ${uazResult.raw}`);
                   }
                 }
               } catch (waErr: any) {
