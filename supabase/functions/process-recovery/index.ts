@@ -47,11 +47,12 @@
             }
     
             // Get steps configuration (with simple cache)
-            if (!flowStepsCache.has(exec.flow_id)) {
+            let steps = flowStepsCache.get(exec.flow_id);
+            if (!steps) {
               const { data: flowData } = await supabase.from("recovery_flows").select("steps").eq("id", exec.flow_id).single();
-              flowStepsCache.set(exec.flow_id, (flowData?.steps as any[]) || []);
+              steps = (flowData?.steps as any[]) || [];
+              flowStepsCache.set(exec.flow_id, steps);
             }
-            const steps = flowStepsCache.get(exec.flow_id)!;
             const stepIndex = exec.current_step;
     
             if (stepIndex >= steps.length) {
