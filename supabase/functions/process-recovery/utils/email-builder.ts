@@ -1,0 +1,85 @@
+ import { JourneyProduct } from "../../_shared/variables.ts";
+ 
+ export interface EmailHeadline {
+   subject: string;
+   title: string;
+   subtitle: string;
+   ctaText: string;
+   ctaColor: string;
+ }
+ 
+ export const headlines: Record<string, EmailHeadline> = {
+   emocional: { subject: "[nome_cliente], você deixou isso aqui 💜", title: "Você deixou isso aqui.", subtitle: "Esses itens não ficaram aí por acaso.", ctaText: "FINALIZAR COMPRA", ctaColor: "#000000" },
+   urgencia: { subject: "⚡ [nome_cliente], seus itens podem esgotar!", title: "Corre, esses itens são limitados.", subtitle: "O estoque tá acabando e a gente não quer que você perca.", ctaText: "GARANTIR AGORA", ctaColor: "#dc2626" },
+   incentivo: { subject: "🎁 [nome_cliente], temos algo especial pra você", title: "Esse carrinho libera algo exclusivo.", subtitle: "Finalize sua compra e desbloqueie um conteúdo especial da LOUDER.", ctaText: "QUERO MEU BÔNUS", ctaColor: "#000000" },
+   ultima_chamada: { subject: "⏰ Última chance, [nome_cliente]!", title: "Última chamada.", subtitle: "Seu carrinho será limpo em breve. Essa é a última vez que vamos te lembrar.", ctaText: "FINALIZAR COMPRA", ctaColor: "#f59e0b" },
+   leve: { subject: "[nome_cliente], separamos seu carrinho 👋", title: "Separamos tudo pra você.", subtitle: "É só finalizar a compra. Rápido e fácil.", ctaText: "FINALIZAR COMPRA", ctaColor: "#000000" },
+ };
+ 
+ export function buildRecoveryEmailHtml(
+   stepType: string,
+   firstName: string,
+   products: JourneyProduct[],
+   total: number,
+   recoveryUrl: string | null
+ ) {
+   const totalFormatted = `R$ ${Number(total || 0).toFixed(2).replace(".", ",")}`;
+ 
+   const productGrid = (products || []).map((p) => `
+     <tr>
+       <td style="padding: 12px 0; border-bottom: 1px solid #f0f0f0;">
+         <table cellpadding="0" cellspacing="0" border="0" width="100%"><tr>
+           ${p.image
+             ? `<td width="80" style="vertical-align: top; padding-right: 16px;"><img src="${p.image}" alt="${p.name || "Produto"}" width="80" height="80" style="display: block; border-radius: 8px; object-fit: cover; background: #f5f5f5;" /></td>`
+             : `<td width="80" style="vertical-align: top; padding-right: 16px;"><div style="width: 80px; height: 80px; background: #f5f5f5; border-radius: 8px;"></div></td>`
+           }
+           <td style="vertical-align: middle;">
+             <p style="margin: 0 0 4px; font-size: 15px; font-weight: 600; color: #111;">${p.name || "Produto"}</p>
+             ${p.variant ? `<p style="margin: 0 0 4px; font-size: 12px; color: #888;">${p.variant}</p>` : ""}
+             <p style="margin: 0; font-size: 14px; color: #111;">${p.quantity && p.quantity > 1 ? `${p.quantity}x ` : ""}R$ ${Number(p.price || 0).toFixed(2).replace(".", ",")}</p>
+           </td>
+         </tr></table>
+       </td>
+     </tr>`).join("");
+ 
+   const h = headlines[stepType] || headlines.emocional;
+   
+   // Substitui placeholder no subject
+   const subject = h.subject.replace("[nome_cliente]", firstName || "Cliente");
+ 
+   const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/></head>
+ <body style="margin:0;padding:0;background:#f5f5f5;font-family:'Helvetica Neue',Arial,sans-serif;">
+ <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#f5f5f5;"><tr><td align="center">
+ <table cellpadding="0" cellspacing="0" border="0" width="600" style="max-width:600px;background:#fff;">
+   <tr><td style="background:#000;padding:24px 40px;text-align:center;">
+     <img src="https://acdn-us.mitiendanube.com/stores/002/778/031/themes/common/logo-507807513-1674425349-aa10b3e5b7752a1b2b57c619e6ba49b41674425349-640-0.webp" alt="LOUDER.ink" style="display:inline-block;max-width:280px;width:100%;height:auto;"/>
+   </td></tr>
+   <tr><td style="padding:40px 40px 20px;">
+     <h2 style="margin:0 0 8px;font-size:24px;font-weight:700;color:#111;line-height:1.2;">${h.title}</h2>
+     <p style="margin:0 0 32px;font-size:15px;color:#666;line-height:1.5;">${firstName ? `Oi ${firstName}, ` : ""}${h.subtitle.charAt(0).toLowerCase() + h.subtitle.slice(1)}</p>
+   </td></tr>
+   <tr><td style="padding:0 40px;"><table cellpadding="0" cellspacing="0" border="0" width="100%">${productGrid}</table></td></tr>
+   <tr><td style="padding:20px 40px 0;">
+     <table cellpadding="0" cellspacing="0" border="0" width="100%" style="border-top:2px solid #111;"><tr><td style="padding:16px 0;">
+       <table cellpadding="0" cellspacing="0" border="0" width="100%"><tr>
+         <td style="font-size:14px;color:#666;text-transform:uppercase;letter-spacing:1px;">Total</td>
+         <td style="text-align:right;font-size:22px;font-weight:700;color:#111;">${totalFormatted}</td>
+       </tr></table>
+     </td></tr></table>
+   </td></tr>
+   ${recoveryUrl ? `<tr><td style="padding:32px 40px;text-align:center;">
+     <a href="${recoveryUrl}" style="display:inline-block;background:${h.ctaColor};color:${h.ctaColor === "#f59e0b" ? "#000" : "#fff"};padding:16px 48px;border-radius:4px;text-decoration:none;font-weight:700;font-size:14px;letter-spacing:1.5px;text-transform:uppercase;">${h.ctaText} →</a>
+   </td></tr>` : ""}
+   <tr><td style="padding:0 40px 40px;text-align:center;">
+     <p style="margin:0;font-size:13px;color:#999;font-style:italic;">${stepType === "incentivo" ? "Esse carrinho libera algo exclusivo depois da compra." : "Isso não ficou aí por acaso."}</p>
+   </td></tr>
+   <tr><td style="background:#000;padding:32px 40px;text-align:center;">
+     <p style="margin:0 0 8px;font-size:16px;font-weight:700;letter-spacing:2px;color:#fff;opacity:0.9;">LOUDER.ink</p>
+     <p style="margin:0 0 16px;font-size:11px;color:#fff;opacity:0.4;letter-spacing:1px;">Vista sua atitude</p>
+     <p style="margin:0;font-size:11px;color:#fff;opacity:0.3;">© ${new Date().getFullYear()} LOUDER.ink — Todos os direitos reservados</p>
+   </td></tr>
+ </table>
+ </td></tr></table></body></html>`;
+ 
+   return { subject, html };
+ }
