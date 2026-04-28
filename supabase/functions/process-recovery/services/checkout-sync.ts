@@ -22,39 +22,41 @@
    const activeFlow = flows?.[0];
    if (!activeFlow) return;
  
-   // Create recovery executions for new checkouts
-   for (const checkout of newCheckouts) {
-     if (!checkout.customer_phone && !checkout.customer_email) continue;
- 
-     // DEDUP: Check if execution already exists for this checkout
-     const { data: existingExec } = await supabase
-       .from("recovery_executions")
-       .select("id")
-       .eq("checkout_id", checkout.id)
-       .limit(1);
- 
-     if (existingExec?.length) continue; 
- 
-     const { error: insertErr } = await supabase.from("recovery_executions").insert({
-       checkout_id: checkout.id,
-       flow_id: activeFlow.id,
-       current_step: 0,
-       status: "active",
-       customer_phone: checkout.customer_phone,
-       customer_email: checkout.customer_email,
-       customer_name: checkout.customer_name,
-       cart_value: checkout.total || 0,
-       cart_items: checkout.products || [],
-       recovery_url: checkout.recovery_url,
-     });
- 
-     if (!insertErr) {
-       await supabase
-         .from("nuvemshop_abandoned_checkouts")
-         .update({ recovery_status: "contacted", recovery_flow_id: activeFlow.id })
-         .eq("id", checkout.id);
-     }
-   }
+    // 3. Batch check for existing executions to reduce DB roundtrips
+    const checkoutIds = newCheckouts.map(c => c.id);
+    const { data: existingExecs } = await supabase
+      .from("recovery_executions")
+      .select("checkout_id")
+      .in("checkout_id", checkoutIds);
+    
+    const existingIds = new Set(existingExecs?.map(e => e.checkout_id) || []);
+    const checkoutsToCreate = newCheckouts.filter(c => !existingIds.has(c.id) && (c.customer_phone || c.customer_email));
+    
+    if (checkoutsToCreate.length === 0) return;
+
+    // 4. Batch insert new executions
+    const executionsToInsert = checkoutsToCreate.map(checkout => ({
+      checkout_id: checkout.id,
+      flow_id: activeFlow.id,
+      current_step: 0,
+      status: "active",
+      customer_phone: checkout.customer_phone,
+      customer_email: checkout.customer_email,
+      customer_name: checkout.customer_name,
+      cart_value: checkout.total || 0,
+      cart_items: checkout.products || [],
+      recovery_url: checkout.recovery_url,
+    }));
+
+    const { error: insertErr } = await supabase.from("recovery_executions").insert(executionsToInsert);
+
+    if (!insertErr) {
+      // 5. Batch update abandoned checkouts status
+      await supabase
+        .from("nuvemshop_abandoned_checkouts")
+        .update({ recovery_status: "contacted", recovery_flow_id: activeFlow.id })
+        .in("id", checkoutsToCreate.map(c => c.id));
+    }
  }
  
  export async function checkRecoveredOrders(supabase: SupabaseClient, exec: any) {
