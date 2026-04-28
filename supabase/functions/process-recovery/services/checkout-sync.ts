@@ -32,6 +32,10 @@
     const existingIds = new Set(existingExecs?.map(e => e.checkout_id) || []);
     const checkoutsToCreate = newCheckouts.filter(c => !existingIds.has(c.id) && (c.customer_phone || c.customer_email));
     
+    // Get owner user_id to ensure RLS compliance and data ownership
+    const { data: ownerData } = await supabase.rpc("get_webhook_owner_user_id");
+    const ownerUserId = ownerData as string | null;
+    
     if (checkoutsToCreate.length === 0) return;
 
     // 4. Batch insert new executions
@@ -46,6 +50,7 @@
       cart_value: checkout.total || 0,
       cart_items: checkout.products || [],
       recovery_url: checkout.recovery_url,
+      user_id: ownerUserId,
     }));
 
     const { error: insertErr } = await supabase.from("recovery_executions").insert(executionsToInsert);
