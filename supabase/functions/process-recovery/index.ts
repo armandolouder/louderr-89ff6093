@@ -2,89 +2,123 @@
  import { corsHeaders } from "../_shared/cors.ts";
  import { syncNewAbandonedCheckouts, checkRecoveredOrders } from "./services/checkout-sync.ts";
  import { sendWhatsappRecovery, sendEmailRecovery } from "./services/message-sender.ts";
-
-                headers: { "api-key": brevoApiKey, "Content-Type": "application/json" },
-              });
-              let fromEmail = "";
-              if (sendersRes.ok) {
-                const sendersData = await sendersRes.json();
-                fromEmail = sendersData.senders?.[0]?.email || "";
-              }
-
-              if (!fromEmail) {
-                errorDetail = "No Brevo sender configured";
-                console.error(errorDetail);
-              } else {
-                const emailPayload = {
-                  sender: { name: "LOUDER.ink", email: fromEmail },
-                  to: [{ email: exec.customer_email }],
-                  subject: emailContent.subject,
-                  htmlContent: emailContent.html,
-                  tags: ["recovery-engine", stepType, variant],
-                };
-
-                console.log(`Sending recovery email to ${exec.customer_email}, stepType: ${stepType}`);
-
-                const emailRes = await fetch("https://api.brevo.com/v3/smtp/email", {
-                  method: "POST",
-                  headers: { "api-key": brevoApiKey, "Content-Type": "application/json" },
-                  body: JSON.stringify(emailPayload),
-                });
-
-                if (emailRes.ok) {
-                  const result = await emailRes.json();
-                  sendSuccess = true;
-                  console.log(`Email sent successfully: ${result.messageId}`);
-                } else {
-                  errorDetail = `Brevo HTTP ${emailRes.status}: ${await emailRes.text().catch(() => "")}`;
-                  console.error("Brevo send error:", errorDetail);
-                }
-              }
-
-              await supabase.from("recovery_messages")
-                .update({
-                  subject: emailContent.subject,
-                  status: sendSuccess ? "sent" : "failed",
-                  sent_at: sendSuccess ? now.toISOString() : null,
-                  error_message: sendSuccess ? null : errorDetail,
-                })
-                .eq("id", msgRecord.id);
-            } catch (emailErr) {
-              errorDetail = `Email error: ${emailErr.message}`;
-              console.error(errorDetail);
-              await supabase.from("recovery_messages")
-                .update({ status: "failed", error_message: errorDetail })
-                .eq("id", msgRecord.id);
-            }
-          } else {
-            errorDetail = "BREVO_API_KEY not configured";
-            console.error(errorDetail);
-          }
-        }
-
-        if (sendSuccess) {
-          await supabase.from("recovery_executions")
-            .update({ current_step: nextStepIndex + 1 })
-            .eq("id", exec.id);
-          processed++;
-        } else {
-          errors++;
-        }
-      } catch (execErr) {
-        console.error(`Error processing execution ${exec.id}:`, execErr);
-        errors++;
-      }
-    }
-
-    return new Response(
-      JSON.stringify({ success: true, processed, errors, activeExecutions: activeExecs?.length || 0 }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  } catch (error) {
-    console.error("Recovery engine error:", error);
-    return new Response(
-      JSON.stringify({ success: false, error: error.message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  }
-});
+ 
+ Deno.serve(async (req) => {
+   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+ 
+   try {
+     const supabase = createServiceClient();
+     const now = new Date();
+     let processed = 0;
+     let errors = 0;
+ 
+     // 1. Sync new checkouts into executions
+     await syncNewAbandonedCheckouts(supabase);
+ 
+     // 2. Fetch active executions to process
+     const { data: activeExecs } = await supabase
+       .from("recovery_executions")
+       .select("*")
+       .eq("status", "active")
+       .order("created_at", { ascending: true })
+       .limit(100);
+ 
+     if (!activeExecs?.length) {
+       return new Response(
+         JSON.stringify({ success: true, processed: 0, message: "No active recoveries" }),
+         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+       );
+     }
+ 
+     for (const exec of activeExecs) {
+       try {
+         // Check recovery status first
+         if (await checkRecoveredOrders(supabase, exec)) {
+           processed++;
+           continue;
+         }
+ 
+         // Get steps configuration
+         const { data: flowData } = await supabase.from("recovery_flows").select("steps").eq("id", exec.flow_id).single();
+         const steps = (flowData?.steps as any[]) || [];
+         const stepIndex = exec.current_step;
+ 
+         if (stepIndex >= steps.length) {
+           await supabase.from("recovery_executions").update({ status: "expired", completed_at: now.toISOString() }).eq("id", exec.id);
+           await supabase.from("nuvemshop_abandoned_checkouts").update({ recovery_status: "expired", expired_at: now.toISOString() }).eq("id", exec.checkout_id);
+           continue;
+         }
+ 
+         const step = steps[stepIndex];
+ 
+         // Dedup & Advance: If message already exists and is sent
+         const { data: existingMsg } = await supabase.from("recovery_messages")
+           .select("id, status")
+           .eq("execution_id", exec.id)
+           .eq("step_number", stepIndex)
+           .limit(1);
+ 
+         if (existingMsg?.length) {
+           if (existingMsg[0].status === "sent") {
+             await supabase.from("recovery_executions").update({ current_step: stepIndex + 1 }).eq("id", exec.id);
+           }
+           continue;
+         }
+ 
+         // Delay Check
+         const { data: lastMsg } = await supabase.from("recovery_messages")
+           .select("sent_at").eq("execution_id", exec.id).order("created_at", { ascending: false }).limit(1);
+         const referenceTime = lastMsg?.[0]?.sent_at || exec.created_at;
+         const diffMinutes = (now.getTime() - new Date(referenceTime).getTime()) / (1000 * 60);
+         if (diffMinutes < (step.delay_minutes || 15)) continue;
+ 
+         // Preparation
+         const variant = step.ab_enabled ? (Math.random() > 0.5 ? "B" : "A") : "A";
+         const { data: msgRecord, error: msgErr } = await supabase.from("recovery_messages").insert({
+           execution_id: exec.id,
+           step_number: stepIndex,
+           channel: step.channel || "whatsapp",
+           variant,
+           status: "pending",
+         }).select().single();
+ 
+         if (msgErr || !msgRecord) {
+           errors++;
+           continue;
+         }
+ 
+         // Sending
+         const channel = step.channel || "whatsapp";
+         let result: { success: boolean; error?: string | null };
+ 
+         if (channel === "whatsapp" && exec.customer_phone) {
+           result = await sendWhatsappRecovery(supabase, exec, step, variant, msgRecord.id);
+         } else if (channel === "email" && exec.customer_email) {
+           result = await sendEmailRecovery(supabase, exec, step, variant, msgRecord.id);
+         } else {
+           result = { success: false, error: "Invalid channel or missing contact info" };
+         }
+ 
+         if (result.success) {
+           await supabase.from("recovery_executions").update({ current_step: stepIndex + 1 }).eq("id", exec.id);
+           processed++;
+         } else {
+           errors++;
+         }
+       } catch (err) {
+         console.error(`Error in execution loop for ${exec.id}:`, err);
+         errors++;
+       }
+     }
+ 
+     return new Response(JSON.stringify({ success: true, processed, errors }), {
+       headers: { ...corsHeaders, "Content-Type": "application/json" }
+     });
+   } catch (error: any) {
+     console.error("Main recovery error:", error);
+     return new Response(JSON.stringify({ success: false, error: error.message }), {
+       status: 500,
+       headers: { ...corsHeaders, "Content-Type": "application/json" }
+     });
+   }
+ });
