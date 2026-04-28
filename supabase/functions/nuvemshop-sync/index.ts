@@ -17,36 +17,40 @@
      let synced = 0;
      let errors = 0;
  
-     for (const order of orders) {
-       const customerName = order.customer?.name || order.contact_name || 
-         `${order.customer?.first_name || ""} ${order.customer?.last_name || ""}`.trim() || 
-         order.billing_name || null;
- 
-       const { error } = await supabase.from("nuvemshop_orders").upsert({
-         nuvemshop_order_id: (order.id || order.number)?.toString(),
-         status: order.status || null,
-         payment_status: order.payment_status || null,
-         shipping_status: order.shipping_status || null,
-         customer_name: customerName,
-         customer_email: order.customer?.email || order.contact_email || null,
-         customer_phone: order.customer?.phone || order.contact_phone || order.billing_phone || null,
-         total: order.total ? parseFloat(order.total) : 0,
-         currency: order.currency || "BRL",
-         products: (order.products || []).map((p: any) => ({
-           id: p.product_id, name: p.name, quantity: p.quantity, price: p.price, sku: p.sku,
-         })),
-         order_date: order.created_at || null,
-         order_number: order.number?.toString() || null,
-         user_id: ownerUserId,
-       }, { onConflict: "nuvemshop_order_id" });
- 
-       if (error) {
-         console.error(`Error upserting order ${order.id}:`, error.message);
-         errors++;
-       } else {
-         synced++;
-       }
-     }
+      // Batch upsert orders to reduce database roundtrips
+      const ordersToUpsert = orders.map((order: any) => {
+        const customerName = order.customer?.name || order.contact_name || 
+          `${order.customer?.first_name || ""} ${order.customer?.last_name || ""}`.trim() || 
+          order.billing_name || null;
+        
+        return {
+          nuvemshop_order_id: (order.id || order.number)?.toString(),
+          status: order.status || null,
+          payment_status: order.payment_status || null,
+          shipping_status: order.shipping_status || null,
+          customer_name: customerName,
+          customer_email: order.customer?.email || order.contact_email || null,
+          customer_phone: order.customer?.phone || order.contact_phone || order.billing_phone || null,
+          total: order.total ? parseFloat(order.total) : 0,
+          currency: order.currency || "BRL",
+          products: (order.products || []).map((p: any) => ({
+            id: p.product_id, name: p.name, quantity: p.quantity, price: p.price, sku: p.sku,
+          })),
+          order_date: order.created_at || null,
+          order_number: order.number?.toString() || null,
+          user_id: ownerUserId,
+        };
+      });
+
+      if (ordersToUpsert.length > 0) {
+        const { error } = await supabase.from("nuvemshop_orders").upsert(ordersToUpsert, { onConflict: "nuvemshop_order_id" });
+        if (error) {
+          console.error(`Error batch upserting orders:`, error.message);
+          errors = ordersToUpsert.length;
+        } else {
+          synced = ordersToUpsert.length;
+        }
+      }
  
      return new Response(JSON.stringify({
        success: true, total_fetched: orders.length, synced, errors, 
