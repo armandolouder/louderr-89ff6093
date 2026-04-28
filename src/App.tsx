@@ -22,6 +22,7 @@ const RFMMatrixPage = lazy(() => import("./pages/RFMMatrix"));
 const EmailMarketing = lazy(() => import("./pages/EmailMarketing"));
 const Tracking = lazy(() => import("./pages/Tracking"));
 const Journeys = lazy(() => import("./pages/Journeys"));
+const Expenses = lazy(() => import("./pages/Expenses"));
 const Auth = lazy(() => import("./pages/Auth"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Install = lazy(() => import("./pages/Install"));
@@ -58,6 +59,7 @@ const App = () => (
               <Route path="/email-marketing" element={<EmailMarketing />} />
               <Route path="/tracking" element={<Tracking />} />
               <Route path="/journeys" element={<Journeys />} />
+              <Route path="/expenses" element={<Expenses />} />
               <Route path="/settings" element={<Settings />} />
             </Route>
             <Route path="*" element={<NotFound />} />

@@ -18,6 +18,7 @@ import {
   ChevronRight,
   ShoppingBag,
 } from "lucide-react";
+import { Wallet } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -328,6 +329,22 @@ export default function HomeDashboard() {
           subtitle="e-mails restantes"
         />
       </div>
+
+      {/* Acesso rápido ao módulo de Despesas */}
+      <Card className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => navigate("/expenses")}>
+        <CardContent className="pt-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-primary/10">
+              <Wallet className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground">Gestão de Despesas</p>
+              <p className="text-xs text-muted-foreground">Categorias, subcategorias, despesas mensais e únicas</p>
+            </div>
+          </div>
+          <ArrowRight className="w-4 h-4 text-muted-foreground" />
+        </CardContent>
+      </Card>
 
       {/* Row 4: Recent Orders */}
       <Card>
