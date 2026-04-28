@@ -19,34 +19,36 @@
  
      let processed = 0, failed = 0;
  
-     for (const exec of executions) {
-       const triggerData = exec.trigger_data as any;
-       const { phone, customer_name } = exec;
-       const content = triggerData.message_content || "";
-       const { media_url, media_type } = triggerData;
-       const customerName = customer_name || triggerData.customer_name || phone;
- 
-       try {
-         const result = media_url && media_type 
-           ? await sendUazapiMedia({ phone, mediaType: media_type as UazapiMediaType, fileUrl: media_url, caption: content })
-           : await sendUazapiText(phone, content);
- 
-         if (result.ok) {
-           await supabase.from("automation_executions").update({ status: "sent", executed_at: new Date().toISOString() }).eq("id", exec.id);
-           await registerInInbox(supabase, {
-             phone, customerName, messageContent: content, mediaUrl: media_url, mediaType: media_type,
-             uazapiData: result.data, flowId: exec.flow_id, executionId: exec.id
-           });
-           processed++;
-         } else {
-           await supabase.from("automation_executions").update({ status: "failed", error_message: result.raw.substring(0, 500), executed_at: new Date().toISOString() }).eq("id", exec.id);
-           failed++;
-         }
-       } catch (err: any) {
-         await supabase.from("automation_executions").update({ status: "failed", error_message: err.message?.substring(0, 500), executed_at: new Date().toISOString() }).eq("id", exec.id);
-         failed++;
-       }
-     }
+      // Execute automation tasks in parallel to speed up processing
+      await Promise.all(executions.map(async (exec) => {
+        const triggerData = exec.trigger_data as any;
+        const { phone, customer_name } = exec;
+        const content = triggerData.message_content || "";
+        const { media_url, media_type } = triggerData;
+        const customerName = customer_name || triggerData.customer_name || phone;
+  
+        try {
+          const result = media_url && media_type 
+            ? await sendUazapiMedia({ phone, mediaType: media_type as UazapiMediaType, fileUrl: media_url, caption: content })
+            : await sendUazapiText(phone, content);
+  
+          if (result.ok) {
+            await supabase.from("automation_executions").update({ status: "sent", executed_at: new Date().toISOString() }).eq("id", exec.id);
+            // Keep inbox registration async but non-blocking for the main loop
+            registerInInbox(supabase, {
+              phone, customerName, messageContent: content, mediaUrl: media_url, mediaType: media_type,
+              uazapiData: result.data, flowId: exec.flow_id, executionId: exec.id
+            }).catch(err => console.error("Inbox registration error:", err));
+            processed++;
+          } else {
+            await supabase.from("automation_executions").update({ status: "failed", error_message: result.raw.substring(0, 500), executed_at: new Date().toISOString() }).eq("id", exec.id);
+            failed++;
+          }
+        } catch (err: any) {
+          await supabase.from("automation_executions").update({ status: "failed", error_message: err.message?.substring(0, 500), executed_at: new Date().toISOString() }).eq("id", exec.id);
+          failed++;
+        }
+      }));
  
      return new Response(JSON.stringify({ processed, failed, total: executions.length }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
    } catch (error: any) {
