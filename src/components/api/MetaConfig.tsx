@@ -23,6 +23,7 @@ const REQUIRED_PERMISSIONS = [
   "pages_messaging",
   "pages_manage_metadata",
   "pages_read_engagement",
+  "business_management",
 ];
 
 const WEBHOOK_FIELDS = [
