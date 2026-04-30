@@ -56,3 +56,12 @@ verify_jwt = false
 
 [functions.privacy-policy]
 verify_jwt = false
+
+[functions.send-brevo-email]
+verify_jwt = false
+
+[functions.instagram-personal-send]
+verify_jwt = false
+
+[functions.instagram-personal-fetch]
+verify_jwt = false
