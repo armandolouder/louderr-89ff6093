@@ -274,7 +274,13 @@ Deno.serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ success: true, results }), {
+    const hasErrors = results.some((result) => !!result.error);
+
+    return new Response(JSON.stringify({
+      success: !hasErrors,
+      results,
+      error: hasErrors ? "Falha ao sincronizar o Instagram pessoal" : null,
+    }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
