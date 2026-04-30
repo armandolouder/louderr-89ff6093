@@ -137,6 +137,23 @@ Deno.serve(async (req) => {
     );
 
     for (const page of sorted) {
+      // Fallback: se IG não veio na query inicial, busca direto via page access token
+      let igId = page.instagram_business_account?.id || null;
+      let igUsername = page.instagram_business_account?.username || null;
+      if (!igId) {
+        try {
+          const igResp = await fetch(
+            `${GRAPH}/${page.id}?fields=instagram_business_account{id,username},connected_instagram_account{id,username}&access_token=${page.access_token}`
+          );
+          const igData = await igResp.json();
+          igId = igData.instagram_business_account?.id || igData.connected_instagram_account?.id || null;
+          igUsername = igData.instagram_business_account?.username || igData.connected_instagram_account?.username || null;
+          console.log("IG fallback for page", page.id, ":", igData);
+        } catch (e) {
+          console.error("IG fallback failed:", e);
+        }
+      }
+
       await supabase.from("meta_integrations").upsert({
         user_id: userId,
         facebook_user_id: me.id,
@@ -144,9 +161,9 @@ Deno.serve(async (req) => {
         page_id: page.id,
         page_name: page.name,
         page_access_token: page.access_token,
-        instagram_business_account_id: page.instagram_business_account?.id || null,
-        instagram_username: page.instagram_business_account?.username || null,
-        scopes: ["instagram_basic", "instagram_manage_messages", "instagram_manage_comments", "pages_messaging", "pages_show_list"],
+        instagram_business_account_id: igId,
+        instagram_username: igUsername,
+        scopes: ["instagram_basic", "instagram_manage_messages", "instagram_manage_comments", "pages_messaging", "pages_show_list", "business_management"],
         status: "active",
         webhook_subscribed: false,
         last_sync_at: new Date().toISOString(),
