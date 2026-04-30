@@ -9,6 +9,58 @@ const corsHeaders = {
 const APP_REDIRECT_BASE = "https://louderr.lovable.app/admin/api";
 const REDIRECT_URI = "https://ynawiygjzkypuvenvroi.supabase.co/functions/v1/meta-oauth-callback";
 const GRAPH = "https://graph.facebook.com/v21.0";
+const INSTAGRAM_GRAPH = "https://graph.instagram.com/v21.0";
+
+async function readJsonSafe(resp: Response) {
+  const text = await resp.text();
+  try {
+    return text ? JSON.parse(text) : null;
+  } catch {
+    return { raw: text };
+  }
+}
+
+async function subscribePageWebhooks(pageId: string, pageAccessToken: string) {
+  const resp = await fetch(`${GRAPH}/${pageId}/subscribed_apps`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      subscribed_fields: "messages,messaging_postbacks,feed",
+      access_token: pageAccessToken,
+    }),
+  });
+
+  const data = await readJsonSafe(resp);
+  if (!resp.ok || data?.error) {
+    throw new Error(data?.error?.message || `Falha ao inscrever webhooks da página (${resp.status})`);
+  }
+}
+
+async function subscribeInstagramWebhooks(igId: string | null, pageAccessToken: string) {
+  const targets = [
+    igId ? `${INSTAGRAM_GRAPH}/${igId}/subscribed_apps` : null,
+    `${INSTAGRAM_GRAPH}/me/subscribed_apps`,
+  ].filter(Boolean) as string[];
+
+  let lastError: string | null = null;
+
+  for (const target of targets) {
+    const resp = await fetch(target, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        subscribed_fields: "comments,messages,mentions,live_comments",
+        access_token: pageAccessToken,
+      }),
+    });
+
+    const data = await readJsonSafe(resp);
+    if (resp.ok && !data?.error) return;
+    lastError = data?.error?.message || `Falha ao inscrever webhooks do Instagram (${resp.status})`;
+  }
+
+  throw new Error(lastError || "Falha ao inscrever webhooks do Instagram");
+}
 
 function htmlPage(title: string, message: string, success = true): string {
   const color = success ? "#10b981" : "#ef4444";
@@ -169,24 +221,34 @@ Deno.serve(async (req) => {
         last_sync_at: new Date().toISOString(),
       }, { onConflict: "user_id,page_id" });
 
-      // 8. Subscribe page to webhooks (messages + feed)
+      // 8. Subscribe page + Instagram account to webhooks
+      let pageWebhookSubscribed = false;
+      let instagramWebhookSubscribed = !igId;
+
       try {
-        await fetch(`${GRAPH}/${page.id}/subscribed_apps`, {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: new URLSearchParams({
-            subscribed_fields: "messages,messaging_postbacks,feed",
-            access_token: page.access_token,
-          }),
-        });
-        await supabase
-          .from("meta_integrations")
-          .update({ webhook_subscribed: true })
-          .eq("user_id", userId)
-          .eq("page_id", page.id);
+        await subscribePageWebhooks(page.id, page.access_token);
+        pageWebhookSubscribed = true;
       } catch (e) {
-        console.error("Subscribe failed for page", page.id, e);
+        console.error("Page subscribe failed for page", page.id, e);
       }
+
+      if (igId) {
+        try {
+          await subscribeInstagramWebhooks(igId, page.access_token);
+          instagramWebhookSubscribed = true;
+        } catch (e) {
+          console.error("Instagram subscribe failed for page", page.id, "ig", igId, e);
+        }
+      }
+
+      await supabase
+        .from("meta_integrations")
+        .update({
+          webhook_subscribed: pageWebhookSubscribed && instagramWebhookSubscribed,
+          last_sync_at: new Date().toISOString(),
+        })
+        .eq("user_id", userId)
+        .eq("page_id", page.id);
     }
 
     // Cleanup state
