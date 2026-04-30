@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, ClipboardEvent, ChangeEvent } from "react";
-import { Send, Paperclip, Smile, MoreVertical, Phone, User, Loader2, SpellCheck, MessageSquareText, X, Image as ImageIcon, ArrowDown } from "lucide-react";
+import { Send, Paperclip, Smile, MoreVertical, Phone, User, Loader2, Sparkles, MessageSquareText, X, Image as ImageIcon, ArrowDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -19,6 +19,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 interface ChatViewProps {
@@ -28,7 +29,9 @@ interface ChatViewProps {
 
 export function ChatView({ conversation, hideHeader }: ChatViewProps) {
   const [message, setMessage] = useState("");
-  const [isCheckingSpelling, setIsCheckingSpelling] = useState(false);
+  const [isImproving, setIsImproving] = useState(false);
+  const [improveVariants, setImproveVariants] = useState<string[]>([]);
+  const [variantsOpen, setVariantsOpen] = useState(false);
   const [showQuickResponseManager, setShowQuickResponseManager] = useState(false);
   const [pastedImage, setPastedImage] = useState<{ file: File; preview: string } | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -98,53 +101,42 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
     setPastedImage(null);
   };
 
-  const checkSpelling = async () => {
+  const improveWithAI = async () => {
     if (!message.trim()) {
-      toast.error("Digite uma mensagem para verificar");
+      toast.error("Digite uma mensagem para melhorar");
       return;
     }
-    
-    setIsCheckingSpelling(true);
+
+    setIsImproving(true);
     try {
-      const { data, error } = await supabase.functions.invoke("groq-chat", {
+      const { data, error } = await supabase.functions.invoke("improve-message", {
         body: {
-          messages: [
-            {
-              role: "system",
-              content: "Você é um corretor ortográfico. Corrija apenas erros de ortografia e acentuação do texto em português. Retorne APENAS o texto corrigido, sem explicações ou comentários adicionais. Se o texto já estiver correto, retorne-o exatamente como está."
-            },
-            {
-              role: "user",
-              content: message
-            }
-          ],
-          model: "llama-3.3-70b-versatile",
-          max_tokens: 500,
-          temperature: 0.1,
+          message,
+          mode: "improve",
+          customerName: conversation.contact.name,
+          variants: 3,
         },
       });
 
-      if (error) {
-        toast.error("Erro ao verificar ortografia");
-        console.error(error);
+      if (error || !data?.success) {
+        toast.error("Erro ao melhorar mensagem");
+        console.error(error || data);
         return;
       }
 
-      const correctedText = data?.choices?.[0]?.message?.content?.trim();
-      
-      if (correctedText) {
-        if (correctedText === message.trim()) {
-          toast.success("Texto já está correto!");
-        } else {
-          setMessage(correctedText);
-          toast.success("Ortografia corrigida!");
-        }
+      const list: string[] = Array.isArray(data.variants) ? data.variants : [];
+      if (list.length === 0) {
+        toast.error("Nenhuma sugestão gerada");
+        return;
       }
+
+      setImproveVariants(list);
+      setVariantsOpen(true);
     } catch (error) {
-      console.error("Spell check error:", error);
-      toast.error("Erro ao verificar ortografia");
+      console.error("Improve error:", error);
+      toast.error("Erro ao melhorar mensagem");
     } finally {
-      setIsCheckingSpelling(false);
+      setIsImproving(false);
     }
   };
 
@@ -610,19 +602,19 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
                     size="icon" 
                     className={cn(
                       "h-8 w-8 text-muted-foreground hover:text-foreground",
-                      isCheckingSpelling && "animate-pulse"
+                      isImproving && "animate-pulse"
                     )}
-                    onClick={checkSpelling}
-                    disabled={isCheckingSpelling || !message.trim()}
+                    onClick={improveWithAI}
+                    disabled={isImproving || !message.trim()}
                   >
-                    {isCheckingSpelling ? (
+                    {isImproving ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
-                      <SpellCheck className="w-4 h-4" />
+                      <Sparkles className="w-4 h-4" />
                     )}
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Corrigir ortografia</TooltipContent>
+                <TooltipContent>Melhorar com IA</TooltipContent>
               </Tooltip>
               
               <QuickResponsePicker 
@@ -638,6 +630,33 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
         open={showQuickResponseManager} 
         onOpenChange={setShowQuickResponseManager} 
       />
+
+      <Dialog open={variantsOpen} onOpenChange={setVariantsOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Escolha uma versão</DialogTitle>
+            <DialogDescription>
+              A IA gerou {improveVariants.length} variações da sua mensagem. Clique para usar.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+            {improveVariants.map((v, i) => (
+              <button
+                key={i}
+                onClick={() => {
+                  setMessage(v);
+                  setVariantsOpen(false);
+                  toast.success("Mensagem aplicada!");
+                }}
+                className="w-full text-left p-4 border border-border bg-card hover:bg-accent transition-colors"
+              >
+                <div className="text-xs text-muted-foreground mb-1">Variação {i + 1}</div>
+                <div className="text-sm whitespace-pre-wrap">{v}</div>
+              </button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
