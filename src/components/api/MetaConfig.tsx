@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Instagram, Copy, Check, ExternalLink, AlertCircle, Eye, EyeOff, Save, Loader2, KeyRound, Link2, Unplug } from "lucide-react";
+import { Instagram, Copy, Check, ExternalLink, AlertCircle, Eye, EyeOff, Save, Loader2, KeyRound, Link2, RefreshCcw, Unplug } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -78,6 +78,7 @@ export function MetaConfig() {
   const [hasCredentials, setHasCredentials] = useState(false);
   const [integrations, setIntegrations] = useState<MetaIntegration[]>([]);
   const [connecting, setConnecting] = useState(false);
+  const [resubscribing, setResubscribing] = useState(false);
 
   useEffect(() => {
     loadCredentials();
@@ -137,6 +138,30 @@ export function MetaConfig() {
     else {
       toast.success("Página desconectada");
       loadIntegrations();
+    }
+  };
+
+  const resubscribeWebhooks = async () => {
+    setResubscribing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("meta-resubscribe-webhooks", {
+        body: {},
+      });
+
+      if (error) throw error;
+
+      const failed = ((data as any)?.results || []).filter((item: any) => !item.success);
+      if (failed.length > 0) {
+        toast.error(`Webhook reativado parcialmente (${failed.length} falha${failed.length > 1 ? "s" : ""})`);
+      } else {
+        toast.success("Webhooks reativados com sucesso");
+      }
+
+      loadIntegrations();
+    } catch (e: any) {
+      toast.error(e.message || "Erro ao reativar webhooks");
+    } finally {
+      setResubscribing(false);
     }
   };
 
@@ -264,6 +289,21 @@ export function MetaConfig() {
             )}
             {integrations.length > 0 ? "Conectar outra página" : "Conectar com Facebook"}
           </Button>
+          {integrations.length > 0 && (
+            <Button
+              onClick={resubscribeWebhooks}
+              disabled={resubscribing}
+              variant="outline"
+              className="w-full"
+            >
+              {resubscribing ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              ) : (
+                <RefreshCcw className="w-4 h-4 mr-2" />
+              )}
+              Reativar webhooks
+            </Button>
+          )}
           {!hasCredentials && (
             <p className="text-[11px] text-amber-600 flex items-center gap-1">
               <AlertCircle className="w-3 h-3" /> Salve as credenciais acima antes de conectar.
