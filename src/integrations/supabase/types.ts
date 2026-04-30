@@ -1089,6 +1089,57 @@ export type Database = {
           },
         ]
       }
+      instagram_personal_credentials: {
+        Row: {
+          created_at: string
+          csrftoken: string | null
+          ds_user_id: string | null
+          error_message: string | null
+          id: string
+          ig_user_id: string | null
+          ig_username: string | null
+          last_inbox_check_at: string | null
+          last_inbox_cursor: string | null
+          last_verified_at: string | null
+          sessionid: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          csrftoken?: string | null
+          ds_user_id?: string | null
+          error_message?: string | null
+          id?: string
+          ig_user_id?: string | null
+          ig_username?: string | null
+          last_inbox_check_at?: string | null
+          last_inbox_cursor?: string | null
+          last_verified_at?: string | null
+          sessionid: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          csrftoken?: string | null
+          ds_user_id?: string | null
+          error_message?: string | null
+          id?: string
+          ig_user_id?: string | null
+          ig_username?: string | null
+          last_inbox_check_at?: string | null
+          last_inbox_cursor?: string | null
+          last_verified_at?: string | null
+          sessionid?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       journey_executions: {
         Row: {
           completed_at: string | null
