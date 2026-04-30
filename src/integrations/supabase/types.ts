@@ -1270,6 +1270,36 @@ export type Database = {
         }
         Relationships: []
       }
+      meta_credentials: {
+        Row: {
+          app_id: string | null
+          app_secret: string | null
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+          webhook_verify_token: string | null
+        }
+        Insert: {
+          app_id?: string | null
+          app_secret?: string | null
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+          webhook_verify_token?: string | null
+        }
+        Update: {
+          app_id?: string | null
+          app_secret?: string | null
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+          webhook_verify_token?: string | null
+        }
+        Relationships: []
+      }
       meta_integrations: {
         Row: {
           created_at: string
@@ -2045,6 +2075,10 @@ export type Database = {
     }
     Functions: {
       calculate_rfm_scores: { Args: never; Returns: undefined }
+      find_meta_user_by_verify_token: {
+        Args: { _token: string }
+        Returns: string
+      }
       get_webhook_owner_user_id: { Args: never; Returns: string }
       increment_campaign_sent: {
         Args: { campaign_id_param: string }

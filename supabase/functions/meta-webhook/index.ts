@@ -8,7 +8,7 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const VERIFY_TOKEN = Deno.env.get("META_WEBHOOK_VERIFY_TOKEN") ?? "louder_meta_verify_2026";
+const ENV_VERIFY_TOKEN = Deno.env.get("META_WEBHOOK_VERIFY_TOKEN") ?? "louder_meta_verify_2026";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -23,15 +23,28 @@ Deno.serve(async (req) => {
     const token = url.searchParams.get("hub.verify_token");
     const challenge = url.searchParams.get("hub.challenge");
 
-    if (mode === "subscribe" && token === VERIFY_TOKEN && challenge) {
-      console.log("[meta-webhook] verification OK");
-      return new Response(challenge, {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "text/plain" },
-      });
+    if (mode === "subscribe" && token && challenge) {
+      // Aceita o token do env OU qualquer token salvo na tabela meta_credentials
+      let valid = token === ENV_VERIFY_TOKEN;
+      if (!valid) {
+        try {
+          const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+          const { data } = await supabase.rpc("find_meta_user_by_verify_token", { _token: token });
+          valid = !!data;
+        } catch (e) {
+          console.error("[meta-webhook] token lookup failed", e);
+        }
+      }
+      if (valid) {
+        console.log("[meta-webhook] verification OK");
+        return new Response(challenge, {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "text/plain" },
+        });
+      }
     }
 
-    console.warn("[meta-webhook] verification FAILED", { mode, tokenMatch: token === VERIFY_TOKEN });
+    console.warn("[meta-webhook] verification FAILED", { mode });
     return new Response("Forbidden", { status: 403, headers: corsHeaders });
   }
 
