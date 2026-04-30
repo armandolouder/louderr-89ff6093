@@ -8,7 +8,6 @@ import {
   Zap,
   Route,
   LogOut,
-  ExternalLink,
   ChevronLeft,
   ChevronRight,
   ChevronDown,
@@ -60,8 +59,6 @@ const navigation: NavItem[] = [
   { name: "Bot", href: "/bot", icon: Bot },
   { name: "APIs", href: "/apis", icon: Zap },
 ];
-
-const META_INBOX_URL = "https://business.facebook.com/latest/inbox/all";
 
 export function AppSidebar() {
   const location = useLocation();
