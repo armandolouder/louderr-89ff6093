@@ -15,6 +15,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Filter,
+  TrendingUp,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -125,14 +126,34 @@ export default function Expenses() {
   const oneTimeExpenses = expenses.filter((e) => e.expense_type === "unica");
 
   const paidThisMonth = useMemo(() => {
-    const set = new Set(payments.map((p) => p.expense_id));
-    return monthlyExpenses.map((e) => ({ ...e, paidThisMonth: set.has(e.id) }));
+    const map = new Map(payments.map((p) => [p.expense_id, p]));
+    return monthlyExpenses.map((e) => {
+      const pay = map.get(e.id);
+      return {
+        ...e,
+        paidThisMonth: !!pay,
+        paidAmount: pay ? Number(pay.amount) : null,
+        paymentId: pay?.id ?? null,
+      };
+    });
   }, [monthlyExpenses, payments]);
 
   // KPIs
   const totalMensal = monthlyExpenses.reduce((s, e) => s + Number(e.amount), 0);
-  const pagoMensal = paidThisMonth.filter((e) => e.paidThisMonth).reduce((s, e) => s + Number(e.amount), 0);
+  const pagoMensal = paidThisMonth
+    .filter((e) => e.paidThisMonth)
+    .reduce((s, e) => s + Number(e.paidAmount ?? e.amount), 0);
   const pendenteMensal = totalMensal - pagoMensal;
+  // Quanto pagou a mais (somatório de overshoots positivos por despesa)
+  const pagoAMais = paidThisMonth
+    .filter((e) => e.paidThisMonth)
+    .reduce((s, e) => {
+      const diff = Number(e.paidAmount ?? e.amount) - Number(e.amount);
+      return s + (diff > 0 ? diff : 0);
+    }, 0);
+  const overshootCount = paidThisMonth.filter(
+    (e) => e.paidThisMonth && Number(e.paidAmount ?? e.amount) > Number(e.amount),
+  ).length;
 
   const monthLabel = new Date(year, month).toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
 
@@ -143,7 +164,7 @@ export default function Expenses() {
     if (month === 11) { setMonth(0); setYear((y) => y + 1); } else setMonth((m) => m + 1);
   };
 
-  const togglePaid = async (expense: Expense, currentlyPaid: boolean) => {
+  const togglePaid = async (expense: Expense, currentlyPaid: boolean, customAmount?: number) => {
     if (currentlyPaid) {
       const { error } = await supabase
         .from("expense_payments")
@@ -156,11 +177,21 @@ export default function Expenses() {
       const { error } = await supabase.from("expense_payments").insert({
         expense_id: expense.id,
         reference_month: monthStart,
-        amount: expense.amount,
+        amount: customAmount ?? expense.amount,
       } as any);
       if (error) return toast.error("Erro ao confirmar pagamento");
       toast.success("Pagamento confirmado");
     }
+    qc.invalidateQueries({ queryKey: ["expense-payments", monthStart] });
+  };
+
+  const updatePaymentAmount = async (paymentId: string, newAmount: number) => {
+    const { error } = await supabase
+      .from("expense_payments")
+      .update({ amount: newAmount } as any)
+      .eq("id", paymentId);
+    if (error) return toast.error("Erro ao atualizar valor");
+    toast.success("Valor pago atualizado");
     qc.invalidateQueries({ queryKey: ["expense-payments", monthStart] });
   };
 
@@ -208,10 +239,18 @@ export default function Expenses() {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <KPI title="Total Mensal" value={fmt(totalMensal)} subtitle={`${monthlyExpenses.length} despesas recorrentes`} color="text-primary" bg="bg-primary/10" icon={Repeat} />
         <KPI title="Pago no mês" value={fmt(pagoMensal)} subtitle={`${paidThisMonth.filter((e) => e.paidThisMonth).length} confirmadas`} color="text-emerald-500" bg="bg-emerald-500/10" icon={Check} />
         <KPI title="Pendente" value={fmt(pendenteMensal)} subtitle={`${paidThisMonth.filter((e) => !e.paidThisMonth).length} aguardando`} color="text-warning" bg="bg-warning/10" icon={Calendar} />
+        <KPI
+          title="Pago a mais"
+          value={fmt(pagoAMais)}
+          subtitle={overshootCount > 0 ? `${overshootCount} acima do previsto` : "dentro do previsto"}
+          color="text-rose-500"
+          bg="bg-rose-500/10"
+          icon={TrendingUp}
+        />
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
@@ -243,7 +282,10 @@ export default function Expenses() {
                       categories={categories}
                       subcategories={subcategories}
                       paid={exp.paidThisMonth}
-                      onTogglePaid={() => togglePaid(exp, exp.paidThisMonth)}
+                      paidAmount={exp.paidAmount}
+                      paymentId={exp.paymentId}
+                      onTogglePaid={(customAmount?: number) => togglePaid(exp, exp.paidThisMonth, customAmount)}
+                      onEditPaidAmount={(amt: number) => exp.paymentId && updatePaymentAmount(exp.paymentId, amt)}
                       onDelete={() => deleteExpense(exp.id)}
                     />
                   ))}
