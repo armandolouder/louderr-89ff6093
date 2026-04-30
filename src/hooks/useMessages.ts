@@ -70,12 +70,13 @@ export function useSendMessage() {
     mutationFn: async ({ 
       conversationId, 
       content,
-      channel = "whatsapp"
+      channel: initialChannel = "whatsapp"
     }: { 
       conversationId: string; 
       content: string;
       channel?: "whatsapp" | "instagram" | "instagram-personal";
     }) => {
+      let channel = initialChannel;
       // For WhatsApp, use the edge function to send via UAZAPI
       if (channel === "whatsapp") {
         const { data, error } = await supabase.functions.invoke("send-whatsapp", {
