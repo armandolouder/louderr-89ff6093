@@ -15,6 +15,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Filter,
+  TrendingUp,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -125,14 +126,34 @@ export default function Expenses() {
   const oneTimeExpenses = expenses.filter((e) => e.expense_type === "unica");
 
   const paidThisMonth = useMemo(() => {
-    const set = new Set(payments.map((p) => p.expense_id));
-    return monthlyExpenses.map((e) => ({ ...e, paidThisMonth: set.has(e.id) }));
+    const map = new Map(payments.map((p) => [p.expense_id, p]));
+    return monthlyExpenses.map((e) => {
+      const pay = map.get(e.id);
+      return {
+        ...e,
+        paidThisMonth: !!pay,
+        paidAmount: pay ? Number(pay.amount) : null,
+        paymentId: pay?.id ?? null,
+      };
+    });
   }, [monthlyExpenses, payments]);
 
   // KPIs
   const totalMensal = monthlyExpenses.reduce((s, e) => s + Number(e.amount), 0);
-  const pagoMensal = paidThisMonth.filter((e) => e.paidThisMonth).reduce((s, e) => s + Number(e.amount), 0);
+  const pagoMensal = paidThisMonth
+    .filter((e) => e.paidThisMonth)
+    .reduce((s, e) => s + Number(e.paidAmount ?? e.amount), 0);
   const pendenteMensal = totalMensal - pagoMensal;
+  // Quanto pagou a mais (somatório de overshoots positivos por despesa)
+  const pagoAMais = paidThisMonth
+    .filter((e) => e.paidThisMonth)
+    .reduce((s, e) => {
+      const diff = Number(e.paidAmount ?? e.amount) - Number(e.amount);
+      return s + (diff > 0 ? diff : 0);
+    }, 0);
+  const overshootCount = paidThisMonth.filter(
+    (e) => e.paidThisMonth && Number(e.paidAmount ?? e.amount) > Number(e.amount),
+  ).length;
 
   const monthLabel = new Date(year, month).toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
 
@@ -143,7 +164,7 @@ export default function Expenses() {
     if (month === 11) { setMonth(0); setYear((y) => y + 1); } else setMonth((m) => m + 1);
   };
 
-  const togglePaid = async (expense: Expense, currentlyPaid: boolean) => {
+  const togglePaid = async (expense: Expense, currentlyPaid: boolean, customAmount?: number) => {
     if (currentlyPaid) {
       const { error } = await supabase
         .from("expense_payments")
@@ -156,11 +177,21 @@ export default function Expenses() {
       const { error } = await supabase.from("expense_payments").insert({
         expense_id: expense.id,
         reference_month: monthStart,
-        amount: expense.amount,
+        amount: customAmount ?? expense.amount,
       } as any);
       if (error) return toast.error("Erro ao confirmar pagamento");
       toast.success("Pagamento confirmado");
     }
+    qc.invalidateQueries({ queryKey: ["expense-payments", monthStart] });
+  };
+
+  const updatePaymentAmount = async (paymentId: string, newAmount: number) => {
+    const { error } = await supabase
+      .from("expense_payments")
+      .update({ amount: newAmount } as any)
+      .eq("id", paymentId);
+    if (error) return toast.error("Erro ao atualizar valor");
+    toast.success("Valor pago atualizado");
     qc.invalidateQueries({ queryKey: ["expense-payments", monthStart] });
   };
 
@@ -208,10 +239,18 @@ export default function Expenses() {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <KPI title="Total Mensal" value={fmt(totalMensal)} subtitle={`${monthlyExpenses.length} despesas recorrentes`} color="text-primary" bg="bg-primary/10" icon={Repeat} />
         <KPI title="Pago no mês" value={fmt(pagoMensal)} subtitle={`${paidThisMonth.filter((e) => e.paidThisMonth).length} confirmadas`} color="text-emerald-500" bg="bg-emerald-500/10" icon={Check} />
         <KPI title="Pendente" value={fmt(pendenteMensal)} subtitle={`${paidThisMonth.filter((e) => !e.paidThisMonth).length} aguardando`} color="text-warning" bg="bg-warning/10" icon={Calendar} />
+        <KPI
+          title="Pago a mais"
+          value={fmt(pagoAMais)}
+          subtitle={overshootCount > 0 ? `${overshootCount} acima do previsto` : "dentro do previsto"}
+          color="text-rose-500"
+          bg="bg-rose-500/10"
+          icon={TrendingUp}
+        />
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
@@ -243,7 +282,10 @@ export default function Expenses() {
                       categories={categories}
                       subcategories={subcategories}
                       paid={exp.paidThisMonth}
-                      onTogglePaid={() => togglePaid(exp, exp.paidThisMonth)}
+                      paidAmount={exp.paidAmount}
+                      paymentId={exp.paymentId}
+                      onTogglePaid={(customAmount?: number) => togglePaid(exp, exp.paidThisMonth, customAmount)}
+                      onEditPaidAmount={(amt: number) => exp.paymentId && updatePaymentAmount(exp.paymentId, amt)}
                       onDelete={() => deleteExpense(exp.id)}
                     />
                   ))}
@@ -309,16 +351,70 @@ function KPI({ title, value, subtitle, color, bg, icon: Icon }: any) {
   );
 }
 
-function ExpenseRow({ expense, categories, subcategories, paid, onTogglePaid, onDelete }: {
-  expense: Expense; categories: Category[]; subcategories: Subcategory[];
-  paid: boolean; onTogglePaid: () => void; onDelete: () => void;
+function ExpenseRow({
+  expense,
+  categories,
+  subcategories,
+  paid,
+  paidAmount,
+  paymentId,
+  onTogglePaid,
+  onEditPaidAmount,
+  onDelete,
+}: {
+  expense: Expense;
+  categories: Category[];
+  subcategories: Subcategory[];
+  paid: boolean;
+  paidAmount?: number | null;
+  paymentId?: string | null;
+  onTogglePaid: (customAmount?: number) => void;
+  onEditPaidAmount?: (amount: number) => void;
+  onDelete: () => void;
 }) {
   const cat = categories.find((c) => c.id === expense.category_id);
   const sub = subcategories.find((s) => s.id === expense.subcategory_id);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [valueInput, setValueInput] = useState("");
+
+  const expectedAmount = Number(expense.amount);
+  const actualPaid = paidAmount != null ? Number(paidAmount) : expectedAmount;
+  const diff = actualPaid - expectedAmount;
+
+  const handleCheckboxClick = () => {
+    if (paid) {
+      onTogglePaid();
+    } else {
+      setValueInput(String(expectedAmount.toFixed(2)));
+      setConfirmOpen(true);
+    }
+  };
+
+  const confirmPay = () => {
+    const amt = parseFloat(valueInput.replace(",", "."));
+    if (!isFinite(amt) || amt < 0) return toast.error("Valor inválido");
+    onTogglePaid(amt);
+    setConfirmOpen(false);
+  };
+
+  const openEditPaid = () => {
+    if (!paid || !paymentId) return;
+    setValueInput(String(actualPaid.toFixed(2)));
+    setEditOpen(true);
+  };
+
+  const saveEdit = () => {
+    const amt = parseFloat(valueInput.replace(",", "."));
+    if (!isFinite(amt) || amt < 0) return toast.error("Valor inválido");
+    onEditPaidAmount?.(amt);
+    setEditOpen(false);
+  };
+
   return (
     <div className="flex items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors">
       <button
-        onClick={onTogglePaid}
+        onClick={handleCheckboxClick}
         className={`w-6 h-6 border-2 flex items-center justify-center transition-colors ${
           paid ? "bg-emerald-500 border-emerald-500" : "border-border hover:border-primary"
         }`}
@@ -335,6 +431,16 @@ function ExpenseRow({ expense, categories, subcategories, paid, onTogglePaid, on
               Dia {expense.recurrence_day || "—"}
             </Badge>
           )}
+          {paid && diff > 0 && (
+            <Badge className="text-[10px] bg-rose-500/15 text-rose-500 border border-rose-500/30 hover:bg-rose-500/20">
+              +{fmt(diff)}
+            </Badge>
+          )}
+          {paid && diff < 0 && (
+            <Badge className="text-[10px] bg-emerald-500/15 text-emerald-500 border border-emerald-500/30 hover:bg-emerald-500/20">
+              {fmt(diff)}
+            </Badge>
+          )}
         </div>
         <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
           {cat && (
@@ -348,7 +454,25 @@ function ExpenseRow({ expense, categories, subcategories, paid, onTogglePaid, on
         </div>
       </div>
       <div className="text-right">
-        <p className="text-sm font-bold text-foreground">{fmt(Number(expense.amount))}</p>
+        {paid && paymentId ? (
+          <button
+            onClick={openEditPaid}
+            className="group flex flex-col items-end hover:opacity-80 transition-opacity"
+            title="Clique para editar o valor pago"
+          >
+            <p className={`text-sm font-bold ${diff > 0 ? "text-rose-500" : diff < 0 ? "text-emerald-500" : "text-foreground"}`}>
+              {fmt(actualPaid)}
+            </p>
+            {diff !== 0 && (
+              <p className="text-[10px] text-muted-foreground line-through">{fmt(expectedAmount)}</p>
+            )}
+            <span className="text-[9px] text-muted-foreground opacity-0 group-hover:opacity-100 flex items-center gap-1">
+              <Edit3 className="w-2.5 h-2.5" /> editar
+            </span>
+          </button>
+        ) : (
+          <p className="text-sm font-bold text-foreground">{fmt(expectedAmount)}</p>
+        )}
       </div>
       <TooltipProvider>
         <Tooltip>
@@ -360,6 +484,67 @@ function ExpenseRow({ expense, categories, subcategories, paid, onTogglePaid, on
           <TooltipContent>Excluir despesa</TooltipContent>
         </Tooltip>
       </TooltipProvider>
+
+      {/* Diálogo: confirmar pagamento com valor customizado */}
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Confirmar pagamento</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Valor previsto: <span className="font-medium text-foreground">{fmt(expectedAmount)}</span>
+            </p>
+            <div>
+              <Label>Valor realmente pago (R$)</Label>
+              <Input
+                type="number"
+                step="0.01"
+                value={valueInput}
+                onChange={(e) => setValueInput(e.target.value)}
+                autoFocus
+                onKeyDown={(e) => e.key === "Enter" && confirmPay()}
+              />
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Ajuste se pagou um valor diferente (juros, multa, desconto…)
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setConfirmOpen(false)}>Cancelar</Button>
+            <Button onClick={confirmPay}>Confirmar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Diálogo: editar valor pago */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Editar valor pago</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Valor previsto: <span className="font-medium text-foreground">{fmt(expectedAmount)}</span>
+            </p>
+            <div>
+              <Label>Valor pago (R$)</Label>
+              <Input
+                type="number"
+                step="0.01"
+                value={valueInput}
+                onChange={(e) => setValueInput(e.target.value)}
+                autoFocus
+                onKeyDown={(e) => e.key === "Enter" && saveEdit()}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setEditOpen(false)}>Cancelar</Button>
+            <Button onClick={saveEdit}>Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
