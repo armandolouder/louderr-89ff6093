@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 
 const MONTHS = [
@@ -34,6 +35,11 @@ export default function AbandonedCheckouts() {
   const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
   const [emailPickerCheckout, setEmailPickerCheckout] = useState<any>(null);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
+  const [bulkTemplateId, setBulkTemplateId] = useState<string>("");
+  const [bulkSending, setBulkSending] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState({ done: 0, total: 0 });
 
   // Fetch recovery templates from DB
   const { data: recoveryTemplates } = useQuery({
@@ -88,6 +94,97 @@ export default function AbandonedCheckouts() {
     if (contactFilter === "recovered") return checkouts.filter(c => c.recovered);
     return checkouts;
   }, [checkouts, contactFilter]);
+
+  const selectableCheckouts = useMemo(
+    () => filteredCheckouts.filter((c: any) => !!c.customer_email),
+    [filteredCheckouts]
+  );
+  const allSelected =
+    selectableCheckouts.length > 0 &&
+    selectableCheckouts.every((c: any) => selectedIds.has(c.id));
+  const someSelected = selectedIds.size > 0 && !allSelected;
+
+  const toggleSelectAll = () => {
+    if (allSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(selectableCheckouts.map((c: any) => c.id)));
+    }
+  };
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const sendBulkEmail = async () => {
+    if (!bulkTemplateId) {
+      toast.error("Selecione um template");
+      return;
+    }
+    const targets = filteredCheckouts.filter(
+      (c: any) => selectedIds.has(c.id) && c.customer_email
+    );
+    if (targets.length === 0) {
+      toast.error("Nenhum carrinho com e-mail selecionado");
+      return;
+    }
+
+    setBulkSending(true);
+    setBulkProgress({ done: 0, total: targets.length });
+    let success = 0;
+    let failed = 0;
+
+    for (const checkout of targets) {
+      try {
+        const products = (checkout.products as any[]) || [];
+        const total = checkout.total || 0;
+        const recoveryUrl = checkout.recovery_url || "";
+
+        const res = await supabase.functions.invoke("send-brevo-email", {
+          body: {
+            action: "send-recovery",
+            to: checkout.customer_email,
+            customerName: checkout.customer_name,
+            products,
+            total,
+            recoveryUrl,
+            templateId: bulkTemplateId,
+            variant: "A",
+          },
+        });
+
+        if (res.error || !res.data?.success) {
+          failed++;
+        } else {
+          success++;
+          await supabase
+            .from("nuvemshop_abandoned_checkouts")
+            .update({ contacted_at: new Date().toISOString(), contact_channel: "email" })
+            .eq("id", checkout.id);
+        }
+      } catch {
+        failed++;
+      }
+      setBulkProgress(p => ({ ...p, done: p.done + 1 }));
+      // Small delay to avoid hammering
+      await new Promise(r => setTimeout(r, 300));
+    }
+
+    setBulkSending(false);
+    setBulkDialogOpen(false);
+    setSelectedIds(new Set());
+    setBulkTemplateId("");
+    queryClient.invalidateQueries({ queryKey: ["abandoned-checkouts"] });
+
+    if (failed === 0) {
+      toast.success(`${success} e-mail(s) enviado(s) com sucesso!`);
+    } else {
+      toast.warning(`${success} enviado(s), ${failed} falharam`);
+    }
+  };
 
   const metrics = useMemo(() => {
     const list = checkouts || [];
