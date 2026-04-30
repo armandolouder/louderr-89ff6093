@@ -65,6 +65,7 @@ interface MetaIntegration {
   instagram_business_account_id: string | null;
   webhook_subscribed: boolean | null;
   status: string;
+  metadata?: any;
 }
 
 export function MetaConfig() {
@@ -91,7 +92,7 @@ export function MetaConfig() {
       if (!user) return;
       const { data } = await supabase
         .from("meta_integrations" as any)
-        .select("id, page_name, page_id, instagram_username, instagram_business_account_id, webhook_subscribed, status")
+        .select("id, page_name, page_id, instagram_username, instagram_business_account_id, webhook_subscribed, status, metadata")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
       setIntegrations((data as any) || []);
@@ -152,7 +153,18 @@ export function MetaConfig() {
 
       const failed = ((data as any)?.results || []).filter((item: any) => !item.success);
       if (failed.length > 0) {
-        toast.error(`Webhook reativado parcialmente (${failed.length} falha${failed.length > 1 ? "s" : ""})`);
+        const tokenExpired = failed.some((f: any) =>
+          /access token|oauth|expired|cannot parse/i.test(f.error || "")
+        );
+        const names = failed.map((f: any) => f.page_name || f.page_id).join(", ");
+        if (tokenExpired) {
+          toast.error(
+            `Token expirado em: ${names}. Desconecte e reconecte essa página para renovar o acesso.`,
+            { duration: 8000 }
+          );
+        } else {
+          toast.error(`Falha em ${names}: ${failed[0].error || "erro desconhecido"}`, { duration: 6000 });
+        }
       } else {
         toast.success("Webhooks reativados com sucesso");
       }
@@ -261,19 +273,37 @@ export function MetaConfig() {
           {integrations.length > 0 && (
             <div className="space-y-2">
               {integrations.map((it) => (
-                <div key={it.id} className="flex items-center justify-between border border-border bg-secondary/30 px-3 py-2">
-                  <div className="flex flex-col">
-                    <span className="text-sm font-medium">{it.page_name || it.page_id}</span>
-                    <span className="text-[11px] text-muted-foreground">
-                      {it.instagram_username ? `@${it.instagram_username}` : "Sem Instagram vinculado"}
-                      {" · "}
-                      {it.webhook_subscribed ? "Webhook ativo" : "Webhook pendente"}
-                    </span>
-                  </div>
-                  <Button size="sm" variant="ghost" onClick={() => disconnect(it.id)}>
-                    <Unplug className="w-4 h-4" />
-                  </Button>
-                </div>
+                (() => {
+                  const errMsg: string | undefined = it.metadata?.webhook_last_resubscribe_error;
+                  const tokenExpired = !!errMsg && /access token|oauth|expired|cannot parse/i.test(errMsg);
+                  return (
+                    <div
+                      key={it.id}
+                      className={`flex items-center justify-between border px-3 py-2 ${
+                        tokenExpired
+                          ? "border-red-500/40 bg-red-500/5"
+                          : "border-border bg-secondary/30"
+                      }`}
+                    >
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium">{it.page_name || it.page_id}</span>
+                        <span className="text-[11px] text-muted-foreground">
+                          {it.instagram_username ? `@${it.instagram_username}` : "Sem Instagram vinculado"}
+                          {" · "}
+                          {it.webhook_subscribed ? "Webhook ativo" : "Webhook pendente"}
+                        </span>
+                        {tokenExpired && (
+                          <span className="text-[11px] text-red-500 mt-1 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" /> Token expirado — desconecte e reconecte essa página
+                          </span>
+                        )}
+                      </div>
+                      <Button size="sm" variant="ghost" onClick={() => disconnect(it.id)}>
+                        <Unplug className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  );
+                })()
               ))}
             </div>
           )}
