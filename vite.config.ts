@@ -83,7 +83,26 @@ export default defineConfig(({ mode }) => ({
       "react/jsx-runtime",
       "@tanstack/react-query",
       "@radix-ui/react-tooltip",
+      "lucide-react",
     ],
-    force: true,
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          "react-vendor": ["react", "react-dom", "react-router-dom"],
+          "ui-vendor": [
+            "@radix-ui/react-tooltip",
+            "@radix-ui/react-dialog",
+            "@radix-ui/react-dropdown-menu",
+            "@radix-ui/react-tabs",
+          ],
+          "lucide": ["lucide-react"],
+          "supabase": ["@supabase/supabase-js"],
+          "charts": ["recharts"],
+        },
+      },
+    },
+    chunkSizeWarningLimit: 1000,
   },
 }));
