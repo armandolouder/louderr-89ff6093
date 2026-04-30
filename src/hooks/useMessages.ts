@@ -74,7 +74,7 @@ export function useSendMessage() {
     }: { 
       conversationId: string; 
       content: string;
-      channel?: "whatsapp" | "instagram";
+      channel?: "whatsapp" | "instagram" | "instagram-personal";
     }) => {
       // For WhatsApp, use the edge function to send via UAZAPI
       if (channel === "whatsapp") {
@@ -101,6 +101,75 @@ export function useSendMessage() {
           throw err;
         }
         return data.message;
+      }
+
+      // Instagram pessoal (via cookie/sessionid)
+      if (channel === "instagram-personal") {
+        // Pega ig_thread_id da última msg ou contact.instagram_id
+        const { data: lastMsg } = await supabase
+          .from("messages")
+          .select("metadata")
+          .eq("conversation_id", conversationId)
+          .not("metadata->ig_thread_id", "is", null)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        const meta = (lastMsg?.metadata ?? {}) as any;
+        let ig_thread_id: string | undefined = meta.ig_thread_id;
+        let ig_user_id: string | undefined;
+
+        if (!ig_thread_id) {
+          const { data: conv } = await supabase
+            .from("conversations")
+            .select("contact_id")
+            .eq("id", conversationId)
+            .single();
+          if (conv?.contact_id) {
+            const { data: contact } = await supabase
+              .from("contacts")
+              .select("instagram_id")
+              .eq("id", conv.contact_id)
+              .single();
+            ig_user_id = contact?.instagram_id ?? undefined;
+          }
+        }
+
+        const { data, error } = await supabase.functions.invoke("instagram-personal-send", {
+          body: { thread_id: ig_thread_id, ig_user_id, text: content },
+        });
+        if (error) throw error;
+        if (!data?.success) {
+          const err: any = new Error(data?.error || "Falha ao enviar Instagram pessoal");
+          err.expired = !!data?.expired;
+          err.checkpoint = !!data?.checkpoint;
+          throw err;
+        }
+
+        // Persiste a msg local
+        const { data: msg } = await supabase
+          .from("messages")
+          .insert({
+            conversation_id: conversationId,
+            content,
+            sender_type: "agent",
+            message_type: "text",
+            status: "sent",
+            metadata: {
+              ig_thread_id: data.thread_id,
+              ig_item_id: data.message_id,
+              source: "instagram-personal",
+            },
+          })
+          .select()
+          .single();
+
+        await supabase
+          .from("conversations")
+          .update({ last_message: content, last_message_at: new Date().toISOString() })
+          .eq("id", conversationId);
+
+        return msg;
       }
 
       // Fallback: save directly to database
