@@ -9,6 +9,7 @@ const corsHeaders = {
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ENV_VERIFY_TOKEN = Deno.env.get("META_WEBHOOK_VERIFY_TOKEN") ?? "louder_meta_verify_2026";
+const GRAPH = "https://graph.facebook.com/v22.0";
 
 const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
@@ -41,6 +42,67 @@ async function findIntegrationByIgAccount(igId: string): Promise<Integration | n
     .eq("instagram_business_account_id", igId)
     .maybeSingle();
   return (data as Integration) ?? null;
+}
+
+async function listInstagramIntegrations(): Promise<Integration[]> {
+  const { data } = await supabase
+    .from("meta_integrations")
+    .select("user_id,page_id,page_name,page_access_token,instagram_business_account_id,instagram_username")
+    .not("instagram_business_account_id", "is", null);
+
+  return (data as Integration[]) ?? [];
+}
+
+async function inspectInstagramTarget(entryId: string, integration: Integration): Promise<boolean> {
+  try {
+    const resp = await fetch(
+      `${GRAPH}/${entryId}?fields=id,username&access_token=${integration.page_access_token}`,
+    );
+    if (!resp.ok) return false;
+
+    const data = await resp.json();
+    return String(data?.id ?? "") === entryId;
+  } catch (_err) {
+    return false;
+  }
+}
+
+async function resolveIntegration(entry: any, objectType?: string): Promise<Integration | null> {
+  const id = String(entry?.id ?? "");
+  if (!id) return null;
+
+  let integ = await findIntegrationByIgAccount(id);
+  if (integ) return integ;
+
+  integ = await findIntegrationByPage(id);
+  if (integ) return integ;
+
+  if (objectType === "instagram") {
+    const integrations = await listInstagramIntegrations();
+
+    if (integrations.length === 1) {
+      console.warn("[meta-webhook] fallback matched single instagram integration", {
+        entryId: id,
+        pageId: integrations[0].page_id,
+        igId: integrations[0].instagram_business_account_id,
+      });
+      return integrations[0];
+    }
+
+    for (const candidate of integrations) {
+      const matches = await inspectInstagramTarget(id, candidate);
+      if (matches) {
+        console.log("[meta-webhook] resolved instagram entry id via page token", {
+          entryId: id,
+          pageId: candidate.page_id,
+          igId: candidate.instagram_business_account_id,
+        });
+        return candidate;
+      }
+    }
+  }
+
+  return null;
 }
 
 async function upsertContact(
@@ -148,8 +210,7 @@ async function saveMessage(params: {
 async function handleInstagramMessaging(entry: any) {
   // entry.id can be Page ID OR Instagram Business Account ID, depending on subscription
   const id = String(entry.id ?? "");
-  let integ = await findIntegrationByIgAccount(id);
-  if (!integ) integ = await findIntegrationByPage(id);
+  const integ = await resolveIntegration(entry, "instagram");
   if (!integ) {
     console.warn("[meta-webhook] no integration for entry.id", id);
     return;
@@ -203,9 +264,7 @@ async function handleInstagramMessaging(entry: any) {
 // ────────────────────────────────────────────────────────────────────────────
 
 async function handleInstagramChange(entry: any) {
-  const id = String(entry.id ?? "");
-  let integ = await findIntegrationByIgAccount(id);
-  if (!integ) integ = await findIntegrationByPage(id);
+  const integ = await resolveIntegration(entry, "instagram");
   if (!integ) return;
 
   const changes = Array.isArray(entry.changes) ? entry.changes : [];
@@ -297,13 +356,8 @@ Deno.serve(async (req) => {
 
       for (const entry of entries) {
         // Always log raw event
-        const userId = await (async () => {
-          const id = String(entry.id ?? "");
-          const ig = await findIntegrationByIgAccount(id);
-          if (ig) return ig.user_id;
-          const pg = await findIntegrationByPage(id);
-          return pg?.user_id ?? null;
-        })();
+        const resolvedIntegration = await resolveIntegration(entry, objectType);
+        const userId = resolvedIntegration?.user_id ?? null;
 
         const eventType =
           (Array.isArray(entry.changes) && entry.changes[0]?.field) ||
