@@ -711,6 +711,63 @@ export default function AbandonedCheckouts() {
         </DialogContent>
       </Dialog>
 
+      {/* Bulk Send Dialog */}
+      <Dialog open={bulkDialogOpen} onOpenChange={(o) => !bulkSending && setBulkDialogOpen(o)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Mail className="w-4 h-4" /> Envio em Massa
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Enviar e-mail de recuperação para{" "}
+              <strong>
+                {filteredCheckouts.filter((c: any) => selectedIds.has(c.id) && c.customer_email).length}
+              </strong>{" "}
+              cliente(s) com e-mail.
+            </p>
+            <div className="space-y-2">
+              <Label className="text-sm">Template de Recuperação</Label>
+              {recoveryTemplates && recoveryTemplates.length > 0 ? (
+                <Select value={bulkTemplateId} onValueChange={setBulkTemplateId} disabled={bulkSending}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um template..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {recoveryTemplates.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Nenhum template de recuperação encontrado. Crie templates com categoria "recuperacao" no Email Builder.
+                </p>
+              )}
+            </div>
+            {bulkSending && (
+              <div className="text-sm text-muted-foreground">
+                Enviando {bulkProgress.done} / {bulkProgress.total}...
+              </div>
+            )}
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => setBulkDialogOpen(false)} disabled={bulkSending}>
+                Cancelar
+              </Button>
+              <Button size="sm" onClick={sendBulkEmail} disabled={!bulkTemplateId || bulkSending}>
+                {bulkSending ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                ) : (
+                  <Send className="w-4 h-4 mr-1" />
+                )}
+                Enviar para todos
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Detail Modal */}
       <Dialog open={!!selectedCheckout} onOpenChange={() => setSelectedCheckout(null)}>
         <DialogContent className="max-w-lg">
