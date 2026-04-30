@@ -143,7 +143,10 @@ export default function Expenses() {
   const pagoMensal = paidThisMonth
     .filter((e) => e.paidThisMonth)
     .reduce((s, e) => s + Number(e.paidAmount ?? e.amount), 0);
-  const pendenteMensal = totalMensal - pagoMensal;
+  // Pendente = soma das despesas ainda NÃO pagas (não considera overshoot)
+  const pendenteMensal = paidThisMonth
+    .filter((e) => !e.paidThisMonth)
+    .reduce((s, e) => s + Number(e.amount), 0);
   // Quanto pagou a mais (somatório de overshoots positivos por despesa)
   const pagoAMais = paidThisMonth
     .filter((e) => e.paidThisMonth)
