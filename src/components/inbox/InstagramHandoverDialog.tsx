@@ -12,23 +12,25 @@ export function InstagramHandoverDialog({ open, onOpenChange, errorMessage }: Pr
   const steps = [
     {
       title: "Abrir Meta Business Suite",
-      desc: "Acesse business.facebook.com com a conta dona da Página/Instagram conectado.",
-      link: "https://business.facebook.com/settings",
+      desc: "Acesse o Business Suite com a conta dona da Página/Instagram conectado.",
+      link: "https://business.facebook.com/latest/home",
       cta: "Abrir Business Suite",
     },
     {
-      title: "Ir em Configurações da Página",
-      desc: "Menu lateral → Contas → Páginas → selecione a Página vinculada ao Instagram (LOUDER.ink).",
+      title: "Abrir Configurações do Negócio",
+      desc: "No Business Suite, clique no ícone de engrenagem (Configurações) na barra lateral esquerda → 'Configurações do Negócio'. Em Contas → Páginas, selecione a Página vinculada ao Instagram (LOUDER.ink).",
+      link: "https://business.facebook.com/settings/pages",
+      cta: "Abrir Páginas do Negócio",
     },
     {
-      title: "Acessar 'Permissões avançadas de mensagens'",
-      desc: "Dentro da Página, abra Configurações → 'Funções avançadas de mensagens' (Advanced Messaging) → 'Aplicativos conectados' (Handover Protocol).",
+      title: "Abrir 'Mensagens avançadas' da Página",
+      desc: "Ainda no Facebook clássico da Página: Configurações da Página → 'Mensagens avançadas' (Advanced Messaging). Lá ficam os apps conectados via Handover Protocol. Substitua YOUR_PAGE_ID pelo ID da Página se o link direto não abrir.",
       link: "https://www.facebook.com/settings?tab=advanced_messaging",
-      cta: "Abrir Advanced Messaging",
+      cta: "Abrir Mensagens avançadas",
     },
     {
       title: "Habilitar este app como 'Receptor Secundário'",
-      desc: "Localize o app conectado e ative a permissão 'Controle de conversa' (messaging_handover). Isso permite que tomemos o controle do thread vindo da Meta Inbox.",
+      desc: "Em 'Aplicativos conectados', localize este app e ative a permissão 'Controle de conversa' (messaging_handover). Isso permite que tomemos o controle do thread vindo da Meta Inbox.",
     },
     {
       title: "Renovar a janela de 24h",
@@ -96,7 +98,7 @@ export function InstagramHandoverDialog({ open, onOpenChange, errorMessage }: Pr
             Fechar
           </Button>
           <Button asChild>
-            <a href="https://business.facebook.com/settings" target="_blank" rel="noopener noreferrer">
+            <a href="https://business.facebook.com/latest/home" target="_blank" rel="noopener noreferrer">
               Abrir Meta Business <ExternalLink className="w-4 h-4 ml-1.5" />
             </a>
           </Button>
