@@ -105,10 +105,55 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 3. Build Graph API payload
-    //    Endpoint: POST /{ig-business-id}/messages with platform=instagram-style payload
-    //    Use /me/messages with page access token for Instagram messaging.
-    const messagePayload: Record<string, unknown> = { recipient: { id: contact.instagram_id } };
+    // 3. Try take_thread_control BEFORE sending (Instagram via Facebook Login uses Handover Protocol)
+    //    If the Meta Inbox is the Primary Receiver, we must request control first.
+    const takeUrl = `${GRAPH}/me/take_thread_control?access_token=${integ.page_access_token}`;
+    try {
+      const takeResp = await fetch(takeUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ recipient: { id: contact.instagram_id } }),
+      });
+      const takeText = await takeResp.text();
+      let takeJson: any = {};
+      try { takeJson = JSON.parse(takeText); } catch { /* not json */ }
+
+      if (!takeResp.ok) {
+        const code = takeJson?.error?.code;
+        const subcode = takeJson?.error?.error_subcode;
+        // 2018112 = "App is already the primary receiver" -> ok, proceed
+        if (subcode === 2018112) {
+          console.log("[send-instagram] already primary receiver, proceeding");
+        } else if (code === 27) {
+          // Meta Business has not granted handover permission to this app
+          return json(200, {
+            success: false,
+            error: "Configuração pendente na Meta Business: vá em Meta Business Suite → Configurações da Página → Permissões avançadas de mensagens → Aplicativos conectados, e habilite este app com a permissão 'Controle de conversa' (messaging_handover). Sem isso, a Meta Inbox bloqueia o envio pela API.",
+            meta: takeJson,
+            requires_business_config: true,
+          });
+        } else if (code === 10 || code === 200) {
+          return json(200, {
+            success: false,
+            error: "Sem permissão da Meta para tomar controle do thread. Verifique escopo messaging_handover no token.",
+            meta: takeJson,
+          });
+        } else {
+          // log warning but try to send anyway (e.g. handover protocol not enabled at all)
+          console.warn("[send-instagram] take_thread_control non-fatal", takeResp.status, takeText);
+        }
+      } else {
+        console.log("[send-instagram] thread control acquired");
+      }
+    } catch (e) {
+      console.warn("[send-instagram] take_thread_control exception", e);
+    }
+
+    // 4. Build Graph API payload (use /me/messages with page access token, RESPONSE type for 24h window)
+    const messagePayload: Record<string, unknown> = {
+      recipient: { id: contact.instagram_id },
+      messaging_type: "RESPONSE",
+    };
 
     if (messageType === "text") {
       messagePayload.message = { text: content };
@@ -123,8 +168,8 @@ Deno.serve(async (req) => {
       };
     }
 
-    const igAccountId = integ.instagram_business_account_id;
-    const sendUrl = `${GRAPH}/${igAccountId}/messages?access_token=${integ.page_access_token}`;
+    // Use /me/messages with PAGE access token (correct endpoint for Instagram via Facebook Login)
+    const sendUrl = `${GRAPH}/me/messages?access_token=${integ.page_access_token}`;
 
     const resp = await fetch(sendUrl, {
       method: "POST",
@@ -138,13 +183,16 @@ Deno.serve(async (req) => {
     if (!resp.ok) {
       console.error("[send-instagram] Graph error", resp.status, respText);
       const metaErr = respJson?.error;
+      const subcode = metaErr?.error_subcode;
       let friendly = metaErr?.message || `Erro Meta ${resp.status}`;
-      if (metaErr?.code === 10 || metaErr?.code === 200) {
+      if (subcode === 2534037 || /not.*owner.*thread|n[ãa]o.*dona/i.test(metaErr?.message ?? "")) {
+        friendly = "Este app não tem controle do thread. Configure no Meta Business Suite: Página → Permissões avançadas de mensagens → habilite este app com 'Controle de conversa'.";
+      } else if (metaErr?.code === 3) {
+        friendly = "App Meta sem capability para enviar DMs. Vá em developers.facebook.com → seu app → Casos de uso → adicione 'Instagram messaging'.";
+      } else if (metaErr?.code === 10 || metaErr?.code === 200) {
         friendly = "Sem permissão da Meta para enviar essa mensagem (verifique permissões do app/página).";
       } else if (metaErr?.code === 551 || /outside.*window/i.test(metaErr?.message ?? "")) {
         friendly = "Janela de 24h expirada. O Instagram só permite responder em até 24h após a última mensagem do cliente.";
-      } else if (resp.status === 400 && /thread.*owner|not.*primary/i.test(respText)) {
-        friendly = "Este app não é o receptor primário do thread. Vá em Inbox da Meta e libere o controle, ou aguarde o handover automático.";
       }
       return json(200, { success: false, error: friendly, meta: respJson });
     }

@@ -1,100 +1,56 @@
 
-# Abas Personalizadas para Organizar Conversas
+## Diagnóstico final (confirmado pelos logs)
 
-## Visão Geral
-Adicionar um sistema de abas customizáveis no lado direito da tela de Inbox que permite organizar conversas em categorias como "Suporte", "Trocas", "Vendas", etc. Você poderá criar, editar e excluir abas, e arrastar conversas para organizá-las.
+Testei o envio direto na API da Meta com o token da @louder.ink. O problema **não é** falta de App Review nem falta de role — os scopes estão todos lá (`instagram_manage_messages`, `pages_messaging` etc).
 
-## Como Vai Funcionar
+São dois problemas reais:
 
-1. **Painel lateral direito** - Ao lado do chat, aparecerá um painel com suas abas personalizadas
-2. **Criar abas** - Botão "+" para adicionar novas categorias (ex: Suporte, Trocas, Financeiro)
-3. **Mover conversas** - Arraste uma conversa do chat para uma aba, ou use um menu rápido
-4. **Visualizar por aba** - Clique em uma aba para ver apenas as conversas daquela categoria
-5. **Cores e ícones** - Cada aba pode ter uma cor e ícone para identificação visual
+1. **Endpoint errado no código**: `send-instagram` usa `POST /{ig-business-id}/messages`, que é só para apps com Instagram API With Instagram Login. Sua integração é via Login do Facebook → tem que usar `POST /me/messages` com o token da Página.
 
-## Layout Proposto
+2. **Handover bloqueado na Meta**: o webhook está tentando dar `take_thread_control` automaticamente e a Meta retorna:
+   > `(#27) A empresa tem que conceder a permissão de controle de conversa para tomar o controle da thread`
+   
+   Isso é uma autorização única que **precisa ser feita manualmente no Meta Business Suite** (uma vez por página). Sem isso, nenhum endpoint vai conseguir enviar enquanto a Meta Inbox for o Primary Receiver.
 
-```text
-+------------------+------------------------+------------------+
-|   Conversas      |        Chat            |   Abas Custom    |
-|   (lista)        |   (mensagens)          |                  |
-|                  |                        |  [+ Nova Aba]    |
-|  * Maria         |   Oi, preciso de...    |                  |
-|  * João          |   > Como posso ajudar? |  📦 Suporte (3)  |
-|  * Ana           |                        |  🔄 Trocas (1)   |
-|                  |                        |  💰 Vendas (5)   |
-|                  |                        |  ⏳ Aguardando   |
-+------------------+------------------------+------------------+
-```
+## O que vou fazer no código
 
-## O Que Será Implementado
+### 1. Corrigir `supabase/functions/send-instagram/index.ts`
+- Trocar `POST /{ig-business-id}/messages` por `POST /me/messages?access_token={page_token}`
+- Adicionar `messaging_type: "RESPONSE"` (obrigatório dentro da janela de 24h)
+- Antes de enviar, tentar `POST /me/take_thread_control` com o `recipient.id`
+  - Se vier erro `(#27)` ou `(#10)`, retornar mensagem clara pro usuário explicando o que configurar na Meta
+  - Se vier sucesso ou `(#2018112)` (já tem o controle), seguir e enviar
+- Tratar especificamente o subcode `2534037` ("não é dona do tópico") com mensagem amigável
+- Manter persistência local da mensagem enviada igual está hoje
 
-1. **Nova tabela no banco de dados** - `custom_tabs` para salvar suas abas
-2. **Relação conversa-aba** - Campo `tab_id` nas conversas para associar a uma aba
-3. **Painel de abas** - Componente visual no lado direito do Inbox
-4. **Gerenciador de abas** - Modal para criar/editar/excluir abas
-5. **Arrastar e soltar** - Mover conversas entre abas facilmente
+### 2. Melhorar feedback visual no Inbox
+- Quando o erro `(#27)` voltar, mostrar um toast com link direto para as instruções de configuração da Meta Business Suite
+- Não mudar UI estrutural — só o conteúdo do toast de erro
 
----
+## Configuração que VOCÊ precisa fazer na Meta (uma vez só)
 
-## Detalhes Técnicos
+Depois que eu corrigir o código, o erro #27 ainda vai aparecer na primeira tentativa. Pra resolver:
 
-### 1. Migração do Banco de Dados
+**Caminho exato:**
+1. Acesse **https://business.facebook.com/settings**
+2. Selecione a conta Business da LOUDER.ink
+3. Menu esquerdo: **Contas → Páginas → LOUDER.ink**
+4. Clique em **"Configurações da página"** ou **"Permissões avançadas de mensagens"**
+5. Procure a seção **"Aplicativos conectados"** ou **"Handover Protocol"**
+6. Encontre seu app (o de ID que aparece no print)
+7. Habilite o app como **"Receptor secundário"** com permissão de **"Controle de conversa"** (`messaging_handover`)
 
-Criar tabela `custom_tabs`:
-- `id` (uuid) - Identificador único
-- `name` (text) - Nome da aba (ex: "Suporte")
-- `color` (text) - Cor hex da aba (ex: "#22c55e")
-- `icon` (text) - Nome do ícone Lucide (ex: "headphones")
-- `order` (integer) - Ordem de exibição
-- `created_at` / `updated_at` - Timestamps
+**Caminho alternativo** (se não achar o de cima):
+1. **Meta Business Suite** → **Caixa de Entrada**
+2. Ícone de engrenagem (Configurações) no canto da inbox
+3. **"Aplicativos conectados"** ou **"Atribuição automática"**
+4. Habilite seu app pra receber/controlar conversas
 
-Adicionar coluna na tabela `conversations`:
-- `tab_id` (uuid, nullable) - Referência para qual aba a conversa pertence
+Sem essa autorização manual na Meta, **nenhum código** consegue tomar controle do thread enquanto a Meta Inbox for o Primary Receiver — é uma trava de segurança da Meta.
 
-RLS: Permitir acesso público (mesmo padrão das outras tabelas)
+## Resultado esperado
 
-### 2. Novos Arquivos
-
-| Arquivo | Descrição |
-|---------|-----------|
-| `src/hooks/useCustomTabs.ts` | Hook para CRUD de abas + realtime |
-| `src/components/inbox/CustomTabsSidebar.tsx` | Painel lateral direito com lista de abas |
-| `src/components/inbox/TabManager.tsx` | Modal para criar/editar abas |
-| `src/components/inbox/TabItem.tsx` | Componente individual de aba |
-
-### 3. Modificações em Arquivos Existentes
-
-| Arquivo | Mudança |
-|---------|---------|
-| `src/pages/Inbox.tsx` | Adicionar sidebar direito + estado da aba selecionada |
-| `src/hooks/useConversations.ts` | Incluir `tab_id` nos dados e adicionar filtro por aba |
-| `src/components/inbox/ConversationItem.tsx` | Adicionar menu para mover para aba |
-
-### 4. Funcionalidades do Hook `useCustomTabs`
-
-```typescript
-// Funções disponíveis
-useCustomTabs() - Lista todas as abas
-useCreateTab() - Criar nova aba
-useUpdateTab() - Editar aba existente  
-useDeleteTab() - Excluir aba
-useMoveToTab() - Mover conversa para uma aba
-```
-
-### 5. Fluxo de Interação
-
-1. Usuário clica em "+" no painel direito
-2. Modal abre com campos: nome, cor, ícone
-3. Ao salvar, aba aparece na lista
-4. Para organizar: clica nos "..." da conversa e seleciona "Mover para > Suporte"
-5. Conversa agora aparece contada naquela aba
-6. Clicando na aba, filtra a lista de conversas
-
-### 6. Componente CustomTabsSidebar
-
-- Header com título "Abas" e botão "+"
-- Lista de abas com: ícone, nome, contador de conversas
-- Cada aba tem menu: Editar, Excluir
-- Aba "Todas" sempre visível (não pode ser excluída)
-- Drag-and-drop para reordenar abas
+Depois do código corrigido + autorização na Meta:
+- ✅ Envio funciona dentro da janela de 24h
+- ✅ Take control automático antes de cada envio (transparente)
+- ✅ Mensagens claras quando algo falhar (24h expirada, controle negado, etc.)
