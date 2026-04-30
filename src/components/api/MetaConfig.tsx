@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Instagram, Copy, Check, ExternalLink, AlertCircle, Eye, EyeOff, Save, Loader2, KeyRound } from "lucide-react";
+import { Instagram, Copy, Check, ExternalLink, AlertCircle, Eye, EyeOff, Save, Loader2, KeyRound, Link2, Unplug } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,6 +56,16 @@ function CopyField({ label, value, hint }: { label: string; value: string; hint?
   );
 }
 
+interface MetaIntegration {
+  id: string;
+  page_name: string | null;
+  page_id: string;
+  instagram_username: string | null;
+  instagram_business_account_id: string | null;
+  webhook_subscribed: boolean | null;
+  status: string;
+}
+
 export function MetaConfig() {
   const [appId, setAppId] = useState("");
   const [appSecret, setAppSecret] = useState("");
@@ -65,10 +75,69 @@ export function MetaConfig() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [hasCredentials, setHasCredentials] = useState(false);
+  const [integrations, setIntegrations] = useState<MetaIntegration[]>([]);
+  const [connecting, setConnecting] = useState(false);
 
   useEffect(() => {
     loadCredentials();
+    loadIntegrations();
   }, []);
+
+  const loadIntegrations = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from("meta_integrations" as any)
+        .select("id, page_name, page_id, instagram_username, instagram_business_account_id, webhook_subscribed, status")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+      setIntegrations((data as any) || []);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const startOAuth = async () => {
+    if (!hasCredentials) {
+      toast.error("Salve App ID e Secret antes de conectar");
+      return;
+    }
+    setConnecting(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Não autenticado");
+
+      // gera state
+      const state = crypto.randomUUID();
+      const { error: stateErr } = await supabase
+        .from("meta_oauth_states" as any)
+        .insert({ user_id: user.id, state, redirect_uri: OAUTH_REDIRECT_URL });
+      if (stateErr) throw stateErr;
+
+      const params = new URLSearchParams({
+        client_id: appId,
+        redirect_uri: OAUTH_REDIRECT_URL,
+        state,
+        scope: REQUIRED_PERMISSIONS.join(","),
+        response_type: "code",
+      });
+      window.location.href = `https://www.facebook.com/v21.0/dialog/oauth?${params}`;
+    } catch (e: any) {
+      toast.error(e.message || "Erro ao iniciar conexão");
+      setConnecting(false);
+    }
+  };
+
+  const disconnect = async (id: string) => {
+    if (!confirm("Desconectar esta página?")) return;
+    const { error } = await supabase.from("meta_integrations" as any).delete().eq("id", id);
+    if (error) toast.error(error.message);
+    else {
+      toast.success("Página desconectada");
+      loadIntegrations();
+    }
+  };
 
   const loadCredentials = async () => {
     try {
@@ -150,6 +219,57 @@ export function MetaConfig() {
           {hasCredentials ? "Credenciais salvas" : "Aguardando configuração"}
         </Badge>
       </div>
+
+      {/* Conectar com Facebook */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Link2 className="w-4 h-4 text-primary" />
+            <CardTitle className="text-base">Conectar conta Instagram / Facebook</CardTitle>
+          </div>
+          <CardDescription>
+            Autorize o app a acessar suas páginas e contas do Instagram Business para receber DMs e comentários.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {integrations.length > 0 && (
+            <div className="space-y-2">
+              {integrations.map((it) => (
+                <div key={it.id} className="flex items-center justify-between border border-border bg-secondary/30 px-3 py-2">
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium">{it.page_name || it.page_id}</span>
+                    <span className="text-[11px] text-muted-foreground">
+                      {it.instagram_username ? `@${it.instagram_username}` : "Sem Instagram vinculado"}
+                      {" · "}
+                      {it.webhook_subscribed ? "Webhook ativo" : "Webhook pendente"}
+                    </span>
+                  </div>
+                  <Button size="sm" variant="ghost" onClick={() => disconnect(it.id)}>
+                    <Unplug className="w-4 h-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+          <Button
+            onClick={startOAuth}
+            disabled={connecting || !hasCredentials}
+            className="w-full bg-[#1877F2] hover:bg-[#166FE5] text-white"
+          >
+            {connecting ? (
+              <Loader2 className="w-4 h-4 animate-spin mr-2" />
+            ) : (
+              <Link2 className="w-4 h-4 mr-2" />
+            )}
+            {integrations.length > 0 ? "Conectar outra página" : "Conectar com Facebook"}
+          </Button>
+          {!hasCredentials && (
+            <p className="text-[11px] text-amber-600 flex items-center gap-1">
+              <AlertCircle className="w-3 h-3" /> Salve as credenciais acima antes de conectar.
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Formulário de credenciais */}
       <Card>
