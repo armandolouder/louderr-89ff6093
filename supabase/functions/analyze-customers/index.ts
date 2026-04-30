@@ -311,6 +311,32 @@ async function processAnalysis(supabase: any, jobId: string) {
 
     console.log(`Processing ${allCustomers.length} customers in background...`);
 
+    // Fetch active abandoned carts to mark customers as "Carrinhos Abandonados"
+    // (overrides RFM classification for anyone with an open cart)
+    const abandonedContacts = new Set<string>();
+    {
+      let cartOffset = 0;
+      while (true) {
+        const { data: carts, error: cartError } = await supabase
+          .from("nuvemshop_abandoned_checkouts")
+          .select("customer_phone, customer_email, recovered, status")
+          .or("recovered.is.null,recovered.eq.false")
+          .range(cartOffset, cartOffset + pageSize - 1);
+        if (cartError) {
+          console.warn("Failed to load abandoned carts:", cartError.message);
+          break;
+        }
+        if (!carts || carts.length === 0) break;
+        for (const c of carts) {
+          if (c.customer_phone) abandonedContacts.add(`p:${c.customer_phone}`);
+          if (c.customer_email) abandonedContacts.add(`e:${c.customer_email.toLowerCase()}`);
+        }
+        cartOffset += pageSize;
+        if (carts.length < pageSize) break;
+      }
+    }
+    console.log(`Found ${abandonedContacts.size} contacts with active abandoned carts`);
+
     // Calculate RFM scores (CPU-intensive but quick)
     const rfmScores = calculateRFMScores(allCustomers);
 
@@ -357,7 +383,11 @@ async function processAnalysis(supabase: any, jobId: string) {
       const ticketLevel = getTicketLevel(customer.total_spent || 0, avgTicket);
 
       // Abandoned checkout customers go to their own cluster
-      if (customer.source === "abandoned_checkout") {
+      // (either flagged by source OR with an active cart matched by phone/email)
+      const hasActiveCart =
+        (customer.phone && abandonedContacts.has(`p:${customer.phone}`)) ||
+        (customer.email && abandonedContacts.has(`e:${customer.email.toLowerCase()}`));
+      if (customer.source === "abandoned_checkout" || hasActiveCart) {
         const abandonedClusterId = clusterNameToId.get("Carrinhos Abandonados");
         if (abandonedClusterId) {
           if (!customersByCluster.has(abandonedClusterId)) {
