@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
-import { MessageSquare, Brain, Loader2, ShoppingBag, Mail } from "lucide-react";
+import { MessageSquare, Brain, Loader2, ShoppingBag, Mail, Instagram } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { IntegrationSidebar, type IntegrationId } from "@/components/api/IntegrationSidebar";
 import { UazapiConfig } from "@/components/api/UazapiConfig";
 import { GroqConfig } from "@/components/api/GroqConfig";
 import { NuvemshopConfig } from "@/components/api/NuvemshopConfig";
 import { BrevoConfig } from "@/components/api/BrevoConfig";
+import { MetaConfig } from "@/components/api/MetaConfig";
 
 interface InstanceStatus {
   connected: boolean;
@@ -145,6 +146,13 @@ export default function Api() {
       icon: <Mail className="w-5 h-5" />,
       connected: brevoStatus?.connected ?? false,
     },
+    {
+      id: "meta" as IntegrationId,
+      name: "Meta",
+      description: "Instagram DMs + Comentários",
+      icon: <Instagram className="w-5 h-5" />,
+      connected: false,
+    },
   ];
 
   if (isLoading) {
@@ -178,6 +186,8 @@ export default function Api() {
       {activeIntegration === "brevo" && (
         <BrevoConfig status={brevoStatus} onStatusChange={setBrevoStatus} />
       )}
+
+      {activeIntegration === "meta" && <MetaConfig />}
     </div>
   );
 }

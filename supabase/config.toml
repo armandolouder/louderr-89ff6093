@@ -47,3 +47,9 @@ verify_jwt = false
 
 [functions.sync-abandoned-checkouts]
 verify_jwt = false
+
+[functions.meta-webhook]
+verify_jwt = false
+
+[functions.meta-oauth-callback]
+verify_jwt = false
