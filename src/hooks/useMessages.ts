@@ -94,7 +94,12 @@ export function useSendMessage() {
           body: { conversationId, content, messageType: "text" },
         });
         if (error) throw error;
-        if (!data?.success) throw new Error(data?.error || "Falha ao enviar no Instagram");
+        if (!data?.success) {
+          const err: any = new Error(data?.error || "Falha ao enviar no Instagram");
+          err.requires_handover_setup = !!data?.requires_handover_setup || !!data?.requires_business_config;
+          err.meta = data?.meta;
+          throw err;
+        }
         return data.message;
       }
 
@@ -193,7 +198,12 @@ export function useSendMediaMessage() {
           },
         });
         if (error) throw error;
-        if (!data?.success) throw new Error(data?.error || "Falha ao enviar mídia no Instagram");
+        if (!data?.success) {
+          const err: any = new Error(data?.error || "Falha ao enviar mídia no Instagram");
+          err.requires_handover_setup = !!data?.requires_handover_setup || !!data?.requires_business_config;
+          err.meta = data?.meta;
+          throw err;
+        }
         return data.message;
       }
 
