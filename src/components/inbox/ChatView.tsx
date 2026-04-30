@@ -511,17 +511,17 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
                 size="sm"
                 className={cn(
                   "text-muted-foreground hover:text-foreground h-8 px-2",
-                  isCheckingSpelling && "animate-pulse"
+                  isImproving && "animate-pulse"
                 )}
-                onClick={checkSpelling}
-                disabled={isCheckingSpelling || !message.trim()}
+                onClick={improveWithAI}
+                disabled={isImproving || !message.trim()}
               >
-                {isCheckingSpelling ? (
+                {isImproving ? (
                   <Loader2 className="w-4 h-4 mr-1 animate-spin" />
                 ) : (
-                  <SpellCheck className="w-4 h-4 mr-1" />
+                  <Sparkles className="w-4 h-4 mr-1" />
                 )}
-                <span className="text-xs">Corrigir</span>
+                <span className="text-xs">Melhorar</span>
               </Button>
               <Button 
                 variant="ghost" 
