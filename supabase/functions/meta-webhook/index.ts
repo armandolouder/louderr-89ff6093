@@ -107,20 +107,33 @@ async function resolveIntegration(entry: any, objectType?: string): Promise<Inte
 
 async function upsertContact(
   userId: string,
-  opts: { instagramId?: string | null; name?: string | null; username?: string | null },
+  opts: {
+    instagramId?: string | null;
+    name?: string | null;
+    username?: string | null;
+    avatarUrl?: string | null;
+  },
 ): Promise<string | null> {
   if (!opts.instagramId) return null;
 
   const { data: existing } = await supabase
     .from("contacts")
-    .select("id,name")
+    .select("id,name,avatar_url")
     .eq("user_id", userId)
     .eq("instagram_id", opts.instagramId)
     .maybeSingle();
 
   if (existing?.id) {
-    if (opts.name && (!existing.name || existing.name === opts.instagramId)) {
-      await supabase.from("contacts").update({ name: opts.name }).eq("id", existing.id);
+    const updates: Record<string, unknown> = {};
+    const niceName = opts.name || opts.username || null;
+    const looksPlaceholder =
+      !existing.name ||
+      existing.name === opts.instagramId ||
+      /^IG\s/i.test(existing.name);
+    if (niceName && looksPlaceholder) updates.name = niceName;
+    if (opts.avatarUrl && !existing.avatar_url) updates.avatar_url = opts.avatarUrl;
+    if (Object.keys(updates).length > 0) {
+      await supabase.from("contacts").update(updates).eq("id", existing.id);
     }
     return existing.id;
   }
@@ -132,10 +145,38 @@ async function upsertContact(
       user_id: userId,
       instagram_id: opts.instagramId,
       name: displayName,
+      avatar_url: opts.avatarUrl ?? null,
     })
     .select("id")
     .single();
   return created?.id ?? null;
+}
+
+// Fetch IG user profile (name, username, profile pic) using page access token.
+// Uses the Instagram Graph endpoint that works for IG-scoped sender IDs.
+async function fetchInstagramProfile(
+  igUserId: string,
+  pageAccessToken: string,
+): Promise<{ name: string | null; username: string | null; avatarUrl: string | null }> {
+  try {
+    const url =
+      `${GRAPH}/${igUserId}?fields=name,username,profile_pic&access_token=${pageAccessToken}`;
+    const res = await fetch(url);
+    if (!res.ok) {
+      const txt = await res.text();
+      console.warn("[meta-webhook] IG profile fetch failed", igUserId, res.status, txt);
+      return { name: null, username: null, avatarUrl: null };
+    }
+    const j = await res.json();
+    return {
+      name: j.name ?? null,
+      username: j.username ?? null,
+      avatarUrl: j.profile_pic ?? null,
+    };
+  } catch (e) {
+    console.warn("[meta-webhook] IG profile fetch error", igUserId, String(e));
+    return { name: null, username: null, avatarUrl: null };
+  }
 }
 
 async function getOrCreateConversation(
