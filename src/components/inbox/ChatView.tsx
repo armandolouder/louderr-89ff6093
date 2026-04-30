@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, ClipboardEvent, ChangeEvent } from "react";
-import { Send, Paperclip, Smile, MoreVertical, Phone, User, Loader2, Sparkles, MessageSquareText, X, Image as ImageIcon, ArrowDown } from "lucide-react";
+import { Send, Paperclip, Smile, MoreVertical, Phone, User, Loader2, Sparkles, MessageSquareText, X, Image as ImageIcon, ArrowDown, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -37,10 +37,29 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showScrollDown, setShowScrollDown] = useState(false);
   const [handoverError, setHandoverError] = useState<string | null>(null);
+  const [isSyncingIg, setIsSyncingIg] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isMobile = useIsMobile();
+
+  const isInstagramChannel = conversation.channel === "instagram" || conversation.channel === "instagram-personal";
+
+  const syncInstagramPersonal = async () => {
+    setIsSyncingIg(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("instagram-personal-fetch", {});
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || "Falha ao sincronizar");
+      const total = (data.results || []).reduce((s: number, r: any) => s + (r.new || 0), 0);
+      toast.success(total > 0 ? `${total} nova(s) mensagem(ns)` : "Sincronizado, sem novidades");
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e?.message || "Erro ao sincronizar Instagram");
+    } finally {
+      setIsSyncingIg(false);
+    }
+  };
 
   const EMOJI_LIST = ["😀", "😂", "🥰", "😍", "🤩", "😎", "🤔", "😅", "👍", "👏", "🔥", "❤️", "💯", "🎉", "✅", "⭐"];
 
@@ -249,6 +268,22 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
             </div>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
+            {isInstagramChannel && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={syncInstagramPersonal}
+                    disabled={isSyncingIg}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    <RefreshCw className={cn("w-5 h-5", isSyncingIg && "animate-spin")} />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Sincronizar Instagram Pessoal</TooltipContent>
+              </Tooltip>
+            )}
             <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
               <Phone className="w-5 h-5" />
             </Button>

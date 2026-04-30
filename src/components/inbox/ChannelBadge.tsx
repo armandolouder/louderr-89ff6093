@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils";
 import { MessageCircle, Instagram } from "lucide-react";
 
 interface ChannelBadgeProps {
-  channel: "whatsapp" | "instagram";
+  channel: "whatsapp" | "instagram" | "instagram-personal";
   size?: "sm" | "md";
 }
 
@@ -19,7 +19,7 @@ export function ChannelBadge({ channel, size = "sm" }: ChannelBadgeProps) {
       )}
     >
       <Icon className={cn("flex-shrink-0", size === "sm" ? "w-3 h-3" : "w-4 h-4")} />
-      <span className="capitalize">{channel}</span>
+      <span className="capitalize">{channel === "instagram-personal" ? "Instagram" : channel}</span>
     </span>
   );
 }

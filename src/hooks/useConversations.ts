@@ -14,7 +14,7 @@ export interface Contact {
 export interface Conversation {
   id: string;
   contact_id: string;
-  channel: "whatsapp" | "instagram";
+  channel: "whatsapp" | "instagram" | "instagram-personal";
   status: "novo" | "em_atendimento" | "aguardando" | "finalizado";
   assignee_id: string | null;
   assignee_name: string | null;
