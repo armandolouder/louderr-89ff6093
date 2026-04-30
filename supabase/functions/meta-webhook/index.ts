@@ -362,6 +362,41 @@ async function handleInstagramChange(entry: any) {
 // Main handler
 // ────────────────────────────────────────────────────────────────────────────
 
+// Handover Protocol: request thread control so our app becomes the primary receiver.
+// This is needed when Instagram messages arrive under `entry.standby` (Meta's
+// default Instagram inbox is the primary receiver and our app is secondary).
+async function tryTakeThreadControl(entry: any, standbyEvents: any[]) {
+  const integ = await resolveIntegration(entry, "instagram");
+  if (!integ?.page_access_token) return;
+
+  const igBusinessId = integ.instagram_business_account_id;
+  const seen = new Set<string>();
+
+  for (const evt of standbyEvents) {
+    const senderId = evt?.sender?.id ? String(evt.sender.id) : null;
+    const recipientId = evt?.recipient?.id ? String(evt.recipient.id) : null;
+    const peerId = (igBusinessId && senderId === igBusinessId) ? recipientId : senderId;
+    if (!peerId || seen.has(peerId)) continue;
+    seen.add(peerId);
+
+    try {
+      const resp = await fetch(`${GRAPH}/me/take_thread_control?access_token=${integ.page_access_token}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ recipient: { id: peerId } }),
+      });
+      const txt = await resp.text();
+      if (!resp.ok) {
+        console.warn("[meta-webhook] take_thread_control failed", peerId, resp.status, txt);
+      } else {
+        console.log("[meta-webhook] take_thread_control OK", peerId);
+      }
+    } catch (e) {
+      console.warn("[meta-webhook] take_thread_control error", peerId, String(e));
+    }
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -413,7 +448,8 @@ Deno.serve(async (req) => {
 
         const eventType =
           (Array.isArray(entry.changes) && entry.changes[0]?.field) ||
-          (Array.isArray(entry.messaging) ? "messaging" : null);
+          (Array.isArray(entry.messaging) ? "messaging" :
+            (Array.isArray(entry.standby) ? "standby" : null));
 
         await supabase.from("meta_webhook_events").insert({
           user_id: userId,
@@ -426,6 +462,12 @@ Deno.serve(async (req) => {
         try {
           if (Array.isArray(entry.messaging) && entry.messaging.length > 0) {
             await handleInstagramMessaging(entry);
+          }
+          if (Array.isArray(entry.standby) && entry.standby.length > 0) {
+            // Standby = our app is secondary receiver. Save the message anyway
+            // so the user sees it in the inbox, then try to take thread control.
+            await handleInstagramMessaging({ ...entry, messaging: entry.standby });
+            await tryTakeThreadControl(entry, entry.standby);
           }
           if (Array.isArray(entry.changes) && entry.changes.length > 0) {
             await handleInstagramChange(entry);
