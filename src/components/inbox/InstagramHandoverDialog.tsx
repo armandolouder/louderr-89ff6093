@@ -1,6 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { ExternalLink, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { ExternalLink, AlertTriangle, CheckCircle2, Copy } from "lucide-react";
+import { toast } from "sonner";
 
 interface Props {
   open: boolean;
@@ -9,6 +10,25 @@ interface Props {
 }
 
 export function InstagramHandoverDialog({ open, onOpenChange, errorMessage }: Props) {
+  // Open at top-level to escape the preview iframe (Facebook blocks framing via X-Frame-Options)
+  const openExternal = (url: string) => {
+    try {
+      const win = (window.top ?? window).open(url, "_blank", "noopener,noreferrer");
+      if (!win) {
+        // Popup blocked — copy URL as fallback
+        navigator.clipboard?.writeText(url);
+        toast.error("Popup bloqueado. Link copiado — cole no navegador.");
+      }
+    } catch {
+      window.open(url, "_blank", "noopener,noreferrer");
+    }
+  };
+
+  const copyUrl = (url: string) => {
+    navigator.clipboard?.writeText(url);
+    toast.success("Link copiado!");
+  };
+
   const steps = [
     {
       title: "Abrir Meta Business Suite",
@@ -24,7 +44,7 @@ export function InstagramHandoverDialog({ open, onOpenChange, errorMessage }: Pr
     },
     {
       title: "Abrir 'Mensagens avançadas' da Página",
-      desc: "Ainda no Facebook clássico da Página: Configurações da Página → 'Mensagens avançadas' (Advanced Messaging). Lá ficam os apps conectados via Handover Protocol. Substitua YOUR_PAGE_ID pelo ID da Página se o link direto não abrir.",
+      desc: "No Facebook clássico da Página: Configurações da Página → 'Mensagens avançadas' (Advanced Messaging). Lá ficam os apps conectados via Handover Protocol.",
       link: "https://www.facebook.com/settings?tab=advanced_messaging",
       cta: "Abrir Mensagens avançadas",
     },
@@ -62,6 +82,10 @@ export function InstagramHandoverDialog({ open, onOpenChange, errorMessage }: Pr
           </div>
         )}
 
+        <div className="bg-amber-500/10 border border-amber-500/30 p-3 text-sm text-foreground">
+          <strong>Atenção:</strong> os links da Meta não abrem dentro do preview do Lovable (o Facebook bloqueia iframes). Os botões abaixo abrem em uma nova janela do navegador. Se o popup for bloqueado, use o botão <Copy className="inline w-3 h-3" /> para copiar o link.
+        </div>
+
         <div className="space-y-4">
           {steps.map((step, idx) => (
             <div key={idx} className="flex gap-3">
@@ -72,14 +96,23 @@ export function InstagramHandoverDialog({ open, onOpenChange, errorMessage }: Pr
                 <h4 className="font-semibold text-sm text-foreground">{step.title}</h4>
                 <p className="text-sm text-muted-foreground mt-0.5">{step.desc}</p>
                 {step.link && (
-                  <a
-                    href={step.link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 mt-2 text-xs font-medium text-primary hover:underline"
-                  >
-                    {step.cta} <ExternalLink className="w-3 h-3" />
-                  </a>
+                  <div className="flex items-center gap-2 mt-2">
+                    <button
+                      type="button"
+                      onClick={() => openExternal(step.link!)}
+                      className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+                    >
+                      {step.cta} <ExternalLink className="w-3 h-3" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => copyUrl(step.link!)}
+                      className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                      title="Copiar link"
+                    >
+                      <Copy className="w-3 h-3" />
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
@@ -97,10 +130,8 @@ export function InstagramHandoverDialog({ open, onOpenChange, errorMessage }: Pr
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Fechar
           </Button>
-          <Button asChild>
-            <a href="https://business.facebook.com/latest/home" target="_blank" rel="noopener noreferrer">
-              Abrir Meta Business <ExternalLink className="w-4 h-4 ml-1.5" />
-            </a>
+          <Button onClick={() => openExternal("https://business.facebook.com/latest/home")}>
+            Abrir Meta Business <ExternalLink className="w-4 h-4 ml-1.5" />
           </Button>
         </DialogFooter>
       </DialogContent>
