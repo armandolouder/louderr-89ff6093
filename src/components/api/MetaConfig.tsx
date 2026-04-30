@@ -17,7 +17,6 @@ const VERIFY_TOKEN_DEFAULT = "louder_meta_verify_2026";
 
 const REQUIRED_PERMISSIONS = [
   "instagram_basic",
-  "instagram_manage_comments",
   "instagram_manage_messages",
   "pages_show_list",
   "pages_messaging",
@@ -27,8 +26,8 @@ const REQUIRED_PERMISSIONS = [
 ];
 
 const WEBHOOK_FIELDS = [
-  { object: "Instagram", fields: ["comments", "messages", "mentions", "live_comments"] },
-  { object: "Page (Messenger)", fields: ["messages", "messaging_postbacks", "feed"] },
+  { object: "Instagram", fields: ["messages"] },
+  { object: "Page (Messenger)", fields: ["messages", "messaging_postbacks"] },
 ];
 
 function CopyField({ label, value, hint }: { label: string; value: string; hint?: string }) {
