@@ -362,6 +362,41 @@ async function handleInstagramChange(entry: any) {
 // Main handler
 // ────────────────────────────────────────────────────────────────────────────
 
+// Handover Protocol: request thread control so our app becomes the primary receiver.
+// This is needed when Instagram messages arrive under `entry.standby` (Meta's
+// default Instagram inbox is the primary receiver and our app is secondary).
+async function tryTakeThreadControl(entry: any, standbyEvents: any[]) {
+  const integ = await resolveIntegration(entry, "instagram");
+  if (!integ?.page_access_token) return;
+
+  const igBusinessId = integ.instagram_business_account_id;
+  const seen = new Set<string>();
+
+  for (const evt of standbyEvents) {
+    const senderId = evt?.sender?.id ? String(evt.sender.id) : null;
+    const recipientId = evt?.recipient?.id ? String(evt.recipient.id) : null;
+    const peerId = (igBusinessId && senderId === igBusinessId) ? recipientId : senderId;
+    if (!peerId || seen.has(peerId)) continue;
+    seen.add(peerId);
+
+    try {
+      const resp = await fetch(`${GRAPH}/me/take_thread_control?access_token=${integ.page_access_token}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ recipient: { id: peerId } }),
+      });
+      const txt = await resp.text();
+      if (!resp.ok) {
+        console.warn("[meta-webhook] take_thread_control failed", peerId, resp.status, txt);
+      } else {
+        console.log("[meta-webhook] take_thread_control OK", peerId);
+      }
+    } catch (e) {
+      console.warn("[meta-webhook] take_thread_control error", peerId, String(e));
+    }
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
