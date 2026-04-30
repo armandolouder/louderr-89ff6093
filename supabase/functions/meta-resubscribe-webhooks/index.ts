@@ -89,30 +89,12 @@ async function subscribePageWebhooks(pageId: string, pageAccessToken: string) {
   }
 }
 
-async function subscribeInstagramWebhooks(igId: string | null, pageAccessToken: string) {
-  // Use Facebook Graph (page-scoped token) — graph.instagram.com requires IG user token
-  const targets = igId
-    ? [`${GRAPH}/${igId}/subscribed_apps`]
-    : [];
-
-  let lastError: string | null = null;
-
-  for (const target of targets) {
-    const resp = await fetch(target, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        subscribed_fields: "comments,messages,mentions,live_comments",
-        access_token: pageAccessToken,
-      }),
-    });
-
-    const data = await readJsonSafe(resp);
-    if (resp.ok && !data?.error) return;
-    lastError = data?.error?.message || `Falha ao inscrever webhooks do Instagram (${resp.status})`;
+function explainMetaCapabilityError(message: string) {
+  if (!/(#3)|Application does not have the capability to make this API call/i.test(message)) {
+    return message;
   }
 
-  throw new Error(lastError || "Falha ao inscrever webhooks do Instagram");
+  return "A Meta bloqueou esta chamada porque o app ainda não tem capability liberada para este recurso. Verifique se o app está em modo Live e com App Review/Advanced Access aprovado para pages_manage_metadata, pages_messaging, instagram_manage_messages e instagram_manage_comments.";
 }
 
 Deno.serve(async (req) => {
@@ -189,6 +171,8 @@ Deno.serve(async (req) => {
             const igMsg = `Permissões do Instagram ausentes: ${missingIg.join(", ")}. Aprove no App Review da Meta.`;
             errorMessage = errorMessage ? `${errorMessage} | ${igMsg}` : igMsg;
             skippedInstagram = true;
+          } else {
+            instagramOk = true;
           }
         }
       }
@@ -199,18 +183,11 @@ Deno.serve(async (req) => {
         pageOk = true;
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error);
-        errorMessage = errorMessage && skippedPage ? errorMessage : msg;
+        errorMessage = errorMessage && skippedPage ? errorMessage : explainMetaCapabilityError(msg);
       }
 
-      if (pageOk && integration.instagram_business_account_id) {
-        try {
-          if (skippedInstagram) throw new Error(errorMessage || "Subscrição do Instagram bloqueada por pré-verificação");
-          await subscribeInstagramWebhooks(integration.instagram_business_account_id, integration.page_access_token);
-          instagramOk = true;
-        } catch (error) {
-          const msg = error instanceof Error ? error.message : String(error);
-          errorMessage = errorMessage && skippedInstagram ? errorMessage : msg;
-        }
+      if (pageOk && integration.instagram_business_account_id && skippedInstagram) {
+        errorMessage = errorMessage || "Subscrição do Instagram bloqueada por pré-verificação";
       }
 
       const success = pageOk && instagramOk;
@@ -225,6 +202,7 @@ Deno.serve(async (req) => {
             webhook_last_resubscribe_error: errorMessage,
             webhook_last_permissions: Array.from(perms.granted),
             webhook_token_valid: perms.valid,
+            webhook_instagram_subscription_mode: integration.instagram_business_account_id ? "app_dashboard" : null,
           },
         })
         .eq("id", integration.id);
