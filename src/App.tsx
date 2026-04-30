@@ -10,6 +10,7 @@ const Dashboard = lazy(() => import("./pages/Dashboard"));
 const HomeDashboard = lazy(() => import("./pages/HomeDashboard"));
 const Bot = lazy(() => import("./pages/Bot"));
 const Inbox = lazy(() => import("./pages/Inbox"));
+const Comments = lazy(() => import("./pages/Comments"));
 const Campaigns = lazy(() => import("./pages/Campaigns"));
 const Customers = lazy(() => import("./pages/Customers"));
 const Settings = lazy(() => import("./pages/Settings"));
@@ -46,6 +47,7 @@ const App = () => (
               <Route path="/home" element={<HomeDashboard />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/inbox" element={<Inbox />} />
+              <Route path="/comments" element={<Comments />} />
               <Route path="/campaigns" element={<Campaigns />} />
               <Route path="/customers" element={<Customers />} />
               <Route path="/rfm" element={<RFMMatrixPage />} />
