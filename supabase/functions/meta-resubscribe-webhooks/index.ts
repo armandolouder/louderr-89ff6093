@@ -7,7 +7,6 @@ const corsHeaders = {
 };
 
 const GRAPH = "https://graph.facebook.com/v21.0";
-const INSTAGRAM_GRAPH = "https://graph.instagram.com/v21.0";
 
 type Integration = {
   id: string;
@@ -44,10 +43,10 @@ async function subscribePageWebhooks(pageId: string, pageAccessToken: string) {
 }
 
 async function subscribeInstagramWebhooks(igId: string | null, pageAccessToken: string) {
-  const targets = [
-    igId ? `${INSTAGRAM_GRAPH}/${igId}/subscribed_apps` : null,
-    `${INSTAGRAM_GRAPH}/me/subscribed_apps`,
-  ].filter(Boolean) as string[];
+  // Use Facebook Graph (page-scoped token) — graph.instagram.com requires IG user token
+  const targets = igId
+    ? [`${GRAPH}/${igId}/subscribed_apps`]
+    : [];
 
   let lastError: string | null = null;
 
