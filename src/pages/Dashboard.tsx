@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { 
   MessageSquare, 
   Users, 
@@ -9,8 +9,6 @@ import {
   RefreshCw
 } from "lucide-react";
 import { StatCard } from "@/components/dashboard/StatCard";
-import { ChannelChart } from "@/components/dashboard/ChannelChart";
-import { PerformanceChart } from "@/components/dashboard/PerformanceChart";
 import { CampaignStats } from "@/components/dashboard/CampaignStats";
 import { PeriodFilter } from "@/components/dashboard/PeriodFilter";
 import { AlertsCard } from "@/components/dashboard/AlertsCard";
@@ -23,6 +21,16 @@ import {
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useQueryClient } from "@tanstack/react-query";
+
+const ChannelChart = lazy(() =>
+  import("@/components/dashboard/ChannelChart").then((m) => ({ default: m.ChannelChart }))
+);
+const PerformanceChart = lazy(() =>
+  import("@/components/dashboard/PerformanceChart").then((m) => ({ default: m.PerformanceChart }))
+);
+const ChartFallback = () => (
+  <Skeleton className="w-full h-[300px]" />
+);
 
 export default function Dashboard() {
   const [period, setPeriod] = useState<PeriodFilterType>("today");
@@ -104,17 +112,21 @@ export default function Dashboard() {
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <PerformanceChart 
-            data={hourlyData} 
-            isLoading={hourlyLoading}
-            title={`Mensagens por Hora • ${periodLabel}`}
-          />
+          <Suspense fallback={<ChartFallback />}>
+            <PerformanceChart 
+              data={hourlyData} 
+              isLoading={hourlyLoading}
+              title={`Mensagens por Hora • ${periodLabel}`}
+            />
+          </Suspense>
         </div>
-        <ChannelChart 
-          whatsappCount={stats?.whatsappCount ?? 0}
-          instagramCount={stats?.instagramCount ?? 0}
-          isLoading={statsLoading}
-        />
+        <Suspense fallback={<ChartFallback />}>
+          <ChannelChart 
+            whatsappCount={stats?.whatsappCount ?? 0}
+            instagramCount={stats?.instagramCount ?? 0}
+            isLoading={statsLoading}
+          />
+        </Suspense>
       </div>
 
       {/* Campaigns & Customers */}
