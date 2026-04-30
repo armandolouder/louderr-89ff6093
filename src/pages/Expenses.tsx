@@ -204,6 +204,54 @@ export default function Expenses() {
     qc.invalidateQueries({ queryKey: ["expense-payments", monthStart] });
   };
 
+  const updateExpense = async (
+    expense: Expense,
+    patch: Partial<Expense>,
+    scope: "all" | "month",
+  ) => {
+    // Para despesas únicas ou escopo "todos os meses": atualiza a despesa em si
+    if (expense.expense_type === "unica" || scope === "all") {
+      const { error } = await supabase
+        .from("expenses")
+        .update(patch as any)
+        .eq("id", expense.id);
+      if (error) return toast.error("Erro ao salvar: " + error.message);
+      toast.success("Lançamento atualizado");
+      qc.invalidateQueries({ queryKey: ["expenses"] });
+      qc.invalidateQueries({ queryKey: ["expense-payments", monthStart] });
+      return;
+    }
+    // Escopo "somente este mês" para despesa mensal:
+    // Aplicamos a alteração apenas no expense_payments deste mês (override do valor).
+    // Campos descritivos (description/categoria/dia) só fazem sentido global,
+    // então mantemos a despesa mãe inalterada e gravamos o override de valor.
+    const newAmount = patch.amount != null ? Number(patch.amount) : Number(expense.amount);
+    const { data: existing } = await supabase
+      .from("expense_payments")
+      .select("id")
+      .eq("expense_id", expense.id)
+      .eq("reference_month", monthStart)
+      .maybeSingle();
+    if (existing?.id) {
+      const { error } = await supabase
+        .from("expense_payments")
+        .update({ amount: newAmount } as any)
+        .eq("id", existing.id);
+      if (error) return toast.error("Erro ao salvar: " + error.message);
+    } else {
+      const { error } = await supabase
+        .from("expense_payments")
+        .insert({
+          expense_id: expense.id,
+          reference_month: monthStart,
+          amount: newAmount,
+        } as any);
+      if (error) return toast.error("Erro ao salvar: " + error.message);
+    }
+    toast.success("Valor deste mês atualizado");
+    qc.invalidateQueries({ queryKey: ["expense-payments", monthStart] });
+  };
+
   const markOneTimePaid = async (expense: Expense) => {
     const newStatus = expense.status === "pago" ? "pendente" : "pago";
     const { error } = await supabase
@@ -296,6 +344,7 @@ export default function Expenses() {
                       onTogglePaid={(customAmount?: number) => togglePaid(exp, exp.paidThisMonth, customAmount)}
                       onEditPaidAmount={(amt: number) => exp.paymentId && updatePaymentAmount(exp.paymentId, amt)}
                       onDelete={() => deleteExpense(exp.id)}
+                      onEditExpense={(patch, scope) => updateExpense(exp, patch, scope)}
                     />
                   ))}
                 </div>
@@ -325,6 +374,7 @@ export default function Expenses() {
                       paid={exp.status === "pago"}
                       onTogglePaid={() => markOneTimePaid(exp)}
                       onDelete={() => deleteExpense(exp.id)}
+                      onEditExpense={(patch, scope) => updateExpense(exp, patch, scope)}
                     />
                   ))}
                 </div>
