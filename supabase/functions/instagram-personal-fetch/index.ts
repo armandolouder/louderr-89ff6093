@@ -26,6 +26,50 @@ function igHeaders(cookie: string, csrftoken?: string) {
   return h;
 }
 
+async function fetchInbox(cookie: string, csrftoken?: string) {
+  const attempts = [
+    `${IG_BASE}/direct_v2/inbox/?limit=20&thread_message_limit=10`,
+    `${IG_BASE}/direct_v2/inbox/?limit=20&thread_message_limit=10&folder=&seq_id=0`,
+    `${IG_BASE}/direct_v2/inbox/?visual_message_return_type=unseen&thread_message_limit=10&persistentBadging=true&limit=20`,
+  ];
+
+  const failures: Array<{ status: number; body: string; url: string }> = [];
+
+  for (const url of attempts) {
+    const response = await fetch(url, { headers: igHeaders(cookie, csrftoken) });
+    const rawBody = await response.text();
+    console.log(`[IG-FETCH] attempt url=${url} status=${response.status} body_preview=${rawBody.slice(0, 400)}`);
+
+    let parsed: any = null;
+    try {
+      parsed = JSON.parse(rawBody);
+    } catch {
+      parsed = null;
+    }
+
+    if (response.ok && parsed?.status === "ok" && parsed?.inbox) {
+      return { ok: true as const, response, parsed, rawBody, url };
+    }
+
+    failures.push({ status: response.status, body: rawBody, url });
+
+    if (response.status === 401 || response.status === 403) {
+      return { ok: false as const, response, parsed, rawBody, url, authError: true, failures };
+    }
+  }
+
+  const last = failures[failures.length - 1];
+  return {
+    ok: false as const,
+    response: null,
+    parsed: null,
+    rawBody: last?.body ?? "",
+    url: last?.url ?? attempts[0],
+    authError: false,
+    failures,
+  };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -61,27 +105,51 @@ Deno.serve(async (req) => {
     for (const cred of creds ?? []) {
       try {
         const cookie = buildCookieHeader(cred.sessionid, cred.csrftoken, cred.ds_user_id);
-        const url = `${IG_BASE}/direct_v2/inbox/?visual_message_return_type=unseen&thread_message_limit=10&persistentBadging=true&limit=20`;
         console.log(`[IG-FETCH] user=${cred.user_id} ig_user_id=${cred.ig_user_id} sid_len=${cred.sessionid?.length} csrf_len=${cred.csrftoken?.length}`);
-        const r = await fetch(url, { headers: igHeaders(cookie, cred.csrftoken) });
-        const rawBody = await r.text();
-        console.log(`[IG-FETCH] status=${r.status} body_preview=${rawBody.slice(0, 400)}`);
+        const inboxResult = await fetchInbox(cookie, cred.csrftoken);
 
-        if (r.status === 401 || r.status === 403) {
+        if (inboxResult.authError) {
           await supabase
             .from("instagram_personal_credentials")
-            .update({ status: "expired", error_message: `login_required (${r.status}): ${rawBody.slice(0, 200)}` })
+            .update({ status: "expired", error_message: `login_required: ${inboxResult.rawBody.slice(0, 200)}` })
             .eq("user_id", cred.user_id);
           results.push({ user_id: cred.user_id, error: "expired" });
           continue;
         }
 
-        let j: any;
-        try { j = JSON.parse(rawBody); } catch {
-          console.error(`[IG-FETCH] non-JSON response`);
-          results.push({ user_id: cred.user_id, error: "non_json", status: r.status });
+        if (!inboxResult.ok) {
+          const lastFailure = inboxResult.failures[inboxResult.failures.length - 1];
+          let parsedError: any = null;
+          try {
+            parsedError = JSON.parse(lastFailure?.body ?? "");
+          } catch {
+            parsedError = null;
+          }
+
+          const igStatus = parsedError?.status_code || lastFailure?.status || "unknown";
+          const igErrorCode = parsedError?.content?.error_code || parsedError?.error_code || "unknown";
+          const igMessage = parsedError?.content?.status || parsedError?.message || lastFailure?.body?.slice(0, 160) || "Falha ao ler inbox";
+
+          await supabase
+            .from("instagram_personal_credentials")
+            .update({
+              status: "checkpoint",
+              error_message: `Instagram bloqueou a leitura da inbox (${igStatus}/${igErrorCode}): ${igMessage}`,
+            })
+            .eq("user_id", cred.user_id);
+
+          console.error(`[IG-FETCH] failed after ${inboxResult.failures.length} attempt(s)`);
+          results.push({
+            user_id: cred.user_id,
+            error: "instagram_blocked",
+            status: igStatus,
+            error_code: igErrorCode,
+            message: igMessage,
+          });
           continue;
         }
+
+        const j = inboxResult.parsed;
         const threads = j?.inbox?.threads ?? [];
         console.log(`[IG-FETCH] threads_count=${threads.length} viewer=${j?.viewer?.pk} status=${j?.status}`);
         let newMessages = 0;
@@ -206,7 +274,13 @@ Deno.serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ success: true, results }), {
+    const hasErrors = results.some((result) => !!result.error);
+
+    return new Response(JSON.stringify({
+      success: !hasErrors,
+      results,
+      error: hasErrors ? "Falha ao sincronizar o Instagram pessoal" : null,
+    }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

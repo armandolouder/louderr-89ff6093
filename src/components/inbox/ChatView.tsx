@@ -50,7 +50,12 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
     try {
       const { data, error } = await supabase.functions.invoke("instagram-personal-fetch", {});
       if (error) throw error;
-      if (!data?.success) throw new Error(data?.error || "Falha ao sincronizar");
+      if (!data?.success) {
+        const firstError = Array.isArray(data?.results)
+          ? data.results.find((item: any) => item?.message || item?.error)
+          : null;
+        throw new Error(firstError?.message || data?.error || "Falha ao sincronizar");
+      }
       const total = (data.results || []).reduce((s: number, r: any) => s + (r.new || 0), 0);
       toast.success(total > 0 ? `${total} nova(s) mensagem(ns)` : "Sincronizado, sem novidades");
     } catch (e: any) {
