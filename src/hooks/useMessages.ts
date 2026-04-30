@@ -88,7 +88,17 @@ export function useSendMessage() {
         return data.message;
       }
 
-      // For Instagram (or fallback), save directly to database
+      // For Instagram, send via Meta Graph API
+      if (channel === "instagram") {
+        const { data, error } = await supabase.functions.invoke("send-instagram", {
+          body: { conversationId, content, messageType: "text" },
+        });
+        if (error) throw error;
+        if (!data?.success) throw new Error(data?.error || "Falha ao enviar no Instagram");
+        return data.message;
+      }
+
+      // Fallback: save directly to database
       const { data: message, error: messageError } = await supabase
         .from("messages")
         .insert({
@@ -172,7 +182,22 @@ export function useSendMediaMessage() {
         return data.message;
       }
 
-      // For other channels, save directly to database
+      // Instagram via Meta Graph API
+      if (channel === "instagram") {
+        const { data, error } = await supabase.functions.invoke("send-instagram", {
+          body: {
+            conversationId,
+            content: caption || "",
+            messageType: "image",
+            mediaUrl,
+          },
+        });
+        if (error) throw error;
+        if (!data?.success) throw new Error(data?.error || "Falha ao enviar mídia no Instagram");
+        return data.message;
+      }
+
+      // Fallback: save directly to database
       const { data: message, error: messageError } = await supabase
         .from("messages")
         .insert({
