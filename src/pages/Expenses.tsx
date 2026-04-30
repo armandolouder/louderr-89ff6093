@@ -344,7 +344,7 @@ export default function Expenses() {
                       onTogglePaid={(customAmount?: number) => togglePaid(exp, exp.paidThisMonth, customAmount)}
                       onEditPaidAmount={(amt: number) => exp.paymentId && updatePaymentAmount(exp.paymentId, amt)}
                       onDelete={() => deleteExpense(exp.id)}
-                      onEditExpense={(patch, scope) => updateExpense(exp, patch, scope)}
+                      onEditExpense={(patch, scope) => { updateExpense(exp, patch, scope); }}
                     />
                   ))}
                 </div>
@@ -374,7 +374,7 @@ export default function Expenses() {
                       paid={exp.status === "pago"}
                       onTogglePaid={() => markOneTimePaid(exp)}
                       onDelete={() => deleteExpense(exp.id)}
-                      onEditExpense={(patch, scope) => updateExpense(exp, patch, scope)}
+                      onEditExpense={(patch, scope) => { updateExpense(exp, patch, scope); }}
                     />
                   ))}
                 </div>
