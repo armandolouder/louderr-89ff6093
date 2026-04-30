@@ -268,7 +268,18 @@ async function handleInstagramMessaging(entry: any) {
     const peerId = isEcho ? recipientId : senderId;
     if (!peerId) continue;
 
-    const contactId = await upsertContact(integ.user_id, { instagramId: peerId });
+    // Enrich contact with name + avatar from Graph API (only for inbound)
+    let profile = { name: null as string | null, username: null as string | null, avatarUrl: null as string | null };
+    if (!isEcho && integ.page_access_token) {
+      profile = await fetchInstagramProfile(peerId, integ.page_access_token);
+    }
+
+    const contactId = await upsertContact(integ.user_id, {
+      instagramId: peerId,
+      name: profile.name,
+      username: profile.username,
+      avatarUrl: profile.avatarUrl,
+    });
     if (!contactId) continue;
     const conversationId = await getOrCreateConversation(integ.user_id, contactId);
     if (!conversationId) continue;
