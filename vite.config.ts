@@ -83,8 +83,8 @@ export default defineConfig(({ mode }) => ({
       "react/jsx-runtime",
       "@tanstack/react-query",
       "@radix-ui/react-tooltip",
-      "lucide-react",
     ],
+    exclude: ["lucide-react"],
   },
   build: {
     rollupOptions: {
