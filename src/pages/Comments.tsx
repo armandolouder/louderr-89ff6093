@@ -14,9 +14,10 @@ import { ptBR } from "date-fns/locale";
 
 type Comment = {
   id: string;
-  external_comment_id: string;
+  comment_id: string;
   media_id: string | null;
-  media_permalink: string | null;
+  media_url: string | null;
+  media_caption: string | null;
   parent_comment_id: string | null;
   author_id: string | null;
   author_username: string | null;
@@ -24,9 +25,9 @@ type Comment = {
   status: string;
   reply_text: string | null;
   replied_at: string | null;
-  hidden: boolean;
-  source: string;
-  comment_created_at: string | null;
+  hidden: boolean | null;
+  sentiment: string | null;
+  received_at: string;
   created_at: string;
 };
 
@@ -44,15 +45,14 @@ export default function Comments() {
   const load = async () => {
     setLoading(true);
     const { data, error } = await supabase
-      .from("instagram_comments")
+      .from("meta_comments")
       .select("*")
-      .order("comment_created_at", { ascending: false, nullsFirst: false })
-      .order("created_at", { ascending: false })
+      .order("received_at", { ascending: false })
       .limit(500);
     if (error) {
       toast.error("Erro ao carregar comentários");
     } else {
-      setComments((data || []) as Comment[]);
+      setComments((data || []) as unknown as Comment[]);
     }
     setLoading(false);
   };
@@ -61,7 +61,7 @@ export default function Comments() {
     load();
     const channel = supabase
       .channel("ig-comments")
-      .on("postgres_changes", { event: "*", schema: "public", table: "instagram_comments" }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "meta_comments" }, () => load())
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
@@ -94,7 +94,7 @@ export default function Comments() {
     setSending(true);
     // TODO: chamar edge function meta-reply-comment quando Meta estiver configurada
     const { error } = await supabase
-      .from("instagram_comments")
+      .from("meta_comments")
       .update({
         reply_text: replyText,
         replied_at: new Date().toISOString(),
@@ -113,7 +113,7 @@ export default function Comments() {
 
   const handleHide = async (c: Comment) => {
     const { error } = await supabase
-      .from("instagram_comments")
+      .from("meta_comments")
       .update({ hidden: !c.hidden })
       .eq("id", c.id);
     if (error) toast.error("Erro ao ocultar");
@@ -200,8 +200,8 @@ export default function Comments() {
                     </div>
                     <p className="text-sm text-foreground/80 line-clamp-2 mt-0.5">{c.text}</p>
                     <span className="text-[11px] text-muted-foreground">
-                      {c.comment_created_at
-                        ? formatDistanceToNow(new Date(c.comment_created_at), { addSuffix: true, locale: ptBR })
+                      {c.received_at
+                        ? formatDistanceToNow(new Date(c.received_at), { addSuffix: true, locale: ptBR })
                         : ""}
                     </span>
                   </div>
@@ -222,9 +222,9 @@ export default function Comments() {
                 <span className="font-medium">@{selected.author_username || "anônimo"}</span>
               </div>
               <div className="flex gap-2">
-                {selected.media_permalink && (
+                {selected.media_url && (
                   <Button variant="outline" size="sm" asChild className="rounded-none">
-                    <a href={selected.media_permalink} target="_blank" rel="noopener noreferrer">
+                    <a href={selected.media_url} target="_blank" rel="noopener noreferrer">
                       <ExternalLink className="w-4 h-4 mr-1" /> Ver post
                     </a>
                   </Button>
@@ -245,8 +245,8 @@ export default function Comments() {
                 <div className="text-xs text-muted-foreground mb-2">Comentário original</div>
                 <p className="text-sm whitespace-pre-wrap">{selected.text}</p>
                 <div className="text-[11px] text-muted-foreground mt-3">
-                  {selected.comment_created_at &&
-                    formatDistanceToNow(new Date(selected.comment_created_at), { addSuffix: true, locale: ptBR })}
+                  {selected.received_at &&
+                    formatDistanceToNow(new Date(selected.received_at), { addSuffix: true, locale: ptBR })}
                 </div>
               </Card>
               {selected.reply_text && (
