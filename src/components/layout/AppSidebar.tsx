@@ -22,6 +22,7 @@ import {
   Eye,
   FileText,
   Wallet,
+  MessageCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -37,6 +38,7 @@ interface NavItem {
 const navigation: NavItem[] = [
   { name: "Resumo Geral", href: "/home", icon: LayoutDashboard },
   { name: "Atendimentos", href: "/inbox", icon: MessageSquare },
+  { name: "Comentários", href: "/comments", icon: MessageCircle },
   { name: "Painel de Vendas", href: "/sales", icon: TrendingUp },
   { name: "Despesas", href: "/expenses", icon: Wallet },
   { name: "Clientes", href: "/customers", icon: Users },
