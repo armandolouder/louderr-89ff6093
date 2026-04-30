@@ -189,8 +189,6 @@ Deno.serve(async (req) => {
             const igMsg = `Permissões do Instagram ausentes: ${missingIg.join(", ")}. Aprove no App Review da Meta.`;
             errorMessage = errorMessage ? `${errorMessage} | ${igMsg}` : igMsg;
             skippedInstagram = true;
-          } else {
-            instagramOk = true;
           }
         }
       }
@@ -209,6 +207,7 @@ Deno.serve(async (req) => {
           await subscribeInstagramWebhooks(integration.instagram_business_account_id, integration.page_access_token);
           instagramOk = true;
         } catch (error) {
+          instagramOk = false;
           const msg = error instanceof Error ? error.message : String(error);
           errorMessage = errorMessage ? `${errorMessage} | ${explainMetaCapabilityError(msg)}` : explainMetaCapabilityError(msg);
         }
