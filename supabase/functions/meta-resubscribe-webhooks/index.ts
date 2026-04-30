@@ -78,7 +78,7 @@ async function subscribePageWebhooks(pageId: string, pageAccessToken: string) {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
-      subscribed_fields: "messages,messaging_postbacks,feed",
+      subscribed_fields: "messages,messaging_postbacks,messaging_handovers,feed,mention,message_reactions",
       access_token: pageAccessToken,
     }),
   });
