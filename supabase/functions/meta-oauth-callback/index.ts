@@ -9,7 +9,6 @@ const corsHeaders = {
 const APP_REDIRECT_BASE = "https://louderr.lovable.app/admin/api";
 const REDIRECT_URI = "https://ynawiygjzkypuvenvroi.supabase.co/functions/v1/meta-oauth-callback";
 const GRAPH = "https://graph.facebook.com/v21.0";
-const INSTAGRAM_GRAPH = "https://graph.instagram.com/v21.0";
 
 async function readJsonSafe(resp: Response) {
   const text = await resp.text();
@@ -37,10 +36,9 @@ async function subscribePageWebhooks(pageId: string, pageAccessToken: string) {
 }
 
 async function subscribeInstagramWebhooks(igId: string | null, pageAccessToken: string) {
-  const targets = [
-    igId ? `${INSTAGRAM_GRAPH}/${igId}/subscribed_apps` : null,
-    `${INSTAGRAM_GRAPH}/me/subscribed_apps`,
-  ].filter(Boolean) as string[];
+  const targets = igId
+    ? [`${GRAPH}/${igId}/subscribed_apps`]
+    : [];
 
   let lastError: string | null = null;
 
