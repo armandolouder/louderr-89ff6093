@@ -232,20 +232,6 @@ export function AppSidebar() {
             </Link>
           );
         })}
-
-        {/* Meta Inbox */}
-        <a
-          href={META_INBOX_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={cn(
-            "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
-            "text-sidebar-foreground hover:bg-sidebar-accent"
-          )}
-        >
-          <ExternalLink className="w-5 h-5 flex-shrink-0" />
-          {!collapsed && <span>Inbox Meta</span>}
-        </a>
       </nav>
 
       <div className="p-2 border-t border-sidebar-border">
