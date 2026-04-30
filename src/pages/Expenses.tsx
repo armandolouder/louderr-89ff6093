@@ -127,7 +127,7 @@ export default function Expenses() {
 
   const paidThisMonth = useMemo(() => {
     const map = new Map(payments.map((p) => [p.expense_id, p]));
-    return monthlyExpenses.map((e) => {
+    const enriched = monthlyExpenses.map((e) => {
       const pay = map.get(e.id);
       return {
         ...e,
@@ -135,6 +135,12 @@ export default function Expenses() {
         paidAmount: pay ? Number(pay.amount) : null,
         paymentId: pay?.id ?? null,
       };
+    });
+    // Ordena por dia de vencimento (1 -> 31), valores nulos no final
+    return enriched.sort((a, b) => {
+      const da = a.recurrence_day ?? 99;
+      const db = b.recurrence_day ?? 99;
+      return da - db;
     });
   }, [monthlyExpenses, payments]);
 
@@ -415,7 +421,22 @@ function ExpenseRow({
   };
 
   return (
-    <div className="flex items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors">
+    <div className="flex items-center gap-4 px-4 py-3 hover:bg-muted/30 transition-colors">
+      {/* Bloco "agenda" com o dia */}
+      {expense.expense_type === "mensal" && (
+        <div
+          className={`flex flex-col items-center justify-center w-14 h-14 border-2 shrink-0 ${
+            paid
+              ? "bg-emerald-500/10 border-emerald-500/40 text-emerald-500"
+              : "bg-muted/40 border-border text-foreground"
+          }`}
+        >
+          <span className="text-[9px] uppercase tracking-wider opacity-70 leading-none">Dia</span>
+          <span className="text-xl font-bold leading-tight mt-0.5">
+            {expense.recurrence_day ?? "—"}
+          </span>
+        </div>
+      )}
       <button
         onClick={handleCheckboxClick}
         className={`w-6 h-6 border-2 flex items-center justify-center transition-colors ${
@@ -429,11 +450,6 @@ function ExpenseRow({
           <p className={`text-sm font-medium ${paid ? "line-through text-muted-foreground" : "text-foreground"}`}>
             {expense.description}
           </p>
-          {expense.expense_type === "mensal" && (
-            <Badge variant="secondary" className="text-[10px]">
-              Dia {expense.recurrence_day || "—"}
-            </Badge>
-          )}
           {paid && diff > 0 && (
             <Badge className="text-[10px] bg-rose-500/15 text-rose-500 border border-rose-500/30 hover:bg-rose-500/20">
               +{fmt(diff)}
