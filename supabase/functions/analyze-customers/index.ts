@@ -457,7 +457,8 @@ async function processAnalysis(supabase: any, jobId: string) {
     await supabase
       .from("customer_clusters")
       .delete()
-      .eq("customer_count", 0);
+      .eq("customer_count", 0)
+      .neq("name", "Carrinhos Abandonados");
 
     // Mark job as complete
     await supabase
