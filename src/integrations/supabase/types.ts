@@ -1089,66 +1089,6 @@ export type Database = {
           },
         ]
       }
-      instagram_comments: {
-        Row: {
-          author_id: string | null
-          author_username: string | null
-          comment_created_at: string | null
-          created_at: string
-          external_comment_id: string
-          hidden: boolean
-          id: string
-          media_id: string | null
-          media_permalink: string | null
-          parent_comment_id: string | null
-          replied_at: string | null
-          reply_text: string | null
-          source: string
-          status: string
-          text: string | null
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          author_id?: string | null
-          author_username?: string | null
-          comment_created_at?: string | null
-          created_at?: string
-          external_comment_id: string
-          hidden?: boolean
-          id?: string
-          media_id?: string | null
-          media_permalink?: string | null
-          parent_comment_id?: string | null
-          replied_at?: string | null
-          reply_text?: string | null
-          source?: string
-          status?: string
-          text?: string | null
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          author_id?: string | null
-          author_username?: string | null
-          comment_created_at?: string | null
-          created_at?: string
-          external_comment_id?: string
-          hidden?: boolean
-          id?: string
-          media_id?: string | null
-          media_permalink?: string | null
-          parent_comment_id?: string | null
-          replied_at?: string | null
-          reply_text?: string | null
-          source?: string
-          status?: string
-          text?: string | null
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       journey_executions: {
         Row: {
           completed_at: string | null
