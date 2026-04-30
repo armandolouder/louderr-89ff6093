@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 
 const MONTHS = [
@@ -34,6 +35,11 @@ export default function AbandonedCheckouts() {
   const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
   const [emailPickerCheckout, setEmailPickerCheckout] = useState<any>(null);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
+  const [bulkTemplateId, setBulkTemplateId] = useState<string>("");
+  const [bulkSending, setBulkSending] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState({ done: 0, total: 0 });
 
   // Fetch recovery templates from DB
   const { data: recoveryTemplates } = useQuery({
@@ -88,6 +94,97 @@ export default function AbandonedCheckouts() {
     if (contactFilter === "recovered") return checkouts.filter(c => c.recovered);
     return checkouts;
   }, [checkouts, contactFilter]);
+
+  const selectableCheckouts = useMemo(
+    () => filteredCheckouts.filter((c: any) => !!c.customer_email),
+    [filteredCheckouts]
+  );
+  const allSelected =
+    selectableCheckouts.length > 0 &&
+    selectableCheckouts.every((c: any) => selectedIds.has(c.id));
+  const someSelected = selectedIds.size > 0 && !allSelected;
+
+  const toggleSelectAll = () => {
+    if (allSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(selectableCheckouts.map((c: any) => c.id)));
+    }
+  };
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const sendBulkEmail = async () => {
+    if (!bulkTemplateId) {
+      toast.error("Selecione um template");
+      return;
+    }
+    const targets = filteredCheckouts.filter(
+      (c: any) => selectedIds.has(c.id) && c.customer_email
+    );
+    if (targets.length === 0) {
+      toast.error("Nenhum carrinho com e-mail selecionado");
+      return;
+    }
+
+    setBulkSending(true);
+    setBulkProgress({ done: 0, total: targets.length });
+    let success = 0;
+    let failed = 0;
+
+    for (const checkout of targets) {
+      try {
+        const products = (checkout.products as any[]) || [];
+        const total = checkout.total || 0;
+        const recoveryUrl = checkout.recovery_url || "";
+
+        const res = await supabase.functions.invoke("send-brevo-email", {
+          body: {
+            action: "send-recovery",
+            to: checkout.customer_email,
+            customerName: checkout.customer_name,
+            products,
+            total,
+            recoveryUrl,
+            templateId: bulkTemplateId,
+            variant: "A",
+          },
+        });
+
+        if (res.error || !res.data?.success) {
+          failed++;
+        } else {
+          success++;
+          await supabase
+            .from("nuvemshop_abandoned_checkouts")
+            .update({ contacted_at: new Date().toISOString(), contact_channel: "email" })
+            .eq("id", checkout.id);
+        }
+      } catch {
+        failed++;
+      }
+      setBulkProgress(p => ({ ...p, done: p.done + 1 }));
+      // Small delay to avoid hammering
+      await new Promise(r => setTimeout(r, 300));
+    }
+
+    setBulkSending(false);
+    setBulkDialogOpen(false);
+    setSelectedIds(new Set());
+    setBulkTemplateId("");
+    queryClient.invalidateQueries({ queryKey: ["abandoned-checkouts"] });
+
+    if (failed === 0) {
+      toast.success(`${success} e-mail(s) enviado(s) com sucesso!`);
+    } else {
+      toast.warning(`${success} enviado(s), ${failed} falharam`);
+    }
+  };
 
   const metrics = useMemo(() => {
     const list = checkouts || [];
@@ -369,13 +466,45 @@ export default function AbandonedCheckouts() {
       {/* Table */}
       <div className="rounded-lg border bg-card">
         <div className="p-4 border-b">
-          <h2 className="text-lg font-semibold text-foreground">Carrinhos Abandonados</h2>
-          <p className="text-sm text-muted-foreground">{filteredCheckouts.length} carrinhos no período</p>
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div>
+              <h2 className="text-lg font-semibold text-foreground">Carrinhos Abandonados</h2>
+              <p className="text-sm text-muted-foreground">
+                {filteredCheckouts.length} carrinhos no período
+                {selectedIds.size > 0 && ` · ${selectedIds.size} selecionado(s)`}
+              </p>
+            </div>
+            {selectedIds.size > 0 && (
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>
+                  Limpar seleção
+                </Button>
+                <Button
+                  size="sm"
+                  className="gap-2"
+                  onClick={() => {
+                    setBulkTemplateId("");
+                    setBulkDialogOpen(true);
+                  }}
+                >
+                  <Mail className="w-4 h-4" />
+                  Enviar e-mail para {selectedIds.size}
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-[40px]">
+                  <Checkbox
+                    checked={allSelected ? true : someSelected ? "indeterminate" : false}
+                    onCheckedChange={toggleSelectAll}
+                    aria-label="Selecionar todos"
+                  />
+                </TableHead>
                 <TableHead>Data</TableHead>
                 <TableHead>Cliente</TableHead>
                 <TableHead>Contato</TableHead>
@@ -389,14 +518,14 @@ export default function AbandonedCheckouts() {
               {isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
-                    {Array.from({ length: 7 }).map((_, j) => (
+                    {Array.from({ length: 8 }).map((_, j) => (
                       <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
                     ))}
                   </TableRow>
                 ))
               ) : filteredCheckouts.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                     Nenhum carrinho abandonado encontrado. Clique em "Sincronizar" para buscar.
                   </TableCell>
                 </TableRow>
@@ -407,6 +536,14 @@ export default function AbandonedCheckouts() {
 
                   return (
                     <TableRow key={checkout.id}>
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedIds.has(checkout.id)}
+                          onCheckedChange={() => toggleSelect(checkout.id)}
+                          disabled={!checkout.customer_email}
+                          aria-label="Selecionar carrinho"
+                        />
+                      </TableCell>
                       <TableCell className="text-sm">
                         {new Date(checkout.created_at_nuvemshop || checkout.created_at).toLocaleDateString("pt-BR")}
                       </TableCell>
@@ -568,6 +705,63 @@ export default function AbandonedCheckouts() {
                   <Send className="w-4 h-4 mr-1" />
                 )}
                 Enviar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Send Dialog */}
+      <Dialog open={bulkDialogOpen} onOpenChange={(o) => !bulkSending && setBulkDialogOpen(o)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Mail className="w-4 h-4" /> Envio em Massa
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Enviar e-mail de recuperação para{" "}
+              <strong>
+                {filteredCheckouts.filter((c: any) => selectedIds.has(c.id) && c.customer_email).length}
+              </strong>{" "}
+              cliente(s) com e-mail.
+            </p>
+            <div className="space-y-2">
+              <Label className="text-sm">Template de Recuperação</Label>
+              {recoveryTemplates && recoveryTemplates.length > 0 ? (
+                <Select value={bulkTemplateId} onValueChange={setBulkTemplateId} disabled={bulkSending}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um template..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {recoveryTemplates.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Nenhum template de recuperação encontrado. Crie templates com categoria "recuperacao" no Email Builder.
+                </p>
+              )}
+            </div>
+            {bulkSending && (
+              <div className="text-sm text-muted-foreground">
+                Enviando {bulkProgress.done} / {bulkProgress.total}...
+              </div>
+            )}
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => setBulkDialogOpen(false)} disabled={bulkSending}>
+                Cancelar
+              </Button>
+              <Button size="sm" onClick={sendBulkEmail} disabled={!bulkTemplateId || bulkSending}>
+                {bulkSending ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                ) : (
+                  <Send className="w-4 h-4 mr-1" />
+                )}
+                Enviar para todos
               </Button>
             </div>
           </div>
