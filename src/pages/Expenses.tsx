@@ -127,7 +127,7 @@ export default function Expenses() {
 
   const paidThisMonth = useMemo(() => {
     const map = new Map(payments.map((p) => [p.expense_id, p]));
-    return monthlyExpenses.map((e) => {
+    const enriched = monthlyExpenses.map((e) => {
       const pay = map.get(e.id);
       return {
         ...e,
@@ -135,6 +135,12 @@ export default function Expenses() {
         paidAmount: pay ? Number(pay.amount) : null,
         paymentId: pay?.id ?? null,
       };
+    });
+    // Ordena por dia de vencimento (1 -> 31), valores nulos no final
+    return enriched.sort((a, b) => {
+      const da = a.recurrence_day ?? 99;
+      const db = b.recurrence_day ?? 99;
+      return da - db;
     });
   }, [monthlyExpenses, payments]);
 
