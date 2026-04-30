@@ -23,67 +23,81 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    const { message, mode, customerName } = await req.json();
-    const apiKey = Deno.env.get("LOVABLE_API_KEY");
-    if (!apiKey) throw new Error("LOVABLE_API_KEY not configured");
+    const { message, mode, customerName, variants = 3 } = await req.json();
+    const apiKey = Deno.env.get("GROQ_API_KEY");
+    if (!apiKey) throw new Error("GROQ_API_KEY not configured");
 
     let systemPrompt: string;
 
     if (mode === "generate") {
-      systemPrompt = `Você é um vendedor brasileiro super simpático e natural. Gere uma mensagem curta de WhatsApp para enviar a um cliente${customerName ? ` chamado ${customerName}` : ""}. 
-A mensagem deve ser:
-- Muito natural, como se fosse um amigo batendo um papo
-- Sem parecer que está vendendo algo
-- Curta (máximo 3-4 linhas)
-- Use linguagem informal brasileira
-- Pode usar emoji com moderação (1-2 no máximo)
-- Não use palavras como "promoção", "desconto", "oferta", "imperdível"
-- Pareça genuíno, como se realmente se importasse com a pessoa
+      systemPrompt = `Você é um vendedor brasileiro super simpático e natural. Gere ${variants} variações DIFERENTES de mensagem curta de WhatsApp para enviar a um cliente${customerName ? ` chamado ${customerName}` : ""}.
+Cada variação deve:
+- Ser muito natural, como amigo batendo papo
+- Não parecer venda
+- Ser curta (3-4 linhas)
+- Usar linguagem informal brasileira
+- Ter no máximo 1-2 emojis
+- Não usar "promoção", "desconto", "oferta", "imperdível"
+- Soar genuína
 
-Retorne APENAS o texto da mensagem, sem aspas, sem explicação.`;
+As ${variants} variações devem ter ABORDAGENS distintas (ex: descontraída, direta, calorosa).
+
+Responda APENAS com um JSON válido no formato: {"variants":["texto 1","texto 2","texto 3"]}. Sem markdown, sem explicação, sem \`\`\`.`;
     } else {
-      systemPrompt = `Você é um especialista em comunicação natural brasileira. Melhore a mensagem de WhatsApp abaixo para que pareça:
-- Mais natural e humana, como um amigo conversando
-- Sem tom de vendas ou marketing
-- Mantenha a essência e informação original
-- Use linguagem informal brasileira
-- Pode usar emoji com moderação (1-2 no máximo)  
-- Curta e direta
-- Genuína e simpática
+      systemPrompt = `Você é um especialista em comunicação natural brasileira. Reescreva a mensagem de WhatsApp do usuário em ${variants} versões DIFERENTES, cada uma:
+- Natural e humana, como amigo conversando
+- Sem tom de venda
+- Mantendo a essência e informações originais
+- Em português brasileiro informal
+- Com no máximo 1-2 emojis
+- Curta, direta e genuína
 
-Retorne APENAS o texto melhorado, sem aspas, sem explicação.`;
+As ${variants} versões devem ter TONS distintos (ex: amigável, direta, calorosa) — mas todas mantendo o conteúdo essencial.
+
+Responda APENAS com um JSON válido no formato: {"variants":["versão 1","versão 2","versão 3"]}. Sem markdown, sem explicação, sem \`\`\`.`;
     }
 
     const userMessage = mode === "generate"
-      ? "Gere uma mensagem simpática e natural para iniciar uma conversa com o cliente."
-      : `Melhore esta mensagem:\n\n${message}`;
+      ? "Gere as variações simpáticas e naturais para iniciar conversa com o cliente."
+      : `Reescreva esta mensagem em variações:\n\n${message}`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "llama-3.3-70b-versatile",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userMessage },
         ],
-        max_tokens: 300,
-        temperature: 0.8,
+        max_tokens: 800,
+        temperature: 0.9,
+        response_format: { type: "json_object" },
       }),
     });
 
     if (!response.ok) {
       const err = await response.text();
-      throw new Error(`AI error: ${err}`);
+      throw new Error(`Groq error: ${err}`);
     }
 
     const data = await response.json();
-    const result = data.choices?.[0]?.message?.content?.trim() || "";
+    const raw = data.choices?.[0]?.message?.content?.trim() || "{}";
 
-    return new Response(JSON.stringify({ success: true, message: result }), {
+    let variantsArr: string[] = [];
+    try {
+      const parsed = JSON.parse(raw);
+      variantsArr = Array.isArray(parsed.variants) ? parsed.variants.map((s: any) => String(s).trim()).filter(Boolean) : [];
+    } catch {
+      variantsArr = [raw];
+    }
+
+    if (variantsArr.length === 0) variantsArr = [raw];
+
+    return new Response(JSON.stringify({ success: true, variants: variantsArr, message: variantsArr[0] }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {

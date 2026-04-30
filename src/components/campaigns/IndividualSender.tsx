@@ -188,6 +188,8 @@ export function IndividualSender({ initialPhone, initialMessage }: { initialPhon
   const [editItem, setEditItem] = useState<SavedMessage | null>(null);
 
   const [improvingAI, setImprovingAI] = useState(false);
+  const [variantsOpen, setVariantsOpen] = useState(false);
+  const [aiVariants, setAiVariants] = useState<string[]>([]);
 
   const queryClient = useQueryClient();
 
@@ -199,12 +201,18 @@ export function IndividualSender({ initialPhone, initialMessage }: { initialPhon
     setImprovingAI(true);
     try {
       const { data, error } = await supabase.functions.invoke("improve-message", {
-        body: { message: content, mode },
+        body: { message: content, mode, variants: 3 },
       });
       if (error) throw error;
       if (!data.success) throw new Error(data.error);
-      setContent(data.message);
-      toast.success(mode === "generate" ? "Mensagem gerada!" : "Mensagem melhorada!");
+      const list: string[] = Array.isArray(data.variants) && data.variants.length > 0 ? data.variants : [data.message];
+      if (list.length === 1) {
+        setContent(list[0]);
+        toast.success(mode === "generate" ? "Mensagem gerada!" : "Mensagem melhorada!");
+      } else {
+        setAiVariants(list);
+        setVariantsOpen(true);
+      }
     } catch (err: any) {
       toast.error(`Erro: ${err.message}`);
     } finally {
@@ -412,6 +420,36 @@ export function IndividualSender({ initialPhone, initialMessage }: { initialPhon
       </div>
 
       <SavedMessageDialog open={dialogOpen} onOpenChange={setDialogOpen} editItem={editItem} />
+
+      <Dialog open={variantsOpen} onOpenChange={setVariantsOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4" />
+              Escolha uma variação
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+            {aiVariants.map((v, i) => (
+              <button
+                key={i}
+                onClick={() => {
+                  setContent(v);
+                  setVariantsOpen(false);
+                  toast.success(`Variação ${i + 1} aplicada`);
+                }}
+                className="w-full text-left p-3 border border-border hover:bg-muted/50 hover:border-primary transition-colors"
+              >
+                <p className="text-xs font-semibold text-muted-foreground mb-1">Variação {i + 1}</p>
+                <p className="text-sm whitespace-pre-wrap">{v}</p>
+              </button>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setVariantsOpen(false)}>Cancelar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
