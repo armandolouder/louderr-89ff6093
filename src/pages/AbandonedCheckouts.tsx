@@ -466,13 +466,45 @@ export default function AbandonedCheckouts() {
       {/* Table */}
       <div className="rounded-lg border bg-card">
         <div className="p-4 border-b">
-          <h2 className="text-lg font-semibold text-foreground">Carrinhos Abandonados</h2>
-          <p className="text-sm text-muted-foreground">{filteredCheckouts.length} carrinhos no período</p>
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div>
+              <h2 className="text-lg font-semibold text-foreground">Carrinhos Abandonados</h2>
+              <p className="text-sm text-muted-foreground">
+                {filteredCheckouts.length} carrinhos no período
+                {selectedIds.size > 0 && ` · ${selectedIds.size} selecionado(s)`}
+              </p>
+            </div>
+            {selectedIds.size > 0 && (
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>
+                  Limpar seleção
+                </Button>
+                <Button
+                  size="sm"
+                  className="gap-2"
+                  onClick={() => {
+                    setBulkTemplateId("");
+                    setBulkDialogOpen(true);
+                  }}
+                >
+                  <Mail className="w-4 h-4" />
+                  Enviar e-mail para {selectedIds.size}
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-[40px]">
+                  <Checkbox
+                    checked={allSelected ? true : someSelected ? "indeterminate" : false}
+                    onCheckedChange={toggleSelectAll}
+                    aria-label="Selecionar todos"
+                  />
+                </TableHead>
                 <TableHead>Data</TableHead>
                 <TableHead>Cliente</TableHead>
                 <TableHead>Contato</TableHead>
@@ -486,14 +518,14 @@ export default function AbandonedCheckouts() {
               {isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
-                    {Array.from({ length: 7 }).map((_, j) => (
+                    {Array.from({ length: 8 }).map((_, j) => (
                       <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
                     ))}
                   </TableRow>
                 ))
               ) : filteredCheckouts.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                     Nenhum carrinho abandonado encontrado. Clique em "Sincronizar" para buscar.
                   </TableCell>
                 </TableRow>
@@ -504,6 +536,14 @@ export default function AbandonedCheckouts() {
 
                   return (
                     <TableRow key={checkout.id}>
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedIds.has(checkout.id)}
+                          onCheckedChange={() => toggleSelect(checkout.id)}
+                          disabled={!checkout.customer_email}
+                          aria-label="Selecionar carrinho"
+                        />
+                      </TableCell>
                       <TableCell className="text-sm">
                         {new Date(checkout.created_at_nuvemshop || checkout.created_at).toLocaleDateString("pt-BR")}
                       </TableCell>
