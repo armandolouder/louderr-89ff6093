@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_meta_integrations_user_page ON public.meta_integrations(user_id, page_id);
