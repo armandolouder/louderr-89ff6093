@@ -17,6 +17,17 @@ type Integration = {
   instagram_business_account_id: string | null;
 };
 
+const REQUIRED_PAGE_PERMISSIONS = [
+  "pages_manage_metadata",
+  "pages_messaging",
+  "pages_read_engagement",
+];
+const REQUIRED_IG_PERMISSIONS = [
+  "instagram_basic",
+  "instagram_manage_messages",
+  "instagram_manage_comments",
+];
+
 async function readJsonSafe(resp: Response) {
   const text = await resp.text();
   try {
@@ -24,6 +35,42 @@ async function readJsonSafe(resp: Response) {
   } catch {
     return { raw: text };
   }
+}
+
+async function fetchTokenPermissions(token: string): Promise<{ granted: Set<string>; declined: Set<string>; valid: boolean; error: string | null }> {
+  // /me/permissions returns permissions of the USER token. For PAGE access tokens
+  // we use debug_token to check granular_scopes / scopes attached to the token.
+  const debugResp = await fetch(`${GRAPH}/debug_token?input_token=${encodeURIComponent(token)}&access_token=${encodeURIComponent(token)}`);
+  const debugData = await readJsonSafe(debugResp);
+
+  if (!debugResp.ok || debugData?.error) {
+    return {
+      granted: new Set(),
+      declined: new Set(),
+      valid: false,
+      error: debugData?.error?.message || `debug_token failed (${debugResp.status})`,
+    };
+  }
+
+  const data = debugData?.data ?? {};
+  const isValid = data?.is_valid === true;
+  const scopes: string[] = Array.isArray(data?.scopes) ? data.scopes : [];
+  const granular: any[] = Array.isArray(data?.granular_scopes) ? data.granular_scopes : [];
+  const granted = new Set<string>(scopes);
+  for (const g of granular) {
+    if (g?.scope) granted.add(g.scope);
+  }
+
+  return {
+    granted,
+    declined: new Set(),
+    valid: isValid,
+    error: isValid ? null : (data?.error?.message || "Token inválido ou expirado"),
+  };
+}
+
+function missingPerms(required: string[], granted: Set<string>): string[] {
+  return required.filter((p) => !granted.has(p));
 }
 
 async function subscribePageWebhooks(pageId: string, pageAccessToken: string) {
@@ -119,20 +166,50 @@ Deno.serve(async (req) => {
       let pageOk = false;
       let instagramOk = !integration.instagram_business_account_id;
       let errorMessage: string | null = null;
+      let skippedPage = false;
+      let skippedInstagram = false;
+
+      // 1) Pre-check: validate token & required permissions before any subscribe call
+      const perms = await fetchTokenPermissions(integration.page_access_token);
+
+      if (!perms.valid) {
+        errorMessage = `Token inválido para "${integration.page_name ?? integration.page_id}": ${perms.error ?? "desconhecido"}. Reconecte via "Conectar com Facebook".`;
+        skippedPage = true;
+        skippedInstagram = !!integration.instagram_business_account_id;
+      } else {
+        const missingPage = missingPerms(REQUIRED_PAGE_PERMISSIONS, perms.granted);
+        if (missingPage.length > 0) {
+          errorMessage = `Permissões da Página ausentes: ${missingPage.join(", ")}. Aprove no App Review da Meta e reconecte.`;
+          skippedPage = true;
+        }
+
+        if (integration.instagram_business_account_id) {
+          const missingIg = missingPerms(REQUIRED_IG_PERMISSIONS, perms.granted);
+          if (missingIg.length > 0) {
+            const igMsg = `Permissões do Instagram ausentes: ${missingIg.join(", ")}. Aprove no App Review da Meta.`;
+            errorMessage = errorMessage ? `${errorMessage} | ${igMsg}` : igMsg;
+            skippedInstagram = true;
+          }
+        }
+      }
 
       try {
+        if (skippedPage) throw new Error(errorMessage || "Subscrição da Página bloqueada por pré-verificação");
         await subscribePageWebhooks(integration.page_id, integration.page_access_token);
         pageOk = true;
       } catch (error) {
-        errorMessage = error instanceof Error ? error.message : String(error);
+        const msg = error instanceof Error ? error.message : String(error);
+        errorMessage = errorMessage && skippedPage ? errorMessage : msg;
       }
 
       if (pageOk && integration.instagram_business_account_id) {
         try {
+          if (skippedInstagram) throw new Error(errorMessage || "Subscrição do Instagram bloqueada por pré-verificação");
           await subscribeInstagramWebhooks(integration.instagram_business_account_id, integration.page_access_token);
           instagramOk = true;
         } catch (error) {
-          errorMessage = error instanceof Error ? error.message : String(error);
+          const msg = error instanceof Error ? error.message : String(error);
+          errorMessage = errorMessage && skippedInstagram ? errorMessage : msg;
         }
       }
 
@@ -146,6 +223,8 @@ Deno.serve(async (req) => {
           metadata: {
             webhook_last_resubscribe_at: new Date().toISOString(),
             webhook_last_resubscribe_error: errorMessage,
+            webhook_last_permissions: Array.from(perms.granted),
+            webhook_token_valid: perms.valid,
           },
         })
         .eq("id", integration.id);
