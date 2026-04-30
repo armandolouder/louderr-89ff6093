@@ -232,7 +232,7 @@ export function useSendMediaMessage() {
       conversationId: string; 
       file: File;
       caption?: string;
-      channel?: "whatsapp" | "instagram";
+      channel?: "whatsapp" | "instagram" | "instagram-personal";
     }) => {
       // Get current user for storage path ownership
       const { data: { user } } = await supabase.auth.getUser();
