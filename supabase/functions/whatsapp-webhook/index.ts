@@ -420,12 +420,19 @@ serve(async (req) => {
 
       // Find or create contact
       let contact: any = null;
-      const { data: existingContact } = await supabase
+      const phoneVariants = Array.from(new Set([
+        phone,
+        `+${phone}`,
+        phone.startsWith("55") ? phone.slice(2) : phone,
+        phone.startsWith("55") ? `+${phone}` : `+55${phone}`,
+      ]));
+      const { data: existingContacts } = await supabase
         .from("contacts")
         .select("*")
-        .eq("phone", phone)
-        .limit(1)
-        .maybeSingle();
+        .eq("user_id", ownerUserId)
+        .in("phone", phoneVariants)
+        .limit(1);
+      const existingContact = existingContacts?.[0] || null;
 
       if (!existingContact) {
         console.log("Creating new contact:", contactName);
