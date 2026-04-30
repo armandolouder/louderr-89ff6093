@@ -413,7 +413,8 @@ Deno.serve(async (req) => {
 
         const eventType =
           (Array.isArray(entry.changes) && entry.changes[0]?.field) ||
-          (Array.isArray(entry.messaging) ? "messaging" : null);
+          (Array.isArray(entry.messaging) ? "messaging" :
+            (Array.isArray(entry.standby) ? "standby" : null));
 
         await supabase.from("meta_webhook_events").insert({
           user_id: userId,
@@ -426,6 +427,12 @@ Deno.serve(async (req) => {
         try {
           if (Array.isArray(entry.messaging) && entry.messaging.length > 0) {
             await handleInstagramMessaging(entry);
+          }
+          if (Array.isArray(entry.standby) && entry.standby.length > 0) {
+            // Standby = our app is secondary receiver. Save the message anyway
+            // so the user sees it in the inbox, then try to take thread control.
+            await handleInstagramMessaging({ ...entry, messaging: entry.standby });
+            await tryTakeThreadControl(entry, entry.standby);
           }
           if (Array.isArray(entry.changes) && entry.changes.length > 0) {
             await handleInstagramChange(entry);
