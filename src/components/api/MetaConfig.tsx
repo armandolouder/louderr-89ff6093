@@ -1,11 +1,12 @@
-import { useState } from "react";
-import { Instagram, Copy, Check, ExternalLink, AlertCircle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Instagram, Copy, Check, ExternalLink, AlertCircle, Eye, EyeOff, Save, Loader2, KeyRound } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 const SUPABASE_PROJECT_REF = "ynawiygjzkypuvenvroi";
 const FUNCTIONS_BASE = `https://${SUPABASE_PROJECT_REF}.supabase.co/functions/v1`;
@@ -56,6 +57,77 @@ function CopyField({ label, value, hint }: { label: string; value: string; hint?
 }
 
 export function MetaConfig() {
+  const [appId, setAppId] = useState("");
+  const [appSecret, setAppSecret] = useState("");
+  const [verifyToken, setVerifyToken] = useState("");
+  const [showSecret, setShowSecret] = useState(false);
+  const [showToken, setShowToken] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [hasCredentials, setHasCredentials] = useState(false);
+
+  useEffect(() => {
+    loadCredentials();
+  }, []);
+
+  const loadCredentials = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+      const { data } = await supabase
+        .from("meta_credentials" as any)
+        .select("app_id, app_secret, webhook_verify_token")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (data) {
+        const row = data as any;
+        setAppId(row.app_id || "");
+        setAppSecret(row.app_secret || "");
+        setVerifyToken(row.webhook_verify_token || VERIFY_TOKEN_DEFAULT);
+        setHasCredentials(!!(row.app_id && row.app_secret));
+      } else {
+        setVerifyToken(VERIFY_TOKEN_DEFAULT);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const saveCredentials = async () => {
+    if (!appId.trim() || !appSecret.trim() || !verifyToken.trim()) {
+      toast.error("Preencha os 3 campos");
+      return;
+    }
+    setSaving(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Não autenticado");
+
+      const { error } = await supabase
+        .from("meta_credentials" as any)
+        .upsert({
+          user_id: user.id,
+          app_id: appId.trim(),
+          app_secret: appSecret.trim(),
+          webhook_verify_token: verifyToken.trim(),
+        }, { onConflict: "user_id" });
+
+      if (error) throw error;
+      toast.success("Credenciais da Meta salvas!");
+      setHasCredentials(true);
+    } catch (e: any) {
+      toast.error(e.message || "Erro ao salvar");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="flex-1 overflow-y-auto p-6 space-y-6">
       <div className="flex items-start gap-4">
@@ -68,22 +140,94 @@ export function MetaConfig() {
             DMs do Instagram, comentários e mensagens do Messenger via Graph API.
           </p>
         </div>
-        <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30">
-          Aguardando configuração
+        <Badge
+          variant="outline"
+          className={hasCredentials
+            ? "bg-green-500/10 text-green-600 border-green-500/30"
+            : "bg-amber-500/10 text-amber-600 border-amber-500/30"
+          }
+        >
+          {hasCredentials ? "Credenciais salvas" : "Aguardando configuração"}
         </Badge>
       </div>
 
-      <Card className="border-amber-500/30 bg-amber-500/5">
-        <CardContent className="p-4 flex gap-3">
-          <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-          <div className="text-sm text-foreground/80">
-            <p className="font-medium text-foreground mb-1">Infraestrutura pronta</p>
-            <p>
-              As URLs HTTPS abaixo já estão ativas. Use-as no painel da Meta para configurar OAuth e Webhook.
-              Depois adicione <code className="bg-background px-1.5 py-0.5 text-xs">META_APP_ID</code> e{" "}
-              <code className="bg-background px-1.5 py-0.5 text-xs">META_APP_SECRET</code> nos Secrets para ativar a conexão completa.
-            </p>
+      {/* Formulário de credenciais */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <KeyRound className="w-4 h-4 text-primary" />
+            <CardTitle className="text-base">Credenciais da Meta</CardTitle>
           </div>
+          <CardDescription>
+            Cole os valores do seu App em developers.facebook.com → Settings → Basic
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {loading ? (
+            <div className="flex items-center justify-center py-6">
+              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">META_APP_ID</Label>
+                <Input
+                  value={appId}
+                  onChange={(e) => setAppId(e.target.value)}
+                  placeholder="Ex: 1234567890123456"
+                  className="font-mono text-sm"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">META_APP_SECRET</Label>
+                <div className="relative">
+                  <Input
+                    type={showSecret ? "text" : "password"}
+                    value={appSecret}
+                    onChange={(e) => setAppSecret(e.target.value)}
+                    placeholder="Cole o App Secret"
+                    className="font-mono text-sm pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowSecret(!showSecret)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showSecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">META_WEBHOOK_VERIFY_TOKEN</Label>
+                <div className="relative">
+                  <Input
+                    type={showToken ? "text" : "password"}
+                    value={verifyToken}
+                    onChange={(e) => setVerifyToken(e.target.value)}
+                    placeholder="String de validação do webhook"
+                    className="font-mono text-sm pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowToken(!showToken)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  Use o mesmo valor que você vai colar no painel da Meta em Webhooks → Verify Token.
+                </p>
+              </div>
+
+              <Button onClick={saveCredentials} disabled={saving} className="w-full">
+                {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+                Salvar credenciais
+              </Button>
+            </>
+          )}
         </CardContent>
       </Card>
 
