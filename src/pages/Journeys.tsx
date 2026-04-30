@@ -32,7 +32,11 @@ export default function Journeys() {
   };
 
   if (view === "editor") {
-    return <JourneyEditor journey={editingJourney} onBack={handleBack} />;
+    return (
+      <Suspense fallback={<EditorFallback />}>
+        <JourneyEditor journey={editingJourney} onBack={handleBack} />
+      </Suspense>
+    );
   }
 
   return (
