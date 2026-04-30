@@ -351,16 +351,70 @@ function KPI({ title, value, subtitle, color, bg, icon: Icon }: any) {
   );
 }
 
-function ExpenseRow({ expense, categories, subcategories, paid, onTogglePaid, onDelete }: {
-  expense: Expense; categories: Category[]; subcategories: Subcategory[];
-  paid: boolean; onTogglePaid: () => void; onDelete: () => void;
+function ExpenseRow({
+  expense,
+  categories,
+  subcategories,
+  paid,
+  paidAmount,
+  paymentId,
+  onTogglePaid,
+  onEditPaidAmount,
+  onDelete,
+}: {
+  expense: Expense;
+  categories: Category[];
+  subcategories: Subcategory[];
+  paid: boolean;
+  paidAmount?: number | null;
+  paymentId?: string | null;
+  onTogglePaid: (customAmount?: number) => void;
+  onEditPaidAmount?: (amount: number) => void;
+  onDelete: () => void;
 }) {
   const cat = categories.find((c) => c.id === expense.category_id);
   const sub = subcategories.find((s) => s.id === expense.subcategory_id);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [valueInput, setValueInput] = useState("");
+
+  const expectedAmount = Number(expense.amount);
+  const actualPaid = paidAmount != null ? Number(paidAmount) : expectedAmount;
+  const diff = actualPaid - expectedAmount;
+
+  const handleCheckboxClick = () => {
+    if (paid) {
+      onTogglePaid();
+    } else {
+      setValueInput(String(expectedAmount.toFixed(2)));
+      setConfirmOpen(true);
+    }
+  };
+
+  const confirmPay = () => {
+    const amt = parseFloat(valueInput.replace(",", "."));
+    if (!isFinite(amt) || amt < 0) return toast.error("Valor inválido");
+    onTogglePaid(amt);
+    setConfirmOpen(false);
+  };
+
+  const openEditPaid = () => {
+    if (!paid || !paymentId) return;
+    setValueInput(String(actualPaid.toFixed(2)));
+    setEditOpen(true);
+  };
+
+  const saveEdit = () => {
+    const amt = parseFloat(valueInput.replace(",", "."));
+    if (!isFinite(amt) || amt < 0) return toast.error("Valor inválido");
+    onEditPaidAmount?.(amt);
+    setEditOpen(false);
+  };
+
   return (
     <div className="flex items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors">
       <button
-        onClick={onTogglePaid}
+        onClick={handleCheckboxClick}
         className={`w-6 h-6 border-2 flex items-center justify-center transition-colors ${
           paid ? "bg-emerald-500 border-emerald-500" : "border-border hover:border-primary"
         }`}
@@ -377,6 +431,16 @@ function ExpenseRow({ expense, categories, subcategories, paid, onTogglePaid, on
               Dia {expense.recurrence_day || "—"}
             </Badge>
           )}
+          {paid && diff > 0 && (
+            <Badge className="text-[10px] bg-rose-500/15 text-rose-500 border border-rose-500/30 hover:bg-rose-500/20">
+              +{fmt(diff)}
+            </Badge>
+          )}
+          {paid && diff < 0 && (
+            <Badge className="text-[10px] bg-emerald-500/15 text-emerald-500 border border-emerald-500/30 hover:bg-emerald-500/20">
+              {fmt(diff)}
+            </Badge>
+          )}
         </div>
         <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
           {cat && (
@@ -390,7 +454,25 @@ function ExpenseRow({ expense, categories, subcategories, paid, onTogglePaid, on
         </div>
       </div>
       <div className="text-right">
-        <p className="text-sm font-bold text-foreground">{fmt(Number(expense.amount))}</p>
+        {paid && paymentId ? (
+          <button
+            onClick={openEditPaid}
+            className="group flex flex-col items-end hover:opacity-80 transition-opacity"
+            title="Clique para editar o valor pago"
+          >
+            <p className={`text-sm font-bold ${diff > 0 ? "text-rose-500" : diff < 0 ? "text-emerald-500" : "text-foreground"}`}>
+              {fmt(actualPaid)}
+            </p>
+            {diff !== 0 && (
+              <p className="text-[10px] text-muted-foreground line-through">{fmt(expectedAmount)}</p>
+            )}
+            <span className="text-[9px] text-muted-foreground opacity-0 group-hover:opacity-100 flex items-center gap-1">
+              <Edit3 className="w-2.5 h-2.5" /> editar
+            </span>
+          </button>
+        ) : (
+          <p className="text-sm font-bold text-foreground">{fmt(expectedAmount)}</p>
+        )}
       </div>
       <TooltipProvider>
         <Tooltip>
@@ -402,6 +484,67 @@ function ExpenseRow({ expense, categories, subcategories, paid, onTogglePaid, on
           <TooltipContent>Excluir despesa</TooltipContent>
         </Tooltip>
       </TooltipProvider>
+
+      {/* Diálogo: confirmar pagamento com valor customizado */}
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Confirmar pagamento</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Valor previsto: <span className="font-medium text-foreground">{fmt(expectedAmount)}</span>
+            </p>
+            <div>
+              <Label>Valor realmente pago (R$)</Label>
+              <Input
+                type="number"
+                step="0.01"
+                value={valueInput}
+                onChange={(e) => setValueInput(e.target.value)}
+                autoFocus
+                onKeyDown={(e) => e.key === "Enter" && confirmPay()}
+              />
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Ajuste se pagou um valor diferente (juros, multa, desconto…)
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setConfirmOpen(false)}>Cancelar</Button>
+            <Button onClick={confirmPay}>Confirmar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Diálogo: editar valor pago */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Editar valor pago</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Valor previsto: <span className="font-medium text-foreground">{fmt(expectedAmount)}</span>
+            </p>
+            <div>
+              <Label>Valor pago (R$)</Label>
+              <Input
+                type="number"
+                step="0.01"
+                value={valueInput}
+                onChange={(e) => setValueInput(e.target.value)}
+                autoFocus
+                onKeyDown={(e) => e.key === "Enter" && saveEdit()}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setEditOpen(false)}>Cancelar</Button>
+            <Button onClick={saveEdit}>Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
