@@ -7,6 +7,7 @@ import { GroqConfig } from "@/components/api/GroqConfig";
 import { NuvemshopConfig } from "@/components/api/NuvemshopConfig";
 import { BrevoConfig } from "@/components/api/BrevoConfig";
 import { MetaConfig } from "@/components/api/MetaConfig";
+import { InstagramPersonalConfig } from "@/components/api/InstagramPersonalConfig";
 
 interface InstanceStatus {
   connected: boolean;
@@ -153,6 +154,13 @@ export default function Api() {
       icon: <Instagram className="w-5 h-5" />,
       connected: false,
     },
+    {
+      id: "instagram-personal" as IntegrationId,
+      name: "Instagram Pessoal",
+      description: "DMs via cookie da sua conta",
+      icon: <Instagram className="w-5 h-5" />,
+      connected: false,
+    },
   ];
 
   if (isLoading) {
@@ -188,6 +196,8 @@ export default function Api() {
       )}
 
       {activeIntegration === "meta" && <MetaConfig />}
+
+      {activeIntegration === "instagram-personal" && <InstagramPersonalConfig />}
     </div>
   );
 }
