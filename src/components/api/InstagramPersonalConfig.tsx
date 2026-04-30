@@ -97,9 +97,15 @@ export function InstagramPersonalConfig() {
       const { data, error } = await supabase.functions.invoke("instagram-personal-fetch");
       if (error) throw error;
       if (data?.success) {
-        toast.success("Conexão OK — mensagens sincronizadas");
+        const total = Array.isArray(data?.results)
+          ? data.results.reduce((sum: number, item: any) => sum + Number(item?.new || 0), 0)
+          : 0;
+        toast.success(total > 0 ? `${total} nova(s) mensagem(ns) sincronizada(s)` : "Conexão OK — sem novas mensagens");
       } else {
-        toast.error(data?.error ?? "Falha no teste");
+        const firstError = Array.isArray(data?.results)
+          ? data.results.find((item: any) => item?.message || item?.error)
+          : null;
+        toast.error(firstError?.message || data?.error || "Falha no teste");
       }
       await load();
     } catch (err: any) {
