@@ -15,7 +15,7 @@ function htmlPage(title: string, message: string, success = true): string {
   return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="utf-8" />
   <title>${title}</title>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background:#0a0a0a; color:#fff; display:flex; align-items:center; justify-content:center; height:100vh; margin:0; }
