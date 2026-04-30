@@ -25,7 +25,6 @@ const REQUIRED_PAGE_PERMISSIONS = [
 const REQUIRED_IG_PERMISSIONS = [
   "instagram_basic",
   "instagram_manage_messages",
-  "instagram_manage_comments",
 ];
 
 async function readJsonSafe(resp: Response) {
@@ -78,7 +77,7 @@ async function subscribePageWebhooks(pageId: string, pageAccessToken: string) {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
-      subscribed_fields: "messages,messaging_postbacks,messaging_handovers,feed,mention,message_reactions",
+      subscribed_fields: "messages,messaging_postbacks,messaging_handovers,message_reactions",
       access_token: pageAccessToken,
     }),
   });
@@ -96,7 +95,7 @@ async function subscribeInstagramWebhooks(igId: string | null, pageAccessToken: 
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
-      subscribed_fields: "comments,messages,mentions,live_comments",
+      subscribed_fields: "messages",
       access_token: pageAccessToken,
     }),
   });
@@ -112,7 +111,7 @@ function explainMetaCapabilityError(message: string) {
     return message;
   }
 
-  return "A Meta bloqueou esta chamada porque o app ainda não tem capability liberada para este recurso. Verifique se o app está em modo Live e com App Review/Advanced Access aprovado para pages_manage_metadata, pages_messaging, instagram_manage_messages e instagram_manage_comments.";
+  return "A Meta bloqueou esta chamada porque o app ainda não tem capability liberada para este recurso. Verifique se o app está em modo Live e com App Review/Advanced Access aprovado para pages_manage_metadata, pages_messaging e instagram_manage_messages.";
 }
 
 Deno.serve(async (req) => {

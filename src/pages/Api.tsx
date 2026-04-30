@@ -149,7 +149,7 @@ export default function Api() {
     {
       id: "meta" as IntegrationId,
       name: "Meta",
-      description: "Instagram DMs + Comentários",
+      description: "Instagram & Messenger DMs",
       icon: <Instagram className="w-5 h-5" />,
       connected: false,
     },

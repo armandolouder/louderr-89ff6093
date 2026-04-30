@@ -21,12 +21,10 @@ import {
   Eye,
   FileText,
   Wallet,
-  MessageCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { useState } from "react";
 
 interface NavItem {
   name: string;
@@ -38,7 +36,6 @@ interface NavItem {
 const navigation: NavItem[] = [
   { name: "Resumo Geral", href: "/home", icon: LayoutDashboard },
   { name: "Atendimentos", href: "/inbox", icon: MessageSquare },
-  { name: "Comentários", href: "/comments", icon: MessageCircle },
   { name: "Painel de Vendas", href: "/sales", icon: TrendingUp },
   { name: "Despesas", href: "/expenses", icon: Wallet },
   { name: "Clientes", href: "/customers", icon: Users },
@@ -64,34 +61,6 @@ export function AppSidebar() {
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
-  const [newCommentsCount, setNewCommentsCount] = useState(0);
-
-  useEffect(() => {
-    let active = true;
-    const fetchCount = async () => {
-      const { count } = await supabase
-        .from("meta_comments")
-        .select("id", { count: "exact", head: true })
-        .eq("status", "new")
-        .eq("hidden", false);
-      if (active) setNewCommentsCount(count ?? 0);
-    };
-    fetchCount();
-
-    const channel = supabase
-      .channel("sidebar-meta-comments")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "meta_comments" },
-        () => fetchCount()
-      )
-      .subscribe();
-
-    return () => {
-      active = false;
-      supabase.removeChannel(channel);
-    };
-  }, []);
 
   const toggleMenu = (name: string) => {
     setOpenMenus((prev) => ({ ...prev, [name]: !prev[name] }));
@@ -200,7 +169,6 @@ export function AppSidebar() {
           }
 
           const isActive = location.pathname === item.href;
-          const showBadge = item.href === "/comments" && newCommentsCount > 0;
           return (
             <Link
               key={item.name}
@@ -214,18 +182,8 @@ export function AppSidebar() {
             >
               <div className="relative flex-shrink-0">
                 <item.icon className="w-5 h-5" />
-                {showBadge && collapsed && (
-                  <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center">
-                    {newCommentsCount > 99 ? "99+" : newCommentsCount}
-                  </span>
-                )}
               </div>
               {!collapsed && <span className="flex-1">{item.name}</span>}
-              {showBadge && !collapsed && (
-                <span className="min-w-[20px] h-5 px-1.5 bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">
-                  {newCommentsCount > 99 ? "99+" : newCommentsCount}
-                </span>
-              )}
             </Link>
           );
         })}
