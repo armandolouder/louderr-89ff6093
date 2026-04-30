@@ -204,6 +204,54 @@ export default function Expenses() {
     qc.invalidateQueries({ queryKey: ["expense-payments", monthStart] });
   };
 
+  const updateExpense = async (
+    expense: Expense,
+    patch: Partial<Expense>,
+    scope: "all" | "month",
+  ) => {
+    // Para despesas únicas ou escopo "todos os meses": atualiza a despesa em si
+    if (expense.expense_type === "unica" || scope === "all") {
+      const { error } = await supabase
+        .from("expenses")
+        .update(patch as any)
+        .eq("id", expense.id);
+      if (error) return toast.error("Erro ao salvar: " + error.message);
+      toast.success("Lançamento atualizado");
+      qc.invalidateQueries({ queryKey: ["expenses"] });
+      qc.invalidateQueries({ queryKey: ["expense-payments", monthStart] });
+      return;
+    }
+    // Escopo "somente este mês" para despesa mensal:
+    // Aplicamos a alteração apenas no expense_payments deste mês (override do valor).
+    // Campos descritivos (description/categoria/dia) só fazem sentido global,
+    // então mantemos a despesa mãe inalterada e gravamos o override de valor.
+    const newAmount = patch.amount != null ? Number(patch.amount) : Number(expense.amount);
+    const { data: existing } = await supabase
+      .from("expense_payments")
+      .select("id")
+      .eq("expense_id", expense.id)
+      .eq("reference_month", monthStart)
+      .maybeSingle();
+    if (existing?.id) {
+      const { error } = await supabase
+        .from("expense_payments")
+        .update({ amount: newAmount } as any)
+        .eq("id", existing.id);
+      if (error) return toast.error("Erro ao salvar: " + error.message);
+    } else {
+      const { error } = await supabase
+        .from("expense_payments")
+        .insert({
+          expense_id: expense.id,
+          reference_month: monthStart,
+          amount: newAmount,
+        } as any);
+      if (error) return toast.error("Erro ao salvar: " + error.message);
+    }
+    toast.success("Valor deste mês atualizado");
+    qc.invalidateQueries({ queryKey: ["expense-payments", monthStart] });
+  };
+
   const markOneTimePaid = async (expense: Expense) => {
     const newStatus = expense.status === "pago" ? "pendente" : "pago";
     const { error } = await supabase
@@ -296,6 +344,7 @@ export default function Expenses() {
                       onTogglePaid={(customAmount?: number) => togglePaid(exp, exp.paidThisMonth, customAmount)}
                       onEditPaidAmount={(amt: number) => exp.paymentId && updatePaymentAmount(exp.paymentId, amt)}
                       onDelete={() => deleteExpense(exp.id)}
+                      onEditExpense={(patch, scope) => { updateExpense(exp, patch, scope); }}
                     />
                   ))}
                 </div>
@@ -325,6 +374,7 @@ export default function Expenses() {
                       paid={exp.status === "pago"}
                       onTogglePaid={() => markOneTimePaid(exp)}
                       onDelete={() => deleteExpense(exp.id)}
+                      onEditExpense={(patch, scope) => { updateExpense(exp, patch, scope); }}
                     />
                   ))}
                 </div>
@@ -370,6 +420,7 @@ function ExpenseRow({
   onTogglePaid,
   onEditPaidAmount,
   onDelete,
+  onEditExpense,
 }: {
   expense: Expense;
   categories: Category[];
@@ -380,12 +431,64 @@ function ExpenseRow({
   onTogglePaid: (customAmount?: number) => void;
   onEditPaidAmount?: (amount: number) => void;
   onDelete: () => void;
+  onEditExpense?: (patch: Partial<Expense>, scope: "all" | "month") => void | Promise<void>;
 }) {
   const cat = categories.find((c) => c.id === expense.category_id);
   const sub = subcategories.find((s) => s.id === expense.subcategory_id);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [valueInput, setValueInput] = useState("");
+  const [editExpOpen, setEditExpOpen] = useState(false);
+  const [scopeOpen, setScopeOpen] = useState(false);
+  const [editForm, setEditForm] = useState({
+    description: expense.description,
+    amount: String(expense.amount),
+    recurrence_day: String(expense.recurrence_day ?? ""),
+    category_id: expense.category_id ?? "",
+    subcategory_id: expense.subcategory_id ?? "",
+  });
+  const editSubs = subcategories.filter((s) => s.category_id === editForm.category_id);
+
+  const openEditExpense = () => {
+    setEditForm({
+      description: expense.description,
+      amount: String(expense.amount),
+      recurrence_day: String(expense.recurrence_day ?? ""),
+      category_id: expense.category_id ?? "",
+      subcategory_id: expense.subcategory_id ?? "",
+    });
+    setEditExpOpen(true);
+  };
+
+  const buildPatch = (): Partial<Expense> => {
+    const amt = parseFloat(editForm.amount.replace(",", "."));
+    return {
+      description: editForm.description,
+      amount: isFinite(amt) ? amt : expense.amount,
+      recurrence_day: editForm.recurrence_day ? parseInt(editForm.recurrence_day) : null,
+      category_id: editForm.category_id || null,
+      subcategory_id: editForm.subcategory_id || null,
+    };
+  };
+
+  const submitEdit = () => {
+    if (!editForm.description.trim()) return toast.error("Descrição obrigatória");
+    const amt = parseFloat(editForm.amount.replace(",", "."));
+    if (!isFinite(amt) || amt < 0) return toast.error("Valor inválido");
+    if (expense.expense_type === "mensal") {
+      // Pergunta o escopo antes de salvar
+      setEditExpOpen(false);
+      setScopeOpen(true);
+    } else {
+      onEditExpense?.(buildPatch(), "all");
+      setEditExpOpen(false);
+    }
+  };
+
+  const applyScope = (scope: "all" | "month") => {
+    onEditExpense?.(buildPatch(), scope);
+    setScopeOpen(false);
+  };
 
   const expectedAmount = Number(expense.amount);
   const actualPaid = paidAmount != null ? Number(paidAmount) : expectedAmount;
@@ -496,6 +599,16 @@ function ExpenseRow({
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={openEditExpense}>
+              <Edit3 className="w-4 h-4 text-muted-foreground" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Editar lançamento</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onDelete}>
               <Trash2 className="w-4 h-4 text-destructive" />
             </Button>
@@ -561,6 +674,108 @@ function ExpenseRow({
           <DialogFooter>
             <Button variant="ghost" onClick={() => setEditOpen(false)}>Cancelar</Button>
             <Button onClick={saveEdit}>Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Diálogo: editar lançamento (descrição, valor, dia, categoria) */}
+      <Dialog open={editExpOpen} onOpenChange={setEditExpOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar lançamento</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label>Descrição</Label>
+              <Input
+                value={editForm.description}
+                onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Valor (R$)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={editForm.amount}
+                  onChange={(e) => setEditForm({ ...editForm, amount: e.target.value })}
+                />
+              </div>
+              {expense.expense_type === "mensal" && (
+                <div>
+                  <Label>Dia de vencimento</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    max="31"
+                    value={editForm.recurrence_day}
+                    onChange={(e) => setEditForm({ ...editForm, recurrence_day: e.target.value })}
+                  />
+                </div>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Categoria</Label>
+                <Select
+                  value={editForm.category_id}
+                  onValueChange={(v) => setEditForm({ ...editForm, category_id: v, subcategory_id: "" })}
+                >
+                  <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                  <SelectContent>
+                    {categories.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Subcategoria</Label>
+                <Select
+                  value={editForm.subcategory_id}
+                  onValueChange={(v) => setEditForm({ ...editForm, subcategory_id: v })}
+                  disabled={!editForm.category_id}
+                >
+                  <SelectTrigger><SelectValue placeholder={editForm.category_id ? "Selecionar" : "—"} /></SelectTrigger>
+                  <SelectContent>
+                    {editSubs.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setEditExpOpen(false)}>Cancelar</Button>
+            <Button onClick={submitEdit}>
+              {expense.expense_type === "mensal" ? "Continuar" : "Salvar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Diálogo: escopo (todos os meses ou somente este) */}
+      <Dialog open={scopeOpen} onOpenChange={setScopeOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Aplicar alteração em…</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 text-sm text-muted-foreground">
+            <p>Esta é uma despesa mensal recorrente. Como deseja aplicar as mudanças?</p>
+            <ul className="list-disc list-inside text-xs space-y-1 pl-1">
+              <li><span className="text-foreground font-medium">Somente este mês</span>: ajusta apenas o valor deste mês.</li>
+              <li><span className="text-foreground font-medium">Todos os meses</span>: atualiza a despesa recorrente para frente.</li>
+            </ul>
+          </div>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button variant="outline" className="flex-1" onClick={() => applyScope("month")}>
+              Somente este mês
+            </Button>
+            <Button className="flex-1" onClick={() => applyScope("all")}>
+              Todos os meses
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
