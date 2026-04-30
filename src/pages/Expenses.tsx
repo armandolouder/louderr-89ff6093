@@ -701,6 +701,10 @@ function CategoriesManager({ categories, subcategories }: { categories: Category
   const qc = useQueryClient();
   const [newCat, setNewCat] = useState({ name: "", color: "#6366f1" });
   const [newSub, setNewSub] = useState<Record<string, string>>({});
+  const [editingCat, setEditingCat] = useState<string | null>(null);
+  const [editCatData, setEditCatData] = useState<{ name: string; color: string }>({ name: "", color: "#6366f1" });
+  const [editingSub, setEditingSub] = useState<string | null>(null);
+  const [editSubName, setEditSubName] = useState("");
 
   const addCategory = async () => {
     if (!newCat.name) return toast.error("Informe um nome");
@@ -735,6 +739,40 @@ function CategoriesManager({ categories, subcategories }: { categories: Category
     qc.invalidateQueries({ queryKey: ["expense-subcategories"] });
   };
 
+  const startEditCat = (cat: Category) => {
+    setEditingCat(cat.id);
+    setEditCatData({ name: cat.name, color: cat.color });
+  };
+
+  const saveEditCat = async (id: string) => {
+    if (!editCatData.name.trim()) return toast.error("Nome obrigatório");
+    const { error } = await supabase
+      .from("expense_categories")
+      .update({ name: editCatData.name.trim(), color: editCatData.color } as any)
+      .eq("id", id);
+    if (error) return toast.error("Erro ao salvar");
+    toast.success("Categoria atualizada");
+    setEditingCat(null);
+    qc.invalidateQueries({ queryKey: ["expense-categories"] });
+  };
+
+  const startEditSub = (sub: Subcategory) => {
+    setEditingSub(sub.id);
+    setEditSubName(sub.name);
+  };
+
+  const saveEditSub = async (id: string) => {
+    if (!editSubName.trim()) return toast.error("Nome obrigatório");
+    const { error } = await supabase
+      .from("expense_subcategories")
+      .update({ name: editSubName.trim() } as any)
+      .eq("id", id);
+    if (error) return toast.error("Erro ao salvar");
+    toast.success("Subcategoria atualizada");
+    setEditingSub(null);
+    qc.invalidateQueries({ queryKey: ["expense-subcategories"] });
+  };
+
   return (
     <div className="space-y-6">
       <Card>
@@ -760,13 +798,47 @@ function CategoriesManager({ categories, subcategories }: { categories: Category
               <Card key={cat.id}>
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="w-3 h-3" style={{ background: cat.color }} />
-                      <CardTitle className="text-sm">{cat.name}</CardTitle>
-                    </div>
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => deleteCategory(cat.id)}>
-                      <Trash2 className="w-3 h-3 text-destructive" />
-                    </Button>
+                    {editingCat === cat.id ? (
+                      <div className="flex items-center gap-2 flex-1">
+                        <Input
+                          type="color"
+                          className="w-10 h-8 p-1 shrink-0"
+                          value={editCatData.color}
+                          onChange={(e) => setEditCatData({ ...editCatData, color: e.target.value })}
+                        />
+                        <Input
+                          value={editCatData.name}
+                          onChange={(e) => setEditCatData({ ...editCatData, name: e.target.value })}
+                          className="h-8 text-sm"
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") saveEditCat(cat.id);
+                            if (e.key === "Escape") setEditingCat(null);
+                          }}
+                        />
+                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => saveEditCat(cat.id)}>
+                          <Check className="w-3.5 h-3.5 text-emerald-500" />
+                        </Button>
+                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditingCat(null)}>
+                          <span className="text-xs">✕</span>
+                        </Button>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <span className="w-3 h-3" style={{ background: cat.color }} />
+                          <CardTitle className="text-sm">{cat.name}</CardTitle>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => startEditCat(cat)}>
+                            <Edit3 className="w-3 h-3 text-muted-foreground" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => deleteCategory(cat.id)}>
+                            <Trash2 className="w-3 h-3 text-destructive" />
+                          </Button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-2">
@@ -774,10 +846,41 @@ function CategoriesManager({ categories, subcategories }: { categories: Category
                     <div className="space-y-1">
                       {subs.map((s) => (
                         <div key={s.id} className="flex items-center justify-between px-2 py-1 bg-muted/50 text-xs">
-                          <span className="flex items-center gap-1.5"><Layers className="w-3 h-3 text-muted-foreground" />{s.name}</span>
-                          <button onClick={() => deleteSub(s.id)}>
-                            <Trash2 className="w-3 h-3 text-destructive" />
-                          </button>
+                          {editingSub === s.id ? (
+                            <>
+                              <div className="flex items-center gap-1.5 flex-1">
+                                <Layers className="w-3 h-3 text-muted-foreground shrink-0" />
+                                <Input
+                                  value={editSubName}
+                                  onChange={(e) => setEditSubName(e.target.value)}
+                                  className="h-6 text-xs"
+                                  autoFocus
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") saveEditSub(s.id);
+                                    if (e.key === "Escape") setEditingSub(null);
+                                  }}
+                                />
+                              </div>
+                              <div className="flex items-center gap-0.5 ml-1">
+                                <button onClick={() => saveEditSub(s.id)} className="p-1 hover:bg-muted">
+                                  <Check className="w-3 h-3 text-emerald-500" />
+                                </button>
+                                <button onClick={() => setEditingSub(null)} className="p-1 hover:bg-muted text-muted-foreground text-xs">✕</button>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <span className="flex items-center gap-1.5"><Layers className="w-3 h-3 text-muted-foreground" />{s.name}</span>
+                              <div className="flex items-center gap-0.5">
+                                <button onClick={() => startEditSub(s)} className="p-1 hover:bg-muted">
+                                  <Edit3 className="w-3 h-3 text-muted-foreground" />
+                                </button>
+                                <button onClick={() => deleteSub(s.id)} className="p-1 hover:bg-muted">
+                                  <Trash2 className="w-3 h-3 text-destructive" />
+                                </button>
+                              </div>
+                            </>
+                          )}
                         </div>
                       ))}
                     </div>
