@@ -90,6 +90,17 @@ export function useSendMessage() {
 
       // For Instagram, send via Meta Graph API
       if (channel === "instagram") {
+        // Priorizar Instagram Pessoal (cookies) quando ativo
+        const { data: personalCred } = await supabase
+          .from("instagram_personal_credentials")
+          .select("status")
+          .eq("status", "active")
+          .maybeSingle();
+
+        if (personalCred) {
+          // Reusa o branch instagram-personal logo abaixo
+          channel = "instagram-personal";
+        } else {
         const { data, error } = await supabase.functions.invoke("send-instagram", {
           body: { conversationId, content, messageType: "text" },
         });
@@ -101,6 +112,7 @@ export function useSendMessage() {
           throw err;
         }
         return data.message;
+        }
       }
 
       // Instagram pessoal (via cookie/sessionid)
