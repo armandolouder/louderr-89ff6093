@@ -89,6 +89,24 @@ async function subscribePageWebhooks(pageId: string, pageAccessToken: string) {
   }
 }
 
+async function subscribeInstagramWebhooks(igId: string | null, pageAccessToken: string) {
+  if (!igId) return;
+
+  const resp = await fetch(`${GRAPH}/${igId}/subscribed_apps`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      subscribed_fields: "comments,messages,mentions,live_comments",
+      access_token: pageAccessToken,
+    }),
+  });
+
+  const data = await readJsonSafe(resp);
+  if (!resp.ok || data?.error) {
+    throw new Error(data?.error?.message || `Falha ao inscrever webhooks do Instagram (${resp.status})`);
+  }
+}
+
 function explainMetaCapabilityError(message: string) {
   if (!/(#3)|Application does not have the capability to make this API call/i.test(message)) {
     return message;
@@ -171,8 +189,6 @@ Deno.serve(async (req) => {
             const igMsg = `Permissões do Instagram ausentes: ${missingIg.join(", ")}. Aprove no App Review da Meta.`;
             errorMessage = errorMessage ? `${errorMessage} | ${igMsg}` : igMsg;
             skippedInstagram = true;
-          } else {
-            instagramOk = true;
           }
         }
       }
@@ -186,7 +202,19 @@ Deno.serve(async (req) => {
         errorMessage = errorMessage && skippedPage ? errorMessage : explainMetaCapabilityError(msg);
       }
 
+      if (pageOk && integration.instagram_business_account_id && !skippedInstagram) {
+        try {
+          await subscribeInstagramWebhooks(integration.instagram_business_account_id, integration.page_access_token);
+          instagramOk = true;
+        } catch (error) {
+          instagramOk = false;
+          const msg = error instanceof Error ? error.message : String(error);
+          errorMessage = errorMessage ? `${errorMessage} | ${explainMetaCapabilityError(msg)}` : explainMetaCapabilityError(msg);
+        }
+      }
+
       if (pageOk && integration.instagram_business_account_id && skippedInstagram) {
+        instagramOk = false;
         errorMessage = errorMessage || "Subscrição do Instagram bloqueada por pré-verificação";
       }
 
