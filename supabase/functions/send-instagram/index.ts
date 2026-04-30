@@ -185,8 +185,13 @@ Deno.serve(async (req) => {
       const metaErr = respJson?.error;
       const subcode = metaErr?.error_subcode;
       let friendly = metaErr?.message || `Erro Meta ${resp.status}`;
+      let requires_handover_setup = false;
       if (subcode === 2534037 || /not.*owner.*thread|n[ãa]o.*dona/i.test(metaErr?.message ?? "")) {
         friendly = "Este app não tem controle do thread. Configure no Meta Business Suite: Página → Permissões avançadas de mensagens → habilite este app com 'Controle de conversa'.";
+        requires_handover_setup = true;
+      } else if (metaErr?.code === 27) {
+        friendly = "A Meta Business ainda não autorizou este app no Handover Protocol. Configure em Meta Business Suite → Página → Permissões avançadas de mensagens.";
+        requires_handover_setup = true;
       } else if (metaErr?.code === 3) {
         friendly = "App Meta sem capability para enviar DMs. Vá em developers.facebook.com → seu app → Casos de uso → adicione 'Instagram messaging'.";
       } else if (metaErr?.code === 10 || metaErr?.code === 200) {
@@ -194,7 +199,7 @@ Deno.serve(async (req) => {
       } else if (metaErr?.code === 551 || /outside.*window/i.test(metaErr?.message ?? "")) {
         friendly = "Janela de 24h expirada. O Instagram só permite responder em até 24h após a última mensagem do cliente.";
       }
-      return json(200, { success: false, error: friendly, meta: respJson });
+      return json(200, { success: false, error: friendly, meta: respJson, requires_handover_setup });
     }
 
     // 4. Persist outgoing message locally
