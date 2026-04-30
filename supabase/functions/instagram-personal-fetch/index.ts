@@ -61,21 +61,29 @@ Deno.serve(async (req) => {
     for (const cred of creds ?? []) {
       try {
         const cookie = buildCookieHeader(cred.sessionid, cred.csrftoken, cred.ds_user_id);
-        const r = await fetch(`${IG_BASE}/direct_v2/inbox/?visual_message_return_type=unseen&thread_message_limit=10&persistentBadging=true&limit=20`, {
-          headers: igHeaders(cookie, cred.csrftoken),
-        });
+        const url = `${IG_BASE}/direct_v2/inbox/?visual_message_return_type=unseen&thread_message_limit=10&persistentBadging=true&limit=20`;
+        console.log(`[IG-FETCH] user=${cred.user_id} ig_user_id=${cred.ig_user_id} sid_len=${cred.sessionid?.length} csrf_len=${cred.csrftoken?.length}`);
+        const r = await fetch(url, { headers: igHeaders(cookie, cred.csrftoken) });
+        const rawBody = await r.text();
+        console.log(`[IG-FETCH] status=${r.status} body_preview=${rawBody.slice(0, 400)}`);
 
         if (r.status === 401 || r.status === 403) {
           await supabase
             .from("instagram_personal_credentials")
-            .update({ status: "expired", error_message: "login_required" })
+            .update({ status: "expired", error_message: `login_required (${r.status}): ${rawBody.slice(0, 200)}` })
             .eq("user_id", cred.user_id);
           results.push({ user_id: cred.user_id, error: "expired" });
           continue;
         }
 
-        const j = await r.json();
+        let j: any;
+        try { j = JSON.parse(rawBody); } catch {
+          console.error(`[IG-FETCH] non-JSON response`);
+          results.push({ user_id: cred.user_id, error: "non_json", status: r.status });
+          continue;
+        }
         const threads = j?.inbox?.threads ?? [];
+        console.log(`[IG-FETCH] threads_count=${threads.length} viewer=${j?.viewer?.pk} status=${j?.status}`);
         let newMessages = 0;
 
         for (const thread of threads) {
