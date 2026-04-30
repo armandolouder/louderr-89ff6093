@@ -78,7 +78,7 @@ export function InstagramPersonalConfig() {
       } else {
         const { error } = await supabase
           .from("instagram_personal_credentials")
-          .insert(payload);
+          .insert([payload as any]);
         if (error) throw error;
       }
       toast.success("Credenciais salvas");
