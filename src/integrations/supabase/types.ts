@@ -1201,6 +1201,195 @@ export type Database = {
           },
         ]
       }
+      meta_comments: {
+        Row: {
+          author_id: string | null
+          author_username: string | null
+          comment_id: string
+          created_at: string
+          hidden: boolean | null
+          id: string
+          integration_id: string | null
+          media_caption: string | null
+          media_id: string | null
+          media_url: string | null
+          metadata: Json | null
+          parent_comment_id: string | null
+          received_at: string
+          replied_at: string | null
+          reply_text: string | null
+          sentiment: string | null
+          status: string
+          text: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          author_id?: string | null
+          author_username?: string | null
+          comment_id: string
+          created_at?: string
+          hidden?: boolean | null
+          id?: string
+          integration_id?: string | null
+          media_caption?: string | null
+          media_id?: string | null
+          media_url?: string | null
+          metadata?: Json | null
+          parent_comment_id?: string | null
+          received_at?: string
+          replied_at?: string | null
+          reply_text?: string | null
+          sentiment?: string | null
+          status?: string
+          text?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          author_id?: string | null
+          author_username?: string | null
+          comment_id?: string
+          created_at?: string
+          hidden?: boolean | null
+          id?: string
+          integration_id?: string | null
+          media_caption?: string | null
+          media_id?: string | null
+          media_url?: string | null
+          metadata?: Json | null
+          parent_comment_id?: string | null
+          received_at?: string
+          replied_at?: string | null
+          reply_text?: string | null
+          sentiment?: string | null
+          status?: string
+          text?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      meta_integrations: {
+        Row: {
+          created_at: string
+          facebook_user_id: string | null
+          facebook_user_name: string | null
+          id: string
+          instagram_business_account_id: string | null
+          instagram_username: string | null
+          last_sync_at: string | null
+          metadata: Json | null
+          page_access_token: string
+          page_id: string
+          page_name: string | null
+          scopes: string[] | null
+          status: string
+          updated_at: string
+          user_id: string
+          webhook_subscribed: boolean | null
+        }
+        Insert: {
+          created_at?: string
+          facebook_user_id?: string | null
+          facebook_user_name?: string | null
+          id?: string
+          instagram_business_account_id?: string | null
+          instagram_username?: string | null
+          last_sync_at?: string | null
+          metadata?: Json | null
+          page_access_token: string
+          page_id: string
+          page_name?: string | null
+          scopes?: string[] | null
+          status?: string
+          updated_at?: string
+          user_id: string
+          webhook_subscribed?: boolean | null
+        }
+        Update: {
+          created_at?: string
+          facebook_user_id?: string | null
+          facebook_user_name?: string | null
+          id?: string
+          instagram_business_account_id?: string | null
+          instagram_username?: string | null
+          last_sync_at?: string | null
+          metadata?: Json | null
+          page_access_token?: string
+          page_id?: string
+          page_name?: string | null
+          scopes?: string[] | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+          webhook_subscribed?: boolean | null
+        }
+        Relationships: []
+      }
+      meta_oauth_states: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          redirect_uri: string | null
+          state: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          redirect_uri?: string | null
+          state: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          redirect_uri?: string | null
+          state?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      meta_webhook_events: {
+        Row: {
+          created_at: string
+          event_type: string | null
+          id: string
+          object_type: string | null
+          page_id: string | null
+          payload: Json
+          processed: boolean | null
+          processing_error: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_type?: string | null
+          id?: string
+          object_type?: string | null
+          page_id?: string | null
+          payload: Json
+          processed?: boolean | null
+          processing_error?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_type?: string | null
+          id?: string
+          object_type?: string | null
+          page_id?: string | null
+          payload?: Json
+          processed?: boolean | null
+          processing_error?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       nuvemshop_abandoned_checkouts: {
         Row: {
           clicked_at: string | null
