@@ -219,7 +219,7 @@ export default function SalesDashboard() {
   const metrics = useMemo(() => {
     const billable = filteredOrders.filter(o => o.status !== "cancelled" && o.payment_status === "paid");
     const totalRevenueGross = billable.reduce((sum, o) => sum + (o.total || 0), 0);
-    const totalFees = billable.reduce((sum, o) => sum + calcFee(o.total || 0), 0);
+    const totalFees = billable.reduce((sum, o) => sum + calcFee(o.total || 0, (o as any).payment_method), 0);
     const totalRevenue = totalRevenueGross - totalFees; // líquido após taxas (faturamento líquido)
     const totalOrders = billable.length;
     const avgTicket = totalOrders > 0 ? totalRevenueGross / totalOrders : 0;
@@ -236,7 +236,7 @@ export default function SalesDashboard() {
     const netProfit = totalRevenueGross - totalFees - totalCosts;
     
     return { totalRevenue: totalRevenueGross, totalRevenueNet: totalRevenue, totalFees, totalOrders, avgTicket, totalItems, totalCosts, netProfit };
-  }, [filteredOrders, feePct, feeFixed]);
+  }, [filteredOrders, feeSettings?.methods]);
 
   type EditableOrderField = "supplier" | "production_cost" | "paid_to_supplier";
 
