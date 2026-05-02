@@ -1554,6 +1554,7 @@ export type Database = {
           nuvemshop_order_id: string | null
           order_date: string | null
           order_number: string | null
+          paid_to_supplier: boolean
           payment_status: string | null
           production_cost: number | null
           products: Json | null
@@ -1575,6 +1576,7 @@ export type Database = {
           nuvemshop_order_id?: string | null
           order_date?: string | null
           order_number?: string | null
+          paid_to_supplier?: boolean
           payment_status?: string | null
           production_cost?: number | null
           products?: Json | null
@@ -1596,6 +1598,7 @@ export type Database = {
           nuvemshop_order_id?: string | null
           order_date?: string | null
           order_number?: string | null
+          paid_to_supplier?: boolean
           payment_status?: string | null
           production_cost?: number | null
           products?: Json | null

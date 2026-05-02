@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { TrendingUp, RefreshCw, ShoppingCart, Trash2, Eye, Send, Printer, Pencil, Check, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -142,13 +143,18 @@ export default function SalesDashboard() {
     return { totalRevenue, totalOrders, avgTicket, totalItems, totalCosts, netProfit };
   }, [filteredOrders]);
 
-  type EditableOrderField = "supplier" | "production_cost";
+  type EditableOrderField = "supplier" | "production_cost" | "paid_to_supplier";
 
   const updateOrderField = useMutation({
-    mutationFn: async ({ orderId, field, value }: { orderId: string; field: EditableOrderField; value: string | number | null }) => {
-      const payload = field === "supplier"
-        ? { supplier: typeof value === "string" ? value.trim() || null : null }
-        : { production_cost: typeof value === "number" ? value : null };
+    mutationFn: async ({ orderId, field, value }: { orderId: string; field: EditableOrderField; value: string | number | boolean | null }) => {
+      let payload: any;
+      if (field === "supplier") {
+        payload = { supplier: typeof value === "string" ? value.trim() || null : null };
+      } else if (field === "production_cost") {
+        payload = { production_cost: typeof value === "number" ? value : null };
+      } else {
+        payload = { paid_to_supplier: !!value };
+      }
 
       const { data, error } = await supabase
         .from("nuvemshop_orders")
@@ -338,6 +344,7 @@ export default function SalesDashboard() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-[40px]"></TableHead>
                 <TableHead className="w-[110px]">Pedido</TableHead>
                 <TableHead>Data</TableHead>
                 <TableHead>Cliente</TableHead>
@@ -353,14 +360,14 @@ export default function SalesDashboard() {
               {isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
-                    {Array.from({ length: 9 }).map((_, j) => (
+                    {Array.from({ length: 10 }).map((_, j) => (
                       <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
                     ))}
                   </TableRow>
                 ))
               ) : filteredOrders.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                     Nenhum pedido encontrado no período selecionado.
                   </TableCell>
                 </TableRow>
@@ -376,9 +383,19 @@ export default function SalesDashboard() {
                   const supplierName = (order as any).supplier || "";
                   const cost = (order as any).production_cost || 0;
                   const net = total - cost;
+                  const isPaid = !!(order as any).paid_to_supplier;
 
                   return (
-                    <TableRow key={order.id}>
+                    <TableRow key={order.id} className={isPaid ? "bg-emerald-500/10 hover:bg-emerald-500/15" : ""}>
+                      <TableCell className="w-[40px]">
+                        <Checkbox
+                          checked={isPaid}
+                          onCheckedChange={(checked) =>
+                            updateOrderField.mutate({ orderId: order.id, field: "paid_to_supplier", value: !!checked })
+                          }
+                          aria-label="Marcar como pago ao fornecedor"
+                        />
+                      </TableCell>
                       <TableCell className="font-mono text-xs text-muted-foreground">#{(order as any).order_number || order.nuvemshop_order_id}</TableCell>
                       <TableCell className="text-sm">
                         {new Date(order.order_date || order.created_at).toLocaleDateString("pt-BR")}
