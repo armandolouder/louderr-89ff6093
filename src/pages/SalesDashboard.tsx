@@ -628,6 +628,17 @@ export default function SalesDashboard() {
               <span>{selectedOrder?.supplier || "—"}</span>
               <span className="text-muted-foreground">Total</span>
               <span className="font-bold">{selectedOrder ? formatCurrency(selectedOrder.total || 0) : ""}</span>
+              <span className="text-muted-foreground">Método</span>
+              <span className="capitalize">
+                {(() => {
+                  const m = (selectedOrder as any)?.payment_method?.toLowerCase() || "";
+                  if (m.includes("pix")) return "Pix";
+                  if (m.includes("boleto")) return "Boleto";
+                  if (m.includes("credit")) return "Cartão de Crédito";
+                  if (m.includes("debit")) return "Cartão de Débito";
+                  return m || "—";
+                })()}
+              </span>
               <span className="text-muted-foreground">Taxas Gateway</span>
               <span className="text-destructive">
                 {selectedOrder && selectedOrder.payment_status === "paid"
