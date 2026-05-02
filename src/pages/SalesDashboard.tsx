@@ -345,7 +345,6 @@ export default function SalesDashboard() {
                 <TableHead className="text-right">Nuvempago</TableHead>
                 <TableHead className="text-right">Custos</TableHead>
                 <TableHead className="text-right">Líquido</TableHead>
-                <TableHead>Pagamento</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-center">Ações</TableHead>
               </TableRow>
@@ -361,7 +360,7 @@ export default function SalesDashboard() {
                 ))
               ) : filteredOrders.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                     Nenhum pedido encontrado no período selecionado.
                   </TableCell>
                 </TableRow>
@@ -404,16 +403,6 @@ export default function SalesDashboard() {
                       </TableCell>
                       <TableCell className="text-right font-bold text-primary">
                         {formatCurrency(net)}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
-                        {(() => {
-                          const method = (order as any).payment_method || "";
-                          if (method === "pix") return "Pix";
-                          if (method === "credit_card") return "Cartão";
-                          if (method === "boleto") return "Boleto";
-                          if (method === "debit_card") return "Débito";
-                          return method || "—";
-                        })()}
                       </TableCell>
                       <TableCell>
                         {(() => {
