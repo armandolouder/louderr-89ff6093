@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { TrendingUp, RefreshCw, ShoppingCart, Trash2, Eye, Send, Printer, Pencil, Check, Search } from "lucide-react";
+import { TrendingUp, RefreshCw, ShoppingCart, Trash2, Eye, Send, Printer, Pencil, Check, Search, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -61,6 +61,57 @@ export default function SalesDashboard() {
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const startDate = new Date(year, month, 1).toISOString();
   const endDate = new Date(year, month + 1, 0, 23, 59, 59).toISOString();
+
+  // Payment fee config (Nuvem Pago / gateway) — stored in bot_settings (key='payment_fees')
+  const { data: feeSettings } = useQuery({
+    queryKey: ["payment-fees"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("bot_settings")
+        .select("id, value")
+        .eq("key", "payment_fees")
+        .maybeSingle();
+      const v = (data?.value as any) || {};
+      return {
+        id: data?.id as string | undefined,
+        percentage: Number(v.percentage ?? 4.45),
+        fixed_fee: Number(v.fixed_fee ?? 0),
+      };
+    },
+  });
+  const feePct = feeSettings?.percentage ?? 4.45;
+  const feeFixed = feeSettings?.fixed_fee ?? 0;
+  const calcFee = (total: number) => (total > 0 ? total * (feePct / 100) + feeFixed : 0);
+
+  const [feeDraftPct, setFeeDraftPct] = useState<string>("");
+  const [feeDraftFixed, setFeeDraftFixed] = useState<string>("");
+  useEffect(() => {
+    if (feeSettings) {
+      setFeeDraftPct(String(feeSettings.percentage));
+      setFeeDraftFixed(String(feeSettings.fixed_fee));
+    }
+  }, [feeSettings?.percentage, feeSettings?.fixed_fee]);
+
+  const saveFees = useMutation({
+    mutationFn: async () => {
+      const pct = parseFloat(feeDraftPct.replace(",", ".")) || 0;
+      const fixed = parseFloat(feeDraftFixed.replace(",", ".")) || 0;
+      const payload = { percentage: pct, fixed_fee: fixed };
+      if (feeSettings?.id) {
+        const { error } = await supabase.from("bot_settings").update({ value: payload }).eq("id", feeSettings.id);
+        if (error) throw error;
+      } else {
+        const { data: u } = await supabase.auth.getUser();
+        const { error } = await supabase.from("bot_settings").insert({ key: "payment_fees", value: payload, user_id: u.user?.id });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      toast.success("Taxas salvas");
+      queryClient.invalidateQueries({ queryKey: ["payment-fees"] });
+    },
+    onError: (e: any) => toast.error("Erro ao salvar: " + (e.message || "")),
+  });
 
   const { data: orders, isLoading } = useQuery({
     queryKey: ["sales-dashboard", month, year, searchQuery],
@@ -125,9 +176,11 @@ export default function SalesDashboard() {
 
   const metrics = useMemo(() => {
     const billable = filteredOrders.filter(o => o.status !== "cancelled" && o.payment_status === "paid");
-    const totalRevenue = billable.reduce((sum, o) => sum + (o.total || 0), 0);
+    const totalRevenueGross = billable.reduce((sum, o) => sum + (o.total || 0), 0);
+    const totalFees = billable.reduce((sum, o) => sum + calcFee(o.total || 0), 0);
+    const totalRevenue = totalRevenueGross - totalFees; // líquido após taxas (faturamento líquido)
     const totalOrders = billable.length;
-    const avgTicket = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+    const avgTicket = totalOrders > 0 ? totalRevenueGross / totalOrders : 0;
     const totalItems = billable.reduce((sum, o) => {
       const products = o.products as any[];
       return sum + (Array.isArray(products) ? products.reduce((s, p) => s + (p.quantity || 1), 0) : 0);
@@ -138,10 +191,10 @@ export default function SalesDashboard() {
       return sum + ((o as any).production_cost || 0);
     }, 0);
     
-    const netProfit = totalRevenue - totalCosts;
+    const netProfit = totalRevenueGross - totalFees - totalCosts;
     
-    return { totalRevenue, totalOrders, avgTicket, totalItems, totalCosts, netProfit };
-  }, [filteredOrders]);
+    return { totalRevenue: totalRevenueGross, totalRevenueNet: totalRevenue, totalFees, totalOrders, avgTicket, totalItems, totalCosts, netProfit };
+  }, [filteredOrders, feePct, feeFixed]);
 
   type EditableOrderField = "supplier" | "production_cost" | "paid_to_supplier";
 
