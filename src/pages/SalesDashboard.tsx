@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { TrendingUp, RefreshCw, ShoppingCart, Trash2, Eye, Send, Printer, Pencil, Check } from "lucide-react";
+import { TrendingUp, RefreshCw, ShoppingCart, Trash2, Eye, Send, Printer, Pencil, Check, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -52,6 +52,7 @@ export default function SalesDashboard() {
   const [month, setMonth] = useState(now.getMonth());
   const [year, setYear] = useState(now.getFullYear());
   const [statusFilter, setStatusFilter] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [syncing, setSyncing] = useState(false);
@@ -90,9 +91,20 @@ export default function SalesDashboard() {
 
   const filteredOrders = useMemo(() => {
     if (!orders) return [];
-    if (statusFilter === "all") return orders;
-    return orders.filter(o => o.status === statusFilter);
-  }, [orders, statusFilter]);
+    let result = orders;
+    if (statusFilter !== "all") {
+      result = result.filter(o => o.status === statusFilter);
+    }
+    const q = searchQuery.trim().toLowerCase().replace(/^#/, "");
+    if (q) {
+      result = result.filter(o => {
+        const num = String((o as any).order_number || "").toLowerCase();
+        const id = String((o as any).nuvemshop_order_id || "").toLowerCase();
+        return num.includes(q) || id.includes(q);
+      });
+    }
+    return result;
+  }, [orders, statusFilter, searchQuery]);
 
   useEffect(() => {
     if (!selectedOrder?.id || !orders) return;
@@ -236,6 +248,15 @@ export default function SalesDashboard() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Buscar nº do pedido"
+              className="h-9 w-[180px] pl-8"
+            />
+          </div>
           <Button variant="outline" size="icon" className="h-9 w-9 rounded-full" onClick={handleSync} disabled={syncing} title="Sincronizar">
             <RefreshCw className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`} />
           </Button>
