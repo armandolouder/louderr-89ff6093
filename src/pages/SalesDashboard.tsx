@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { TrendingUp, RefreshCw, ShoppingCart, Trash2, Eye, Send, Printer, Pencil, Check, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -142,13 +143,18 @@ export default function SalesDashboard() {
     return { totalRevenue, totalOrders, avgTicket, totalItems, totalCosts, netProfit };
   }, [filteredOrders]);
 
-  type EditableOrderField = "supplier" | "production_cost";
+  type EditableOrderField = "supplier" | "production_cost" | "paid_to_supplier";
 
   const updateOrderField = useMutation({
-    mutationFn: async ({ orderId, field, value }: { orderId: string; field: EditableOrderField; value: string | number | null }) => {
-      const payload = field === "supplier"
-        ? { supplier: typeof value === "string" ? value.trim() || null : null }
-        : { production_cost: typeof value === "number" ? value : null };
+    mutationFn: async ({ orderId, field, value }: { orderId: string; field: EditableOrderField; value: string | number | boolean | null }) => {
+      let payload: any;
+      if (field === "supplier") {
+        payload = { supplier: typeof value === "string" ? value.trim() || null : null };
+      } else if (field === "production_cost") {
+        payload = { production_cost: typeof value === "number" ? value : null };
+      } else {
+        payload = { paid_to_supplier: !!value };
+      }
 
       const { data, error } = await supabase
         .from("nuvemshop_orders")
