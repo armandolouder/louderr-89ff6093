@@ -62,7 +62,17 @@ export default function SalesDashboard() {
   const startDate = new Date(year, month, 1).toISOString();
   const endDate = new Date(year, month + 1, 0, 23, 59, 59).toISOString();
 
-  // Payment fee config (Nuvem Pago / gateway) — stored in bot_settings (key='payment_fees')
+  // Payment fee config per method (Nuvem Pago) — stored in bot_settings (key='payment_fees')
+  // Defaults: cartão 4,19% + R$0,35 / Pix 0,99% / Boleto R$2,39
+  const DEFAULT_FEES = {
+    credit_card: { percentage: 4.19, fixed_fee: 0.35 },
+    pix: { percentage: 0.99, fixed_fee: 0 },
+    boleto: { percentage: 0, fixed_fee: 2.39 },
+  } as const;
+
+  type FeeMethod = "credit_card" | "pix" | "boleto";
+  type FeeConfig = Record<FeeMethod, { percentage: number; fixed_fee: number }>;
+
   const { data: feeSettings } = useQuery({
     queryKey: ["payment-fees"],
     queryFn: async () => {
@@ -72,31 +82,63 @@ export default function SalesDashboard() {
         .eq("key", "payment_fees")
         .maybeSingle();
       const v = (data?.value as any) || {};
-      return {
-        id: data?.id as string | undefined,
-        percentage: Number(v.percentage ?? 4.45),
-        fixed_fee: Number(v.fixed_fee ?? 0),
+      const methods: FeeConfig = {
+        credit_card: {
+          percentage: Number(v.credit_card?.percentage ?? v.percentage ?? DEFAULT_FEES.credit_card.percentage),
+          fixed_fee: Number(v.credit_card?.fixed_fee ?? v.fixed_fee ?? DEFAULT_FEES.credit_card.fixed_fee),
+        },
+        pix: {
+          percentage: Number(v.pix?.percentage ?? DEFAULT_FEES.pix.percentage),
+          fixed_fee: Number(v.pix?.fixed_fee ?? DEFAULT_FEES.pix.fixed_fee),
+        },
+        boleto: {
+          percentage: Number(v.boleto?.percentage ?? DEFAULT_FEES.boleto.percentage),
+          fixed_fee: Number(v.boleto?.fixed_fee ?? DEFAULT_FEES.boleto.fixed_fee),
+        },
       };
+      return { id: data?.id as string | undefined, methods };
     },
   });
-  const feePct = feeSettings?.percentage ?? 4.45;
-  const feeFixed = feeSettings?.fixed_fee ?? 0;
-  const calcFee = (total: number) => (total > 0 ? total * (feePct / 100) + feeFixed : 0);
 
-  const [feeDraftPct, setFeeDraftPct] = useState<string>("");
-  const [feeDraftFixed, setFeeDraftFixed] = useState<string>("");
+  // Normalize various method strings from Nuvemshop API to our 3 buckets
+  const normalizeMethod = (raw?: string | null): FeeMethod => {
+    const m = (raw || "").toLowerCase();
+    if (m.includes("pix")) return "pix";
+    if (m.includes("boleto") || m.includes("ticket")) return "boleto";
+    return "credit_card"; // default: cartão (também cobre 'credit_card', 'debit_card', etc.)
+  };
+
+  const calcFee = (total: number, method?: string | null) => {
+    if (!total || total <= 0) return 0;
+    const cfg = feeSettings?.methods || (DEFAULT_FEES as unknown as FeeConfig);
+    const key = normalizeMethod(method);
+    const f = cfg[key];
+    return total * (f.percentage / 100) + f.fixed_fee;
+  };
+
+  const [feeDraft, setFeeDraft] = useState<Record<FeeMethod, { pct: string; fixed: string }>>({
+    credit_card: { pct: "", fixed: "" },
+    pix: { pct: "", fixed: "" },
+    boleto: { pct: "", fixed: "" },
+  });
   useEffect(() => {
-    if (feeSettings) {
-      setFeeDraftPct(String(feeSettings.percentage));
-      setFeeDraftFixed(String(feeSettings.fixed_fee));
+    if (feeSettings?.methods) {
+      setFeeDraft({
+        credit_card: { pct: String(feeSettings.methods.credit_card.percentage), fixed: String(feeSettings.methods.credit_card.fixed_fee) },
+        pix: { pct: String(feeSettings.methods.pix.percentage), fixed: String(feeSettings.methods.pix.fixed_fee) },
+        boleto: { pct: String(feeSettings.methods.boleto.percentage), fixed: String(feeSettings.methods.boleto.fixed_fee) },
+      });
     }
-  }, [feeSettings?.percentage, feeSettings?.fixed_fee]);
+  }, [feeSettings?.methods]);
 
   const saveFees = useMutation({
     mutationFn: async () => {
-      const pct = parseFloat(feeDraftPct.replace(",", ".")) || 0;
-      const fixed = parseFloat(feeDraftFixed.replace(",", ".")) || 0;
-      const payload = { percentage: pct, fixed_fee: fixed };
+      const parse = (s: string) => parseFloat(String(s).replace(",", ".")) || 0;
+      const payload = {
+        credit_card: { percentage: parse(feeDraft.credit_card.pct), fixed_fee: parse(feeDraft.credit_card.fixed) },
+        pix: { percentage: parse(feeDraft.pix.pct), fixed_fee: parse(feeDraft.pix.fixed) },
+        boleto: { percentage: parse(feeDraft.boleto.pct), fixed_fee: parse(feeDraft.boleto.fixed) },
+      };
       if (feeSettings?.id) {
         const { error } = await supabase.from("bot_settings").update({ value: payload }).eq("id", feeSettings.id);
         if (error) throw error;
@@ -177,7 +219,7 @@ export default function SalesDashboard() {
   const metrics = useMemo(() => {
     const billable = filteredOrders.filter(o => o.status !== "cancelled" && o.payment_status === "paid");
     const totalRevenueGross = billable.reduce((sum, o) => sum + (o.total || 0), 0);
-    const totalFees = billable.reduce((sum, o) => sum + calcFee(o.total || 0), 0);
+    const totalFees = billable.reduce((sum, o) => sum + calcFee(o.total || 0, (o as any).payment_method), 0);
     const totalRevenue = totalRevenueGross - totalFees; // líquido após taxas (faturamento líquido)
     const totalOrders = billable.length;
     const avgTicket = totalOrders > 0 ? totalRevenueGross / totalOrders : 0;
@@ -194,7 +236,7 @@ export default function SalesDashboard() {
     const netProfit = totalRevenueGross - totalFees - totalCosts;
     
     return { totalRevenue: totalRevenueGross, totalRevenueNet: totalRevenue, totalFees, totalOrders, avgTicket, totalItems, totalCosts, netProfit };
-  }, [filteredOrders, feePct, feeFixed]);
+  }, [filteredOrders, feeSettings?.methods]);
 
   type EditableOrderField = "supplier" | "production_cost" | "paid_to_supplier";
 
@@ -337,31 +379,40 @@ export default function SalesDashboard() {
                 <Settings className="w-4 h-4" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-72 space-y-3" align="end">
+            <PopoverContent className="w-80 space-y-4" align="end">
               <div>
-                <h4 className="text-sm font-semibold">Taxas do Gateway</h4>
-                <p className="text-xs text-muted-foreground">Aplicado automaticamente no líquido de cada pedido pago.</p>
+                <h4 className="text-sm font-semibold">Taxas por Método de Pagamento</h4>
+                <p className="text-xs text-muted-foreground">Aplicadas automaticamente conforme o método de cada pedido pago.</p>
               </div>
-              <div className="space-y-2">
-                <label className="text-xs text-muted-foreground">Percentual (%)</label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={feeDraftPct}
-                  onChange={(e) => setFeeDraftPct(e.target.value)}
-                  placeholder="4.45"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs text-muted-foreground">Taxa fixa por pedido (R$)</label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={feeDraftFixed}
-                  onChange={(e) => setFeeDraftFixed(e.target.value)}
-                  placeholder="0.00"
-                />
-              </div>
+              {([
+                { key: "credit_card" as const, label: "Cartão de Crédito" },
+                { key: "pix" as const, label: "Pix" },
+                { key: "boleto" as const, label: "Boleto" },
+              ]).map(({ key, label }) => (
+                <div key={key} className="space-y-2 border-t pt-3 first:border-t-0 first:pt-0">
+                  <div className="text-xs font-semibold text-foreground">{label}</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[10px] text-muted-foreground uppercase">% sobre venda</label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={feeDraft[key].pct}
+                        onChange={(e) => setFeeDraft(p => ({ ...p, [key]: { ...p[key], pct: e.target.value } }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-muted-foreground uppercase">Fixo (R$)</label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={feeDraft[key].fixed}
+                        onChange={(e) => setFeeDraft(p => ({ ...p, [key]: { ...p[key], fixed: e.target.value } }))}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
               <Button size="sm" className="w-full" onClick={() => saveFees.mutate()} disabled={saveFees.isPending}>
                 Salvar
               </Button>
@@ -414,7 +465,7 @@ export default function SalesDashboard() {
           <MetricCard label="Faturamento Bruto" value={formatCurrency(metrics.totalRevenue)} color="text-foreground" />
           <MetricCard label="Ticket Médio" value={formatCurrency(metrics.avgTicket)} color="text-accent" />
           <MetricCard label="Custos Produtos (CPV)" value={formatCurrency(metrics.totalCosts)} color="text-destructive" />
-          <MetricCard label={`Taxas Gateway (${feePct}%)`} value={formatCurrency(metrics.totalFees)} color="text-destructive" />
+          <MetricCard label="Taxas Gateway" value={formatCurrency(metrics.totalFees)} color="text-destructive" />
           <MetricCard
             label="Pedidos / Itens"
             value={`${metrics.totalOrders}`}
@@ -473,7 +524,7 @@ export default function SalesDashboard() {
                   
                   const supplierName = (order as any).supplier || "";
                   const cost = (order as any).production_cost || 0;
-                  const fee = order.payment_status === "paid" ? calcFee(total) : 0;
+                  const fee = order.payment_status === "paid" ? calcFee(total, (order as any).payment_method) : 0;
                   const net = total - fee - cost;
                   const isPaid = !!(order as any).paid_to_supplier;
 
@@ -577,10 +628,21 @@ export default function SalesDashboard() {
               <span>{selectedOrder?.supplier || "—"}</span>
               <span className="text-muted-foreground">Total</span>
               <span className="font-bold">{selectedOrder ? formatCurrency(selectedOrder.total || 0) : ""}</span>
+              <span className="text-muted-foreground">Método</span>
+              <span className="capitalize">
+                {(() => {
+                  const m = (selectedOrder as any)?.payment_method?.toLowerCase() || "";
+                  if (m.includes("pix")) return "Pix";
+                  if (m.includes("boleto")) return "Boleto";
+                  if (m.includes("credit")) return "Cartão de Crédito";
+                  if (m.includes("debit")) return "Cartão de Débito";
+                  return m || "—";
+                })()}
+              </span>
               <span className="text-muted-foreground">Taxas Gateway</span>
               <span className="text-destructive">
                 {selectedOrder && selectedOrder.payment_status === "paid"
-                  ? `-${formatCurrency(calcFee(selectedOrder.total || 0))}`
+                  ? `-${formatCurrency(calcFee(selectedOrder.total || 0, (selectedOrder as any).payment_method))}`
                   : "—"}
               </span>
               <span className="text-muted-foreground">Custo</span>
@@ -590,7 +652,7 @@ export default function SalesDashboard() {
                 {selectedOrder
                   ? formatCurrency(
                       (selectedOrder.total || 0)
-                      - (selectedOrder.payment_status === "paid" ? calcFee(selectedOrder.total || 0) : 0)
+                      - (selectedOrder.payment_status === "paid" ? calcFee(selectedOrder.total || 0, (selectedOrder as any).payment_method) : 0)
                       - (selectedOrder.production_cost || 0)
                     )
                   : ""}
