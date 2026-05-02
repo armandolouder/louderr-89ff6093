@@ -62,7 +62,17 @@ export default function SalesDashboard() {
   const startDate = new Date(year, month, 1).toISOString();
   const endDate = new Date(year, month + 1, 0, 23, 59, 59).toISOString();
 
-  // Payment fee config (Nuvem Pago / gateway) — stored in bot_settings (key='payment_fees')
+  // Payment fee config per method (Nuvem Pago) — stored in bot_settings (key='payment_fees')
+  // Defaults: cartão 4,19% + R$0,35 / Pix 0,99% / Boleto R$2,39
+  const DEFAULT_FEES = {
+    credit_card: { percentage: 4.19, fixed_fee: 0.35 },
+    pix: { percentage: 0.99, fixed_fee: 0 },
+    boleto: { percentage: 0, fixed_fee: 2.39 },
+  } as const;
+
+  type FeeMethod = "credit_card" | "pix" | "boleto";
+  type FeeConfig = Record<FeeMethod, { percentage: number; fixed_fee: number }>;
+
   const { data: feeSettings } = useQuery({
     queryKey: ["payment-fees"],
     queryFn: async () => {
@@ -72,31 +82,63 @@ export default function SalesDashboard() {
         .eq("key", "payment_fees")
         .maybeSingle();
       const v = (data?.value as any) || {};
-      return {
-        id: data?.id as string | undefined,
-        percentage: Number(v.percentage ?? 4.45),
-        fixed_fee: Number(v.fixed_fee ?? 0),
+      const methods: FeeConfig = {
+        credit_card: {
+          percentage: Number(v.credit_card?.percentage ?? v.percentage ?? DEFAULT_FEES.credit_card.percentage),
+          fixed_fee: Number(v.credit_card?.fixed_fee ?? v.fixed_fee ?? DEFAULT_FEES.credit_card.fixed_fee),
+        },
+        pix: {
+          percentage: Number(v.pix?.percentage ?? DEFAULT_FEES.pix.percentage),
+          fixed_fee: Number(v.pix?.fixed_fee ?? DEFAULT_FEES.pix.fixed_fee),
+        },
+        boleto: {
+          percentage: Number(v.boleto?.percentage ?? DEFAULT_FEES.boleto.percentage),
+          fixed_fee: Number(v.boleto?.fixed_fee ?? DEFAULT_FEES.boleto.fixed_fee),
+        },
       };
+      return { id: data?.id as string | undefined, methods };
     },
   });
-  const feePct = feeSettings?.percentage ?? 4.45;
-  const feeFixed = feeSettings?.fixed_fee ?? 0;
-  const calcFee = (total: number) => (total > 0 ? total * (feePct / 100) + feeFixed : 0);
 
-  const [feeDraftPct, setFeeDraftPct] = useState<string>("");
-  const [feeDraftFixed, setFeeDraftFixed] = useState<string>("");
+  // Normalize various method strings from Nuvemshop API to our 3 buckets
+  const normalizeMethod = (raw?: string | null): FeeMethod => {
+    const m = (raw || "").toLowerCase();
+    if (m.includes("pix")) return "pix";
+    if (m.includes("boleto") || m.includes("ticket")) return "boleto";
+    return "credit_card"; // default: cartão (também cobre 'credit_card', 'debit_card', etc.)
+  };
+
+  const calcFee = (total: number, method?: string | null) => {
+    if (!total || total <= 0) return 0;
+    const cfg = feeSettings?.methods || (DEFAULT_FEES as unknown as FeeConfig);
+    const key = normalizeMethod(method);
+    const f = cfg[key];
+    return total * (f.percentage / 100) + f.fixed_fee;
+  };
+
+  const [feeDraft, setFeeDraft] = useState<Record<FeeMethod, { pct: string; fixed: string }>>({
+    credit_card: { pct: "", fixed: "" },
+    pix: { pct: "", fixed: "" },
+    boleto: { pct: "", fixed: "" },
+  });
   useEffect(() => {
-    if (feeSettings) {
-      setFeeDraftPct(String(feeSettings.percentage));
-      setFeeDraftFixed(String(feeSettings.fixed_fee));
+    if (feeSettings?.methods) {
+      setFeeDraft({
+        credit_card: { pct: String(feeSettings.methods.credit_card.percentage), fixed: String(feeSettings.methods.credit_card.fixed_fee) },
+        pix: { pct: String(feeSettings.methods.pix.percentage), fixed: String(feeSettings.methods.pix.fixed_fee) },
+        boleto: { pct: String(feeSettings.methods.boleto.percentage), fixed: String(feeSettings.methods.boleto.fixed_fee) },
+      });
     }
-  }, [feeSettings?.percentage, feeSettings?.fixed_fee]);
+  }, [feeSettings?.methods]);
 
   const saveFees = useMutation({
     mutationFn: async () => {
-      const pct = parseFloat(feeDraftPct.replace(",", ".")) || 0;
-      const fixed = parseFloat(feeDraftFixed.replace(",", ".")) || 0;
-      const payload = { percentage: pct, fixed_fee: fixed };
+      const parse = (s: string) => parseFloat(String(s).replace(",", ".")) || 0;
+      const payload = {
+        credit_card: { percentage: parse(feeDraft.credit_card.pct), fixed_fee: parse(feeDraft.credit_card.fixed) },
+        pix: { percentage: parse(feeDraft.pix.pct), fixed_fee: parse(feeDraft.pix.fixed) },
+        boleto: { percentage: parse(feeDraft.boleto.pct), fixed_fee: parse(feeDraft.boleto.fixed) },
+      };
       if (feeSettings?.id) {
         const { error } = await supabase.from("bot_settings").update({ value: payload }).eq("id", feeSettings.id);
         if (error) throw error;
