@@ -1,0 +1,1 @@
+ALTER TABLE public.nuvemshop_orders ADD COLUMN IF NOT EXISTS payment_method TEXT;

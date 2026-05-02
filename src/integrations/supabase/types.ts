@@ -1555,6 +1555,7 @@ export type Database = {
           order_date: string | null
           order_number: string | null
           paid_to_supplier: boolean
+          payment_method: string | null
           payment_status: string | null
           production_cost: number | null
           products: Json | null
@@ -1577,6 +1578,7 @@ export type Database = {
           order_date?: string | null
           order_number?: string | null
           paid_to_supplier?: boolean
+          payment_method?: string | null
           payment_status?: string | null
           production_cost?: number | null
           products?: Json | null
@@ -1599,6 +1601,7 @@ export type Database = {
           order_date?: string | null
           order_number?: string | null
           paid_to_supplier?: boolean
+          payment_method?: string | null
           payment_status?: string | null
           production_cost?: number | null
           products?: Json | null
