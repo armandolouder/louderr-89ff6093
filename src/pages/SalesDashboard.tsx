@@ -524,7 +524,7 @@ export default function SalesDashboard() {
                   
                   const supplierName = (order as any).supplier || "";
                   const cost = (order as any).production_cost || 0;
-                  const fee = order.payment_status === "paid" ? calcFee(total) : 0;
+                  const fee = order.payment_status === "paid" ? calcFee(total, (order as any).payment_method) : 0;
                   const net = total - fee - cost;
                   const isPaid = !!(order as any).paid_to_supplier;
 
@@ -631,7 +631,7 @@ export default function SalesDashboard() {
               <span className="text-muted-foreground">Taxas Gateway</span>
               <span className="text-destructive">
                 {selectedOrder && selectedOrder.payment_status === "paid"
-                  ? `-${formatCurrency(calcFee(selectedOrder.total || 0))}`
+                  ? `-${formatCurrency(calcFee(selectedOrder.total || 0, (selectedOrder as any).payment_method))}`
                   : "—"}
               </span>
               <span className="text-muted-foreground">Custo</span>
@@ -641,7 +641,7 @@ export default function SalesDashboard() {
                 {selectedOrder
                   ? formatCurrency(
                       (selectedOrder.total || 0)
-                      - (selectedOrder.payment_status === "paid" ? calcFee(selectedOrder.total || 0) : 0)
+                      - (selectedOrder.payment_status === "paid" ? calcFee(selectedOrder.total || 0, (selectedOrder as any).payment_method) : 0)
                       - (selectedOrder.production_cost || 0)
                     )
                   : ""}
