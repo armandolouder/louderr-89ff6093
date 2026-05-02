@@ -62,8 +62,22 @@ export default function SalesDashboard() {
   const endDate = new Date(year, month + 1, 0, 23, 59, 59).toISOString();
 
   const { data: orders, isLoading } = useQuery({
-    queryKey: ["sales-dashboard", month, year],
+    queryKey: ["sales-dashboard", month, year, searchQuery],
     queryFn: async () => {
+      const q = searchQuery.trim().replace(/^#/, "");
+
+      // Global search by order number/id — ignores period and status filters
+      if (q) {
+        const { data, error } = await supabase
+          .from("nuvemshop_orders")
+          .select("*")
+          .or(`order_number.ilike.%${q}%,nuvemshop_order_id.ilike.%${q}%`)
+          .order("order_date", { ascending: false, nullsFirst: false })
+          .limit(200);
+        if (error) throw error;
+        return data || [];
+      }
+
       const { data: dated, error: e1 } = await supabase
         .from("nuvemshop_orders")
         .select("*")
@@ -91,17 +105,11 @@ export default function SalesDashboard() {
 
   const filteredOrders = useMemo(() => {
     if (!orders) return [];
+    // When searching, return raw results (already filtered server-side, ignore period/status)
+    if (searchQuery.trim()) return orders;
     let result = orders;
     if (statusFilter !== "all") {
       result = result.filter(o => o.status === statusFilter);
-    }
-    const q = searchQuery.trim().toLowerCase().replace(/^#/, "");
-    if (q) {
-      result = result.filter(o => {
-        const num = String((o as any).order_number || "").toLowerCase();
-        const id = String((o as any).nuvemshop_order_id || "").toLowerCase();
-        return num.includes(q) || id.includes(q);
-      });
     }
     return result;
   }, [orders, statusFilter, searchQuery]);
