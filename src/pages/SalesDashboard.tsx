@@ -379,31 +379,40 @@ export default function SalesDashboard() {
                 <Settings className="w-4 h-4" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-72 space-y-3" align="end">
+            <PopoverContent className="w-80 space-y-4" align="end">
               <div>
-                <h4 className="text-sm font-semibold">Taxas do Gateway</h4>
-                <p className="text-xs text-muted-foreground">Aplicado automaticamente no líquido de cada pedido pago.</p>
+                <h4 className="text-sm font-semibold">Taxas por Método de Pagamento</h4>
+                <p className="text-xs text-muted-foreground">Aplicadas automaticamente conforme o método de cada pedido pago.</p>
               </div>
-              <div className="space-y-2">
-                <label className="text-xs text-muted-foreground">Percentual (%)</label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={feeDraftPct}
-                  onChange={(e) => setFeeDraftPct(e.target.value)}
-                  placeholder="4.45"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs text-muted-foreground">Taxa fixa por pedido (R$)</label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={feeDraftFixed}
-                  onChange={(e) => setFeeDraftFixed(e.target.value)}
-                  placeholder="0.00"
-                />
-              </div>
+              {([
+                { key: "credit_card" as const, label: "Cartão de Crédito" },
+                { key: "pix" as const, label: "Pix" },
+                { key: "boleto" as const, label: "Boleto" },
+              ]).map(({ key, label }) => (
+                <div key={key} className="space-y-2 border-t pt-3 first:border-t-0 first:pt-0">
+                  <div className="text-xs font-semibold text-foreground">{label}</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[10px] text-muted-foreground uppercase">% sobre venda</label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={feeDraft[key].pct}
+                        onChange={(e) => setFeeDraft(p => ({ ...p, [key]: { ...p[key], pct: e.target.value } }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-muted-foreground uppercase">Fixo (R$)</label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={feeDraft[key].fixed}
+                        onChange={(e) => setFeeDraft(p => ({ ...p, [key]: { ...p[key], fixed: e.target.value } }))}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
               <Button size="sm" className="w-full" onClick={() => saveFees.mutate()} disabled={saveFees.isPending}>
                 Salvar
               </Button>
