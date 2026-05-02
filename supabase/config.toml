@@ -65,6 +65,3 @@ verify_jwt = false
 
 [functions.instagram-personal-fetch]
 verify_jwt = false
-
-[functions.debug-order-fees]
-verify_jwt = false
