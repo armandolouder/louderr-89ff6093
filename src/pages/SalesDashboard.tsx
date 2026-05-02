@@ -577,11 +577,23 @@ export default function SalesDashboard() {
               <span>{selectedOrder?.supplier || "—"}</span>
               <span className="text-muted-foreground">Total</span>
               <span className="font-bold">{selectedOrder ? formatCurrency(selectedOrder.total || 0) : ""}</span>
+              <span className="text-muted-foreground">Taxas Gateway</span>
+              <span className="text-destructive">
+                {selectedOrder && selectedOrder.payment_status === "paid"
+                  ? `-${formatCurrency(calcFee(selectedOrder.total || 0))}`
+                  : "—"}
+              </span>
               <span className="text-muted-foreground">Custo</span>
               <span>{selectedOrder ? formatCurrency(selectedOrder.production_cost || 0) : "—"}</span>
               <span className="text-muted-foreground">Líquido</span>
               <span className="font-bold text-primary">
-                {selectedOrder ? formatCurrency((selectedOrder.total || 0) - (selectedOrder.production_cost || 0)) : ""}
+                {selectedOrder
+                  ? formatCurrency(
+                      (selectedOrder.total || 0)
+                      - (selectedOrder.payment_status === "paid" ? calcFee(selectedOrder.total || 0) : 0)
+                      - (selectedOrder.production_cost || 0)
+                    )
+                  : ""}
               </span>
             </div>
 
