@@ -331,6 +331,43 @@ export default function SalesDashboard() {
             <Trash2 className="w-4 h-4" />
           </Button>
 
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="icon" className="h-9 w-9 rounded-full" title="Configurar taxas do gateway">
+                <Settings className="w-4 h-4" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-72 space-y-3" align="end">
+              <div>
+                <h4 className="text-sm font-semibold">Taxas do Gateway</h4>
+                <p className="text-xs text-muted-foreground">Aplicado automaticamente no líquido de cada pedido pago.</p>
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs text-muted-foreground">Percentual (%)</label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={feeDraftPct}
+                  onChange={(e) => setFeeDraftPct(e.target.value)}
+                  placeholder="4.45"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs text-muted-foreground">Taxa fixa por pedido (R$)</label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={feeDraftFixed}
+                  onChange={(e) => setFeeDraftFixed(e.target.value)}
+                  placeholder="0.00"
+                />
+              </div>
+              <Button size="sm" className="w-full" onClick={() => saveFees.mutate()} disabled={saveFees.isPending}>
+                Salvar
+              </Button>
+            </PopoverContent>
+          </Popover>
+
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[130px] h-9">
               <SelectValue />
@@ -377,7 +414,7 @@ export default function SalesDashboard() {
           <MetricCard label="Faturamento Bruto" value={formatCurrency(metrics.totalRevenue)} color="text-foreground" />
           <MetricCard label="Ticket Médio" value={formatCurrency(metrics.avgTicket)} color="text-accent" />
           <MetricCard label="Custos Produtos (CPV)" value={formatCurrency(metrics.totalCosts)} color="text-destructive" />
-          <MetricCard label="Outras Despesas" value={formatCurrency(0)} color="text-destructive" hasAction />
+          <MetricCard label={`Taxas Gateway (${feePct}%)`} value={formatCurrency(metrics.totalFees)} color="text-destructive" />
           <MetricCard
             label="Pedidos / Itens"
             value={`${metrics.totalOrders}`}
@@ -403,6 +440,7 @@ export default function SalesDashboard() {
                 <TableHead>Cliente</TableHead>
                 <TableHead>Fornecedor</TableHead>
                 <TableHead className="text-right">Nuvempago</TableHead>
+                <TableHead className="text-right">Taxas</TableHead>
                 <TableHead className="text-right">Custos</TableHead>
                 <TableHead className="text-right">Líquido</TableHead>
                 <TableHead>Status</TableHead>
@@ -413,14 +451,14 @@ export default function SalesDashboard() {
               {isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
-                    {Array.from({ length: 10 }).map((_, j) => (
+                    {Array.from({ length: 11 }).map((_, j) => (
                       <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
                     ))}
                   </TableRow>
                 ))
               ) : filteredOrders.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
                     Nenhum pedido encontrado no período selecionado.
                   </TableCell>
                 </TableRow>
@@ -435,7 +473,8 @@ export default function SalesDashboard() {
                   
                   const supplierName = (order as any).supplier || "";
                   const cost = (order as any).production_cost || 0;
-                  const net = total - cost;
+                  const fee = order.payment_status === "paid" ? calcFee(total) : 0;
+                  const net = total - fee - cost;
                   const isPaid = !!(order as any).paid_to_supplier;
 
                   return (
@@ -464,6 +503,9 @@ export default function SalesDashboard() {
                       </TableCell>
                       <TableCell className="text-right font-semibold">
                         {formatCurrency(total)}
+                      </TableCell>
+                      <TableCell className="text-right text-destructive font-medium">
+                        {fee > 0 ? `-${formatCurrency(fee)}` : "—"}
                       </TableCell>
                       <TableCell className="text-right text-destructive font-medium">
                         <InlineCostEditor
