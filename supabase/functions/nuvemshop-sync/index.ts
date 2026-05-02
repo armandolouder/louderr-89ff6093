@@ -27,6 +27,7 @@
           nuvemshop_order_id: (order.id || order.number)?.toString(),
           status: order.status || null,
           payment_status: order.payment_status || null,
+        payment_method: order.payment_details?.method || order.gateway || null,
           shipping_status: order.shipping_status || null,
           customer_name: customerName,
           customer_email: order.customer?.email || order.contact_email || null,
