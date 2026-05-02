@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { TrendingUp, RefreshCw, ShoppingCart, Trash2, Eye, Send, Printer, Pencil, Check, Search } from "lucide-react";
+import { TrendingUp, RefreshCw, ShoppingCart, Trash2, Eye, Send, Printer, Pencil, Check, Search, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -61,6 +61,57 @@ export default function SalesDashboard() {
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const startDate = new Date(year, month, 1).toISOString();
   const endDate = new Date(year, month + 1, 0, 23, 59, 59).toISOString();
+
+  // Payment fee config (Nuvem Pago / gateway) — stored in bot_settings (key='payment_fees')
+  const { data: feeSettings } = useQuery({
+    queryKey: ["payment-fees"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("bot_settings")
+        .select("id, value")
+        .eq("key", "payment_fees")
+        .maybeSingle();
+      const v = (data?.value as any) || {};
+      return {
+        id: data?.id as string | undefined,
+        percentage: Number(v.percentage ?? 4.45),
+        fixed_fee: Number(v.fixed_fee ?? 0),
+      };
+    },
+  });
+  const feePct = feeSettings?.percentage ?? 4.45;
+  const feeFixed = feeSettings?.fixed_fee ?? 0;
+  const calcFee = (total: number) => (total > 0 ? total * (feePct / 100) + feeFixed : 0);
+
+  const [feeDraftPct, setFeeDraftPct] = useState<string>("");
+  const [feeDraftFixed, setFeeDraftFixed] = useState<string>("");
+  useEffect(() => {
+    if (feeSettings) {
+      setFeeDraftPct(String(feeSettings.percentage));
+      setFeeDraftFixed(String(feeSettings.fixed_fee));
+    }
+  }, [feeSettings?.percentage, feeSettings?.fixed_fee]);
+
+  const saveFees = useMutation({
+    mutationFn: async () => {
+      const pct = parseFloat(feeDraftPct.replace(",", ".")) || 0;
+      const fixed = parseFloat(feeDraftFixed.replace(",", ".")) || 0;
+      const payload = { percentage: pct, fixed_fee: fixed };
+      if (feeSettings?.id) {
+        const { error } = await supabase.from("bot_settings").update({ value: payload }).eq("id", feeSettings.id);
+        if (error) throw error;
+      } else {
+        const { data: u } = await supabase.auth.getUser();
+        const { error } = await supabase.from("bot_settings").insert({ key: "payment_fees", value: payload, user_id: u.user?.id });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      toast.success("Taxas salvas");
+      queryClient.invalidateQueries({ queryKey: ["payment-fees"] });
+    },
+    onError: (e: any) => toast.error("Erro ao salvar: " + (e.message || "")),
+  });
 
   const { data: orders, isLoading } = useQuery({
     queryKey: ["sales-dashboard", month, year, searchQuery],
@@ -125,9 +176,11 @@ export default function SalesDashboard() {
 
   const metrics = useMemo(() => {
     const billable = filteredOrders.filter(o => o.status !== "cancelled" && o.payment_status === "paid");
-    const totalRevenue = billable.reduce((sum, o) => sum + (o.total || 0), 0);
+    const totalRevenueGross = billable.reduce((sum, o) => sum + (o.total || 0), 0);
+    const totalFees = billable.reduce((sum, o) => sum + calcFee(o.total || 0), 0);
+    const totalRevenue = totalRevenueGross - totalFees; // líquido após taxas (faturamento líquido)
     const totalOrders = billable.length;
-    const avgTicket = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+    const avgTicket = totalOrders > 0 ? totalRevenueGross / totalOrders : 0;
     const totalItems = billable.reduce((sum, o) => {
       const products = o.products as any[];
       return sum + (Array.isArray(products) ? products.reduce((s, p) => s + (p.quantity || 1), 0) : 0);
@@ -138,10 +191,10 @@ export default function SalesDashboard() {
       return sum + ((o as any).production_cost || 0);
     }, 0);
     
-    const netProfit = totalRevenue - totalCosts;
+    const netProfit = totalRevenueGross - totalFees - totalCosts;
     
-    return { totalRevenue, totalOrders, avgTicket, totalItems, totalCosts, netProfit };
-  }, [filteredOrders]);
+    return { totalRevenue: totalRevenueGross, totalRevenueNet: totalRevenue, totalFees, totalOrders, avgTicket, totalItems, totalCosts, netProfit };
+  }, [filteredOrders, feePct, feeFixed]);
 
   type EditableOrderField = "supplier" | "production_cost" | "paid_to_supplier";
 
@@ -278,6 +331,43 @@ export default function SalesDashboard() {
             <Trash2 className="w-4 h-4" />
           </Button>
 
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="icon" className="h-9 w-9 rounded-full" title="Configurar taxas do gateway">
+                <Settings className="w-4 h-4" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-72 space-y-3" align="end">
+              <div>
+                <h4 className="text-sm font-semibold">Taxas do Gateway</h4>
+                <p className="text-xs text-muted-foreground">Aplicado automaticamente no líquido de cada pedido pago.</p>
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs text-muted-foreground">Percentual (%)</label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={feeDraftPct}
+                  onChange={(e) => setFeeDraftPct(e.target.value)}
+                  placeholder="4.45"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs text-muted-foreground">Taxa fixa por pedido (R$)</label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={feeDraftFixed}
+                  onChange={(e) => setFeeDraftFixed(e.target.value)}
+                  placeholder="0.00"
+                />
+              </div>
+              <Button size="sm" className="w-full" onClick={() => saveFees.mutate()} disabled={saveFees.isPending}>
+                Salvar
+              </Button>
+            </PopoverContent>
+          </Popover>
+
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[130px] h-9">
               <SelectValue />
@@ -324,7 +414,7 @@ export default function SalesDashboard() {
           <MetricCard label="Faturamento Bruto" value={formatCurrency(metrics.totalRevenue)} color="text-foreground" />
           <MetricCard label="Ticket Médio" value={formatCurrency(metrics.avgTicket)} color="text-accent" />
           <MetricCard label="Custos Produtos (CPV)" value={formatCurrency(metrics.totalCosts)} color="text-destructive" />
-          <MetricCard label="Outras Despesas" value={formatCurrency(0)} color="text-destructive" hasAction />
+          <MetricCard label={`Taxas Gateway (${feePct}%)`} value={formatCurrency(metrics.totalFees)} color="text-destructive" />
           <MetricCard
             label="Pedidos / Itens"
             value={`${metrics.totalOrders}`}
@@ -350,6 +440,7 @@ export default function SalesDashboard() {
                 <TableHead>Cliente</TableHead>
                 <TableHead>Fornecedor</TableHead>
                 <TableHead className="text-right">Nuvempago</TableHead>
+                <TableHead className="text-right">Taxas</TableHead>
                 <TableHead className="text-right">Custos</TableHead>
                 <TableHead className="text-right">Líquido</TableHead>
                 <TableHead>Status</TableHead>
@@ -360,14 +451,14 @@ export default function SalesDashboard() {
               {isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
-                    {Array.from({ length: 10 }).map((_, j) => (
+                    {Array.from({ length: 11 }).map((_, j) => (
                       <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
                     ))}
                   </TableRow>
                 ))
               ) : filteredOrders.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
                     Nenhum pedido encontrado no período selecionado.
                   </TableCell>
                 </TableRow>
@@ -382,7 +473,8 @@ export default function SalesDashboard() {
                   
                   const supplierName = (order as any).supplier || "";
                   const cost = (order as any).production_cost || 0;
-                  const net = total - cost;
+                  const fee = order.payment_status === "paid" ? calcFee(total) : 0;
+                  const net = total - fee - cost;
                   const isPaid = !!(order as any).paid_to_supplier;
 
                   return (
@@ -411,6 +503,9 @@ export default function SalesDashboard() {
                       </TableCell>
                       <TableCell className="text-right font-semibold">
                         {formatCurrency(total)}
+                      </TableCell>
+                      <TableCell className="text-right text-destructive font-medium">
+                        {fee > 0 ? `-${formatCurrency(fee)}` : "—"}
                       </TableCell>
                       <TableCell className="text-right text-destructive font-medium">
                         <InlineCostEditor
@@ -482,11 +577,23 @@ export default function SalesDashboard() {
               <span>{selectedOrder?.supplier || "—"}</span>
               <span className="text-muted-foreground">Total</span>
               <span className="font-bold">{selectedOrder ? formatCurrency(selectedOrder.total || 0) : ""}</span>
+              <span className="text-muted-foreground">Taxas Gateway</span>
+              <span className="text-destructive">
+                {selectedOrder && selectedOrder.payment_status === "paid"
+                  ? `-${formatCurrency(calcFee(selectedOrder.total || 0))}`
+                  : "—"}
+              </span>
               <span className="text-muted-foreground">Custo</span>
               <span>{selectedOrder ? formatCurrency(selectedOrder.production_cost || 0) : "—"}</span>
               <span className="text-muted-foreground">Líquido</span>
               <span className="font-bold text-primary">
-                {selectedOrder ? formatCurrency((selectedOrder.total || 0) - (selectedOrder.production_cost || 0)) : ""}
+                {selectedOrder
+                  ? formatCurrency(
+                      (selectedOrder.total || 0)
+                      - (selectedOrder.payment_status === "paid" ? calcFee(selectedOrder.total || 0) : 0)
+                      - (selectedOrder.production_cost || 0)
+                    )
+                  : ""}
               </span>
             </div>
 
