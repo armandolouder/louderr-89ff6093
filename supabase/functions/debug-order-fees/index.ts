@@ -40,5 +40,12 @@ serve(async (req) => {
       gateway_name: full.gateway_name,
     },
     transactions: txData,
+    total_paid: full.total_paid,
+    payment_details: full.payment_details,
+    payment_count: full.payment_count,
+    extra: full.extra,
+    next_action: full.next_action,
+    payments: (full as any).payments,
+    promotional_discount: full.promotional_discount,
   }, null, 2), { headers: { ...cors, "Content-Type": "application/json" } });
 });
