@@ -465,7 +465,7 @@ export default function SalesDashboard() {
           <MetricCard label="Faturamento Bruto" value={formatCurrency(metrics.totalRevenue)} color="text-foreground" />
           <MetricCard label="Ticket Médio" value={formatCurrency(metrics.avgTicket)} color="text-accent" />
           <MetricCard label="Custos Produtos (CPV)" value={formatCurrency(metrics.totalCosts)} color="text-destructive" />
-          <MetricCard label={`Taxas Gateway (${feePct}%)`} value={formatCurrency(metrics.totalFees)} color="text-destructive" />
+          <MetricCard label="Taxas Gateway" value={formatCurrency(metrics.totalFees)} color="text-destructive" />
           <MetricCard
             label="Pedidos / Itens"
             value={`${metrics.totalOrders}`}
