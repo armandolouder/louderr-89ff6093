@@ -2,7 +2,7 @@
  import { sendUazapiMedia, sendUazapiText, hasUazapiCredentials } from "../../_shared/uazapi.ts";
  import { replaceWhatsappVariables } from "../../_shared/variables.ts";
  import { buildRecoveryEmailHtml } from "../utils/email-builder.ts";
-import { registerInInbox } from "../../process-automations/services/inbox-registry.ts";
+import { registerInInbox } from "../../_shared/inbox-registry.ts";
  
  export async function sendWhatsappRecovery(supabase: SupabaseClient, exec: any, step: any, variant: string, msgRecordId: string) {
    if (!hasUazapiCredentials()) return { success: false, error: "UAZAPI credentials not configured" };

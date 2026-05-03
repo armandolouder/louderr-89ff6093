@@ -1,7 +1,7 @@
  import { createServiceClient } from "../_shared/auth.ts";
  import { corsHeaders } from "../_shared/cors.ts";
  import { sendUazapiMedia, sendUazapiText, hasUazapiCredentials, UazapiMediaType } from "../_shared/uazapi.ts";
- import { registerInInbox } from "./services/inbox-registry.ts";
+ import { registerInInbox } from "../_shared/inbox-registry.ts";
  
  Deno.serve(async (req) => {
    if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
