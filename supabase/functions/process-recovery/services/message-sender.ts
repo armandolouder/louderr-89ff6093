@@ -2,6 +2,7 @@
  import { sendUazapiMedia, sendUazapiText, hasUazapiCredentials } from "../../_shared/uazapi.ts";
  import { replaceWhatsappVariables } from "../../_shared/variables.ts";
  import { buildRecoveryEmailHtml } from "../utils/email-builder.ts";
+import { registerInInbox } from "../../process-automations/services/inbox-registry.ts";
  
  export async function sendWhatsappRecovery(supabase: SupabaseClient, exec: any, step: any, variant: string, msgRecordId: string) {
    if (!hasUazapiCredentials()) return { success: false, error: "UAZAPI credentials not configured" };
@@ -74,6 +75,17 @@
      })
      .eq("id", msgRecordId);
  
+  if (result.ok) {
+    registerInInbox(supabase, {
+      phone,
+      customerName: exec.customer_name || "Cliente",
+      messageContent: messageText,
+      uazapiData: result,
+      userId: exec.user_id,
+      source: "recovery",
+    }).catch(err => console.error("Inbox register (recovery) failed:", err));
+  }
+
    return { success: result.ok, error: result.ok ? null : result.raw };
  }
  
