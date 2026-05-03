@@ -7,33 +7,47 @@
    mediaUrl?: string;
    mediaType?: string;
    uazapiData: any;
-   flowId: string;
-   executionId: string;
+  flowId?: string;
+  executionId?: string;
+  userId?: string | null;
+  source?: string;
  }) {
-   const { phone, customerName, messageContent, mediaUrl, mediaType, uazapiData, flowId, executionId } = params;
+  const { phone, customerName, messageContent, mediaUrl, mediaType, uazapiData, flowId, executionId, source } = params;
+  let userId = params.userId ?? null;
    
    try {
+    // Resolve owner user_id when not provided (service role bypasses set_user_id trigger)
+    if (!userId) {
+      const { data: ownerData } = await supabase.rpc("get_webhook_owner_user_id");
+      userId = (ownerData as string | null) ?? null;
+    }
+
      // 1. Find or create contact
      const phoneVariants = [phone, `+${phone}`, `+55${phone}`];
-     const { data: contacts } = await supabase.from("contacts").select("id")
-       .or(phoneVariants.map(p => `phone.eq.${p}`).join(",")).limit(1);
+    let contactQuery = supabase.from("contacts").select("id")
+      .or(phoneVariants.map(p => `phone.eq.${p}`).join(",")).limit(1);
+    if (userId) contactQuery = contactQuery.eq("user_id", userId);
+    const { data: contacts } = await contactQuery;
  
      let contactId = contacts?.[0]?.id;
      if (!contactId) {
-       const { data: newContact } = await supabase.from("contacts").insert({ name: customerName, phone }).select("id").single();
+      const { data: newContact } = await supabase.from("contacts").insert({ name: customerName, phone, user_id: userId }).select("id").single();
        contactId = newContact?.id;
      }
      if (!contactId) return;
  
      // 2. Find or create conversation
-     const { data: convs } = await supabase.from("conversations").select("id")
-       .eq("contact_id", contactId).eq("channel", "whatsapp").limit(1);
+    let convQuery = supabase.from("conversations").select("id")
+      .eq("contact_id", contactId).eq("channel", "whatsapp").limit(1);
+    if (userId) convQuery = convQuery.eq("user_id", userId);
+    const { data: convs } = await convQuery;
  
      let conversationId = convs?.[0]?.id;
      if (!conversationId) {
        const { data: newConv } = await supabase.from("conversations").insert({
          contact_id: contactId, channel: "whatsapp", status: "novo",
          last_message: messageContent, last_message_at: new Date().toISOString(),
+        user_id: userId,
        }).select("id").single();
        conversationId = newConv?.id;
      }
@@ -47,7 +61,8 @@
        message_type: mediaUrl ? mediaType : "text",
        media_url: mediaUrl || null,
        status: "sent",
-       metadata: { uazapi_response: uazapiData, automation_flow_id: flowId, automation_execution_id: executionId },
+      user_id: userId,
+      metadata: { uazapi_response: uazapiData, automation_flow_id: flowId, automation_execution_id: executionId, source: source || "automation" },
      });
  
      // 4. Update conversation

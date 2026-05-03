@@ -4,6 +4,7 @@ import { digitsOnly } from "../../_shared/phone.ts";
 import { resolveCustomerEmail } from "../customerResolver.ts";
 import { sendJourneyEmail } from "../emailSender.ts";
 import { NodeExecutionContext, NodeExecutor, NodeResult } from "./types.ts";
+import { registerInInbox } from "../../process-automations/services/inbox-registry.ts";
 
 const MAX_EMAIL_WAITS = 30; // ~1 hour @ 2 min interval
 const EMAIL_RETRY_INTERVAL_MS = 2 * 60 * 1000;
@@ -178,6 +179,14 @@ export class MessageNodeExecutor implements NodeExecutor {
       const uazResult = await sendUazapiText(formattedPhone, waContent);
       if (uazResult.ok) {
         console.log(`Journey WhatsApp sent to ${formattedPhone}: ${uazResult.raw.substring(0, 100)}`);
+        registerInInbox(supabase, {
+          phone: formattedPhone,
+          customerName: customerName || exec.customer_name || "Cliente",
+          messageContent: waContent,
+          uazapiData: uazResult,
+          userId: exec.user_id,
+          source: "journey",
+        }).catch(err => console.error("Inbox register (journey) failed:", err));
       } else {
         console.error(
           `Journey WhatsApp failed for ${formattedPhone}: ${uazResult.status} ${uazResult.raw}`
