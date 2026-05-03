@@ -17,7 +17,7 @@ interface ConversationListProps {
 
 export function ConversationList({ selectedId, onSelect, filterTabId, showArchived = false, onToggleArchived }: ConversationListProps) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [channelFilter, setChannelFilter] = useState<"all" | "whatsapp" | "instagram" | "customers">("customers");
+  const [channelFilter, setChannelFilter] = useState<"whatsapp" | "instagram" | "customers">("customers");
   const [customerPhones, setCustomerPhones] = useState<Set<string> | null>(null);
   
   const { data: conversations, isLoading, error } = useConversations();
@@ -45,8 +45,7 @@ export function ConversationList({ selectedId, onSelect, filterTabId, showArchiv
     const matchesSearch = conv.contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (conv.last_message?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
     let matchesChannel = true;
-    if (channelFilter === "all") matchesChannel = true;
-    else if (channelFilter === "customers") {
+    if (channelFilter === "customers") {
       if (!customerPhones) matchesChannel = false;
       else {
         const k = (conv.contact.phone || "").replace(/\D/g, "").slice(-10);
@@ -96,14 +95,6 @@ export function ConversationList({ selectedId, onSelect, filterTabId, showArchiv
             title="Instagram"
           >
             <Instagram className="w-4 h-4" />
-          </Button>
-          <Button
-            variant={channelFilter === "all" && !showArchived ? "default" : "outline"}
-            size="sm"
-            onClick={() => { setChannelFilter("all"); if (showArchived && onToggleArchived) onToggleArchived(); }}
-            className={cn("h-8 px-3", channelFilter !== "all" || showArchived ? "border-border text-muted-foreground" : "")}
-          >
-            Todos
           </Button>
           <Button
             variant={channelFilter === "whatsapp" && !showArchived ? "default" : "outline"}
