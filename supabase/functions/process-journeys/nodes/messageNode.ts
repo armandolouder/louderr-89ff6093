@@ -4,7 +4,7 @@ import { digitsOnly } from "../../_shared/phone.ts";
 import { resolveCustomerEmail } from "../customerResolver.ts";
 import { sendJourneyEmail } from "../emailSender.ts";
 import { NodeExecutionContext, NodeExecutor, NodeResult } from "./types.ts";
-import { registerInInbox } from "../../process-automations/services/inbox-registry.ts";
+import { registerInInbox } from "../../_shared/inbox-registry.ts";
 
 const MAX_EMAIL_WAITS = 30; // ~1 hour @ 2 min interval
 const EMAIL_RETRY_INTERVAL_MS = 2 * 60 * 1000;
