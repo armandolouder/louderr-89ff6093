@@ -131,7 +131,7 @@ async function upsertContact(
       existing.name === opts.instagramId ||
       /^IG\s/i.test(existing.name);
     if (niceName && looksPlaceholder) updates.name = niceName;
-    if (opts.avatarUrl && !existing.avatar_url) updates.avatar_url = opts.avatarUrl;
+    if (opts.avatarUrl && existing.avatar_url !== opts.avatarUrl) updates.avatar_url = opts.avatarUrl;
     if (Object.keys(updates).length > 0) {
       await supabase.from("contacts").update(updates).eq("id", existing.id);
     }
