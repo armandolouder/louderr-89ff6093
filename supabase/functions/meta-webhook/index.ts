@@ -159,18 +159,29 @@ async function fetchInstagramProfile(
   pageAccessToken: string,
 ): Promise<{ name: string | null; username: string | null; avatarUrl: string | null }> {
   try {
+    // `username` was deprecated on the IG user profile endpoint (#12 error).
+    // Request only `name,profile_pic` — fetching `username` makes the whole call fail.
     const url =
-      `${GRAPH}/${igUserId}?fields=name,username,profile_pic&access_token=${pageAccessToken}`;
+      `${GRAPH}/${igUserId}?fields=name,profile_pic&access_token=${pageAccessToken}`;
     const res = await fetch(url);
     if (!res.ok) {
       const txt = await res.text();
       console.warn("[meta-webhook] IG profile fetch failed", igUserId, res.status, txt);
+      // Retry with just profile_pic in case `name` is also restricted for this account
+      try {
+        const url2 = `${GRAPH}/${igUserId}?fields=profile_pic&access_token=${pageAccessToken}`;
+        const r2 = await fetch(url2);
+        if (r2.ok) {
+          const j2 = await r2.json();
+          return { name: null, username: null, avatarUrl: j2.profile_pic ?? null };
+        }
+      } catch { /* ignore */ }
       return { name: null, username: null, avatarUrl: null };
     }
     const j = await res.json();
     return {
       name: j.name ?? null,
-      username: j.username ?? null,
+      username: null,
       avatarUrl: j.profile_pic ?? null,
     };
   } catch (e) {
