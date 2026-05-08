@@ -303,15 +303,23 @@ serve(async (req) => {
      const rawPayload = await req.json();
      console.log("Webhook received. Payload preview:", JSON.stringify(rawPayload).substring(0, 500));
  
-     // Determine if it's Evolution API or Uazapi
-     const isEvolution = !!rawPayload.event && !!rawPayload.instance;
-     
-     if (isEvolution) {
-       return await handleEvolutionWebhook(supabase, rawPayload as EvolutionPayload, ownerUserId);
-     }
- 
-     const payload = rawPayload as UazapiPayload;
-     console.log("Processing as Uazapi payload:", payload.EventType);
+      // Determine if it's Evolution API or Uazapi
+      const isEvolution = !!rawPayload.event && !!rawPayload.instance;
+      const isUazapi = !!rawPayload.EventType && !!rawPayload.BaseUrl;
+      
+      // If we have both, it's a relay. Prioritize Evolution format but log it.
+      if (isEvolution && isUazapi) {
+        console.log("Relay payload detected (Evolution + Uazapi). Processing as Evolution.");
+        return await handleEvolutionWebhook(supabase, rawPayload as EvolutionPayload, ownerUserId);
+      }
+      
+      if (isEvolution) {
+        return await handleEvolutionWebhook(supabase, rawPayload as EvolutionPayload, ownerUserId);
+      }
+  
+      if (isUazapi) {
+        const payload = rawPayload as UazapiPayload;
+        console.log("Processing as Uazapi payload:", payload.EventType);
 
     // Handle reaction messages
     if (payload.EventType === "messages" && payload.message) {
