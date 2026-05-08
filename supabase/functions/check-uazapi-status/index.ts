@@ -24,14 +24,18 @@
        return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
      }
  
-     const WHATSAPP_PROVIDER = Deno.env.get("WHATSAPP_PROVIDER")?.toLowerCase() || "uazapi";
+      const WHATSAPP_PROVIDER = Deno.env.get("WHATSAPP_PROVIDER")?.toLowerCase()?.trim() || "uazapi";
+      console.log(`Checking status for provider: ${WHATSAPP_PROVIDER}`);
  
      if (WHATSAPP_PROVIDER === "evolution") {
        const EVOLUTION_API_URL = Deno.env.get("EVOLUTION_API_URL");
        const EVOLUTION_API_KEY = Deno.env.get("EVOLUTION_API_KEY");
        const EVOLUTION_INSTANCE = Deno.env.get("EVOLUTION_INSTANCE_NAME");
  
+        console.log(`Evolution Config - URL: ${EVOLUTION_API_URL}, Instance: ${EVOLUTION_INSTANCE}`);
+
        if (!EVOLUTION_API_URL || !EVOLUTION_API_KEY || !EVOLUTION_INSTANCE) {
+          console.error("Missing Evolution credentials in environment variables");
          return new Response(
            JSON.stringify({ 
              success: false, 
@@ -42,29 +46,59 @@
          );
        }
  
-       try {
-         const baseUrl = EVOLUTION_API_URL.endsWith("/") ? EVOLUTION_API_URL.slice(0, -1) : EVOLUTION_API_URL;
-         const response = await fetch(`${baseUrl}/instance/connectionState/${EVOLUTION_INSTANCE}`, {
-           headers: { "apikey": EVOLUTION_API_KEY }
-         });
-         
-         const data = await response.json();
-         const isConnected = data.instance?.state === "open";
- 
+        const baseUrl = EVOLUTION_API_URL.endsWith("/") ? EVOLUTION_API_URL.slice(0, -1) : EVOLUTION_API_URL;
+        const endpoints = [
+          `/instance/connectionState/${EVOLUTION_INSTANCE}`,
+          `/instance/status/${EVOLUTION_INSTANCE}`,
+          `/instance/info/${EVOLUTION_INSTANCE}`
+        ];
+
+        let lastData = null;
+        let isConnected = false;
+
+        for (const endpoint of endpoints) {
+          try {
+            const checkUrl = `${baseUrl}${endpoint}`;
+            console.log(`Trying Evolution endpoint: ${checkUrl}`);
+            const response = await fetch(checkUrl, {
+              headers: { "apikey": EVOLUTION_API_KEY }
+            });
+            
+            if (response.ok) {
+              const data = await response.json();
+              console.log(`Evolution response from ${endpoint}:`, JSON.stringify(data));
+              lastData = data;
+              // Check various formats of "connected" status
+              isConnected = 
+                data.instance?.state === "open" || 
+                data.status === "open" || 
+                data.state === "open" || 
+                data.instance?.status === "connected" ||
+                data.instance?.connected === true ||
+                data.connected === true;
+              
+              if (isConnected) break;
+            }
+          } catch (e) {
+            console.log(`Error on Evolution endpoint ${endpoint}:`, e.message);
+          }
+        }
+
+        if (isConnected || lastData) {
+          return new Response(
+            JSON.stringify({
+              success: true,
+              connected: isConnected,
+              serverUrl: EVOLUTION_API_URL.replace(/https?:\/\//, "").split("/")[0],
+              name: EVOLUTION_INSTANCE,
+              status: isConnected ? "open" : (lastData?.instance?.state || "disconnected"),
+              provider: "evolution"
+            }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        } else {
          return new Response(
-           JSON.stringify({
-             success: true,
-             connected: isConnected,
-             serverUrl: EVOLUTION_API_URL.replace(/https?:\/\//, "").split("/")[0],
-             name: EVOLUTION_INSTANCE,
-             status: data.instance?.state || "unknown",
-             provider: "evolution"
-           }),
-           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-         );
-       } catch (e) {
-         return new Response(
-           JSON.stringify({ success: false, connected: false, error: e.message }),
+            JSON.stringify({ success: false, connected: false, error: "Não foi possível obter o status da instância Evolution." }),
            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
          );
        }
