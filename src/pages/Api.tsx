@@ -42,7 +42,10 @@ interface BrevoStatus {
 
 export default function Api() {
   const [activeIntegration, setActiveIntegration] = useState<IntegrationId>("uazapi");
-  const [instanceStatus, setInstanceStatus] = useState<InstanceStatus | null>(null);
+   const [instanceStatus, setInstanceStatus] = useState<InstanceStatus | null>(() => {
+     const saved = localStorage.getItem("evolution_config_cache");
+     return saved ? JSON.parse(saved) : null;
+   });
   const [groqStatus, setGroqStatus] = useState<GroqStatus | null>(null);
   const [nuvemshopStatus, setNuvemshopStatus] = useState<NuvemshopStatus | null>(null);
   const [brevoStatus, setBrevoStatus] = useState<BrevoStatus | null>(null);
@@ -60,16 +63,18 @@ export default function Api() {
       if (error) {
         setInstanceStatus({ connected: false, error: error.message });
       } else if (data) {
-        setInstanceStatus({
-          connected: data.connected,
-          serverUrl: data.serverUrl,
-          phoneNumber: data.phoneNumber,
-          name: data.name,
-          status: data.status,
-          message: data.message,
-          error: data.error,
-          provider: data.provider,
-        });
+         const newStatus = {
+           connected: data.connected,
+           serverUrl: data.serverUrl,
+           phoneNumber: data.phoneNumber,
+           name: data.name,
+           status: data.status,
+           message: data.message,
+           error: data.error,
+           provider: data.provider,
+         };
+         setInstanceStatus(newStatus);
+         localStorage.setItem("evolution_config_cache", JSON.stringify(newStatus));
       }
     } catch (error) {
       setInstanceStatus({ connected: false, error: "Erro de conexão" });
