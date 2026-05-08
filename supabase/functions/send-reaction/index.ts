@@ -30,14 +30,13 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    const UAZAPI_SERVER_URL = Deno.env.get("UAZAPI_SERVER_URL");
-    const UAZAPI_INSTANCE_TOKEN = Deno.env.get("UAZAPI_INSTANCE_TOKEN");
-    const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
-    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-
-    if (!UAZAPI_SERVER_URL || !UAZAPI_INSTANCE_TOKEN) {
-      throw new Error("UAZAPI credentials not configured");
-    }
+     import { sendWhatsAppReaction, hasWhatsAppCredentials } from "../_shared/whatsapp.ts";
+     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+ 
+     if (!hasWhatsAppCredentials()) {
+       throw new Error("WhatsApp credentials not configured");
+     }
 
     if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
       throw new Error("Supabase credentials not configured");
@@ -71,42 +70,22 @@ serve(async (req) => {
 
     console.log(`Sending reaction ${emoji} to message ${whatsappMessageId}`);
 
-    // UAZAPI v2 /message/react expects:
-    // - number: chat ID in format "5511999999999@s.whatsapp.net"
-    // - text: the emoji (or empty string to remove)
-    // - id: the WhatsApp message ID (lowercase!)
-    const requestBody = {
-      number: chatId,
-      text: emoji,
-      id: whatsappMessageId,
-    };
-
-    console.log("Request body:", JSON.stringify(requestBody));
-
-    const uazapiResponse = await fetch(`${UAZAPI_SERVER_URL}/message/react`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "token": UAZAPI_INSTANCE_TOKEN,
-      },
-      body: JSON.stringify(requestBody),
-    });
-
-    const responseText = await uazapiResponse.text();
-    console.log("UAZAPI response status:", uazapiResponse.status);
-    console.log("UAZAPI response:", responseText);
-
-    if (!uazapiResponse.ok) {
-      console.error("UAZAPI error:", responseText);
-      throw new Error(`Failed to send reaction via UAZAPI: ${uazapiResponse.status} - ${responseText}`);
-    }
-
-    let uazapiData;
-    try {
-      uazapiData = JSON.parse(responseText);
-    } catch {
-      uazapiData = { raw: responseText };
-    }
+     const apiResult = await sendWhatsAppReaction({
+       phone: chatId.split("@")[0],
+       emoji: emoji,
+       messageId: whatsappMessageId,
+       isFromMe: message.sender_type === "agent" || message.sender_type === "bot"
+     });
+ 
+     console.log("WhatsApp API response status:", apiResult.status);
+     console.log("WhatsApp API response:", apiResult.raw);
+ 
+     if (!apiResult.ok) {
+       console.error("WhatsApp API error:", apiResult.raw);
+       throw new Error(`Failed to send reaction via WhatsApp API: ${apiResult.status} - ${apiResult.raw}`);
+     }
+ 
+     const apiData = apiResult.data;
 
     // Update message metadata with reaction
     const existingReactions = message.metadata?.reactions || [];
@@ -122,10 +101,10 @@ serve(async (req) => {
       })
       .eq("id", messageId);
 
-    return new Response(
-      JSON.stringify({ success: true, uazapiData }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+     return new Response(
+       JSON.stringify({ success: true, apiData }),
+       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+     );
   } catch (error) {
     console.error("Error sending reaction:", error);
     return new Response(
