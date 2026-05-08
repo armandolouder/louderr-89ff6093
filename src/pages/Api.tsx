@@ -193,6 +193,10 @@ export default function Api() {
         <UazapiConfig status={instanceStatus} onStatusChange={setInstanceStatus} />
       )}
       
+      {activeIntegration === "evolution" && (
+        <EvolutionConfig status={instanceStatus} onStatusChange={setInstanceStatus} />
+      )}
+      
       {activeIntegration === "groq" && (
         <GroqConfig status={groqStatus} onStatusChange={setGroqStatus} />
       )}
