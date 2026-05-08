@@ -1,3 +1,4 @@
+ import { sendWhatsAppText, hasWhatsAppCredentials } from "../_shared/whatsapp.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -621,44 +622,32 @@ serve(async (req) => {
                   const replaceVars = (text: string) =>
                     text.replace(/\{nome\}/g, customerName).replace(/\{saudacao\}/g, saudacao);
 
-                  const reply = replaceVars(welcomeMessage);
-
-                if (reply) {
-                  const UAZAPI_SERVER_URL = Deno.env.get("UAZAPI_SERVER_URL");
-                  const UAZAPI_INSTANCE_TOKEN = Deno.env.get("UAZAPI_INSTANCE_TOKEN");
-
-                  if (UAZAPI_SERVER_URL && UAZAPI_INSTANCE_TOKEN) {
-                    const sendRes = await fetch(`${UAZAPI_SERVER_URL}/send/text`, {
-                      method: "POST",
-                      headers: {
-                        "token": UAZAPI_INSTANCE_TOKEN,
-                        "Content-Type": "application/json",
-                      },
-                      body: JSON.stringify({ number: phone, text: reply }),
-                    });
-
-                    if (sendRes.ok) {
-                      await supabase.from("messages").insert({
-                        conversation_id: conversation.id,
-                        content: reply,
-                        sender_type: "bot",
-                        message_type: "text",
-                        status: "sent",
-                        user_id: ownerUserId,
-                        metadata: { from_bot: true, bot_type: "welcome" },
-                      });
-
-                      await supabase.from("conversations").update({
-                        last_message: reply.substring(0, 100),
-                        last_message_at: new Date().toISOString(),
-                      }).eq("id", conversation.id);
-
-                      console.log("Welcome bot reply sent successfully");
-                    } else {
-                      console.error("Failed to send bot reply:", await sendRes.text());
-                    }
-                  }
-                }
+                   const reply = replaceVars(welcomeMessage);
+ 
+                   if (reply && hasWhatsAppCredentials()) {
+                     const sendRes = await sendWhatsAppText(phone, reply);
+ 
+                     if (sendRes.ok) {
+                       await supabase.from("messages").insert({
+                         conversation_id: conversation.id,
+                         content: reply,
+                         sender_type: "bot",
+                         message_type: "text",
+                         status: "sent",
+                         user_id: ownerUserId,
+                         metadata: { from_bot: true, bot_type: "welcome" },
+                       });
+ 
+                       await supabase.from("conversations").update({
+                         last_message: reply.substring(0, 100),
+                         last_message_at: new Date().toISOString(),
+                       }).eq("id", conversation.id);
+ 
+                       console.log("Welcome bot reply sent successfully");
+                     } else {
+                       console.error("Failed to send bot reply:", sendRes.raw);
+                     }
+                   }
                 } // end else (no existing welcome)
               } else {
                 console.log("Phone not in Nuvemshop customers, skipping bot");
