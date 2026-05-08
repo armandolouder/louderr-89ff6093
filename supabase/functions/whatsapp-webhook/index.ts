@@ -1,3 +1,83 @@
+ async function handleEvolutionWebhook(supabase: any, payload: EvolutionPayload, ownerUserId: string | null) {
+   console.log(`Processing Evolution Webhook: ${payload.event}`);
+   
+   if (payload.event === "messages.upsert") {
+     const messageData = payload.data;
+     // Evolution API v2 sends an array of messages sometimes
+     const messages = Array.isArray(messageData) ? messageData : [messageData];
+     
+     for (const m of messages) {
+       const msg = m.message;
+       if (!msg) continue;
+       if (m.key?.fromMe) continue;
+       
+       const remoteJid = m.key?.remoteJid || "";
+       const phone = remoteJid.replace("@s.whatsapp.net", "").replace("@c.us", "");
+       
+       if (remoteJid.includes("@g.us")) {
+         console.log("Skipping group message from Evolution");
+         continue;
+       }
+ 
+       const contactName = m.pushName || phone;
+       let content = "";
+       let messageType: "text" | "image" | "audio" | "video" | "document" = "text";
+ 
+       if (msg.conversation) content = msg.conversation;
+       else if (msg.extendedTextMessage) content = msg.extendedTextMessage.text;
+       else if (msg.imageMessage) { messageType = "image"; content = msg.imageMessage.caption || "[Imagem]"; }
+       else if (msg.videoMessage) { messageType = "video"; content = msg.videoMessage.caption || "[Vídeo]"; }
+       else if (msg.audioMessage) { messageType = "audio"; content = "[Áudio]"; }
+       else if (msg.documentMessage) { messageType = "document"; content = msg.documentMessage.title || "[Documento]"; }
+       
+       if (!content) content = "[Mensagem]";
+ 
+       // Reuse logic: Find or create contact
+       const phoneVariants = [phone, `+${phone}`, phone.startsWith("55") ? phone.slice(2) : phone];
+       const { data: existingContacts } = await supabase.from("contacts").select("*").eq("user_id", ownerUserId).in("phone", phoneVariants).limit(1);
+       let contact = existingContacts?.[0];
+ 
+       if (!contact) {
+         const { data: newContact } = await supabase.from("contacts").insert({ name: contactName, phone, user_id: ownerUserId }).select().single();
+         contact = newContact;
+       }
+ 
+       if (!contact) continue;
+ 
+       // Find latest open conversation
+       let { data: conversation } = await supabase.from("conversations").select("*").eq("contact_id", contact.id).eq("channel", "whatsapp").neq("status", "finalizado").order("last_message_at", { ascending: false }).limit(1).maybeSingle();
+ 
+       if (!conversation) {
+         const { data: newConv } = await supabase.from("conversations").insert({ contact_id: contact.id, channel: "whatsapp", status: "novo", user_id: ownerUserId }).select().single();
+         conversation = newConv;
+       }
+ 
+       if (!conversation) continue;
+ 
+       // Save message
+       await supabase.from("messages").insert({
+         conversation_id: conversation.id,
+         content,
+         sender_type: "contact",
+         message_type: messageType,
+         status: "received",
+         user_id: ownerUserId,
+         metadata: { evolution_message_id: m.key?.id, evolution_raw: m }
+       });
+ 
+       // Update conversation
+       await supabase.from("conversations").update({
+         last_message: content.substring(0, 100),
+         last_message_at: new Date().toISOString(),
+         status: conversation.status === "finalizado" ? "novo" : conversation.status
+       }).eq("id", conversation.id);
+     }
+   }
+   
+   return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+ }
+ 
+ import { sendWhatsAppText, hasWhatsAppCredentials } from "../_shared/whatsapp.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -49,15 +129,26 @@ interface UazapiChat {
   imagePreview: string;
 }
 
-interface UazapiPayload {
-  EventType: string;
-  message?: UazapiMessage;
-  chat?: UazapiChat;
-  owner: string;
-  token: string;
-  instanceName: string;
-  BaseUrl?: string;
-}
+ interface UazapiPayload {
+   EventType: string;
+   message?: UazapiMessage;
+   chat?: UazapiChat;
+   owner: string;
+   token: string;
+   instanceName: string;
+   BaseUrl?: string;
+ }
+ 
+ interface EvolutionPayload {
+   event: string;
+   instance: string;
+   data: any;
+   destination?: string;
+   date_time?: string;
+   sender?: string;
+   server_url?: string;
+   apikey?: string;
+ }
 
 // Download media from UAZAPI and upload to Supabase Storage
 async function downloadAndStoreMedia(
@@ -209,9 +300,18 @@ serve(async (req) => {
     const ownerUserId = ownerData as string | null;
     console.log("Webhook owner user_id:", ownerUserId);
 
-    const payload: UazapiPayload = await req.json();
-    console.log("Webhook received:", payload.EventType);
-    console.log("Payload:", JSON.stringify(payload).substring(0, 500));
+     const rawPayload = await req.json();
+     console.log("Webhook received. Payload preview:", JSON.stringify(rawPayload).substring(0, 500));
+ 
+     // Determine if it's Evolution API or Uazapi
+     const isEvolution = !!rawPayload.event && !!rawPayload.instance;
+     
+     if (isEvolution) {
+       return await handleEvolutionWebhook(supabase, rawPayload as EvolutionPayload, ownerUserId);
+     }
+ 
+     const payload = rawPayload as UazapiPayload;
+     console.log("Processing as Uazapi payload:", payload.EventType);
 
     // Handle reaction messages
     if (payload.EventType === "messages" && payload.message) {
@@ -601,44 +701,32 @@ serve(async (req) => {
                   const replaceVars = (text: string) =>
                     text.replace(/\{nome\}/g, customerName).replace(/\{saudacao\}/g, saudacao);
 
-                  const reply = replaceVars(welcomeMessage);
-
-                if (reply) {
-                  const UAZAPI_SERVER_URL = Deno.env.get("UAZAPI_SERVER_URL");
-                  const UAZAPI_INSTANCE_TOKEN = Deno.env.get("UAZAPI_INSTANCE_TOKEN");
-
-                  if (UAZAPI_SERVER_URL && UAZAPI_INSTANCE_TOKEN) {
-                    const sendRes = await fetch(`${UAZAPI_SERVER_URL}/send/text`, {
-                      method: "POST",
-                      headers: {
-                        "token": UAZAPI_INSTANCE_TOKEN,
-                        "Content-Type": "application/json",
-                      },
-                      body: JSON.stringify({ number: phone, text: reply }),
-                    });
-
-                    if (sendRes.ok) {
-                      await supabase.from("messages").insert({
-                        conversation_id: conversation.id,
-                        content: reply,
-                        sender_type: "bot",
-                        message_type: "text",
-                        status: "sent",
-                        user_id: ownerUserId,
-                        metadata: { from_bot: true, bot_type: "welcome" },
-                      });
-
-                      await supabase.from("conversations").update({
-                        last_message: reply.substring(0, 100),
-                        last_message_at: new Date().toISOString(),
-                      }).eq("id", conversation.id);
-
-                      console.log("Welcome bot reply sent successfully");
-                    } else {
-                      console.error("Failed to send bot reply:", await sendRes.text());
-                    }
-                  }
-                }
+                   const reply = replaceVars(welcomeMessage);
+ 
+                   if (reply && hasWhatsAppCredentials()) {
+                     const sendRes = await sendWhatsAppText(phone, reply);
+ 
+                     if (sendRes.ok) {
+                       await supabase.from("messages").insert({
+                         conversation_id: conversation.id,
+                         content: reply,
+                         sender_type: "bot",
+                         message_type: "text",
+                         status: "sent",
+                         user_id: ownerUserId,
+                         metadata: { from_bot: true, bot_type: "welcome" },
+                       });
+ 
+                       await supabase.from("conversations").update({
+                         last_message: reply.substring(0, 100),
+                         last_message_at: new Date().toISOString(),
+                       }).eq("id", conversation.id);
+ 
+                       console.log("Welcome bot reply sent successfully");
+                     } else {
+                       console.error("Failed to send bot reply:", sendRes.raw);
+                     }
+                   }
                 } // end else (no existing welcome)
               } else {
                 console.log("Phone not in Nuvemshop customers, skipping bot");

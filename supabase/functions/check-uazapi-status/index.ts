@@ -1,3 +1,50 @@
+     const WHATSAPP_PROVIDER = Deno.env.get("WHATSAPP_PROVIDER")?.toLowerCase() || "uazapi";
+ 
+     if (WHATSAPP_PROVIDER === "evolution") {
+       const EVOLUTION_API_URL = Deno.env.get("EVOLUTION_API_URL");
+       const EVOLUTION_API_KEY = Deno.env.get("EVOLUTION_API_KEY");
+       const EVOLUTION_INSTANCE = Deno.env.get("EVOLUTION_INSTANCE_NAME");
+ 
+       if (!EVOLUTION_API_URL || !EVOLUTION_API_KEY || !EVOLUTION_INSTANCE) {
+         return new Response(
+           JSON.stringify({ 
+             success: false, 
+             connected: false,
+             error: "Evolution API credentials not configured in secrets" 
+           }),
+           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+         );
+       }
+ 
+       try {
+         const baseUrl = EVOLUTION_API_URL.endsWith("/") ? EVOLUTION_API_URL.slice(0, -1) : EVOLUTION_API_URL;
+         const response = await fetch(`${baseUrl}/instance/connectionState/${EVOLUTION_INSTANCE}`, {
+           headers: { "apikey": EVOLUTION_API_KEY }
+         });
+         
+         const data = await response.json();
+         const isConnected = data.instance?.state === "open";
+ 
+         return new Response(
+           JSON.stringify({
+             success: true,
+             connected: isConnected,
+             serverUrl: EVOLUTION_API_URL.replace(/https?:\/\//, "").split("/")[0],
+             name: EVOLUTION_INSTANCE,
+             status: data.instance?.state || "unknown",
+             provider: "evolution"
+           }),
+           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+         );
+       } catch (e) {
+         return new Response(
+           JSON.stringify({ success: false, connected: false, error: e.message }),
+           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+         );
+       }
+     }
+ 
+     // Fallback to original Uazapi logic if provider is not evolution
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {

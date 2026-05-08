@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders, handleCorsPreflightRequest, jsonResponse } from "../_shared/cors.ts";
 import { verifyUserJwt, createServiceClient } from "../_shared/auth.ts";
-import { sendUazapiText, sendUazapiMedia, hasUazapiCredentials, UazapiMediaType } from "../_shared/uazapi.ts";
+ import { sendWhatsAppText, sendWhatsAppMedia, hasWhatsAppCredentials } from "../_shared/whatsapp.ts";
 import { digitsOnly } from "../_shared/phone.ts";
 
 interface SendMessageRequest {
@@ -20,8 +20,8 @@ serve(async (req) => {
     if (!authResult.ok) return authResult.response;
     const authenticatedUserId = authResult.auth.userId;
 
-    if (!hasUazapiCredentials()) {
-      throw new Error("UAZAPI credentials not configured");
+     if (!hasWhatsAppCredentials()) {
+       throw new Error("WhatsApp credentials not configured");
     }
 
     const supabase = createServiceClient();
@@ -51,9 +51,9 @@ serve(async (req) => {
     const formattedPhone = digitsOnly(phone);
     console.log(`Sending ${messageType} message to ${formattedPhone}`);
 
-    let result;
+     let result: { ok: boolean; status: number; data: any; raw: string };
     if (messageType === "text") {
-      result = await sendUazapiText(formattedPhone, content);
+       result = await sendWhatsAppText(formattedPhone, content);
     } else if (mediaUrl) {
       // Resolve storage path to a signed URL for UAZAPI to download
       let fileUrl = mediaUrl;
@@ -68,24 +68,24 @@ serve(async (req) => {
         fileUrl = signedData.signedUrl;
       }
 
-      result = await sendUazapiMedia({
-        phone: formattedPhone,
-        mediaType: messageType as UazapiMediaType,
-        fileUrl,
-        caption: content || "",
-      });
+       result = await sendWhatsAppMedia({
+         phone: formattedPhone,
+         mediaType: messageType as any,
+         fileUrl,
+         caption: content || "",
+       });
     } else {
       throw new Error("Media URL required for non-text messages");
     }
 
-    console.log("UAZAPI response status:", result.status);
-    console.log("UAZAPI response:", result.raw);
+     console.log("WhatsApp API response status:", result.status);
+     console.log("WhatsApp API response:", result.raw);
 
     if (!result.ok) {
-      console.error("UAZAPI error:", result.raw);
-      throw new Error(`Failed to send message via UAZAPI: ${result.status} - ${result.raw}`);
-    }
-    const uazapiData = result.data;
+       console.error("WhatsApp API error:", result.raw);
+       throw new Error(`Failed to send message via WhatsApp API: ${result.status} - ${result.raw}`);
+     }
+     const apiResponseData = result.data;
 
     // Save message to database
     const { data: message, error: msgError } = await supabase
@@ -98,7 +98,7 @@ serve(async (req) => {
         media_url: mediaUrl || null,
         status: "sent",
         user_id: authenticatedUserId,
-        metadata: { uazapi_response: uazapiData },
+         metadata: { api_response: apiResponseData },
       })
       .select()
       .single();
@@ -117,7 +117,7 @@ serve(async (req) => {
       })
       .eq("id", conversationId);
 
-    return jsonResponse({ success: true, message, uazapiData });
+     return jsonResponse({ success: true, message, apiResponseData });
   } catch (error) {
     console.error("Error sending WhatsApp message:", error);
     return jsonResponse({ success: false, error: (error as Error).message }, { status: 500 });

@@ -1,0 +1,119 @@
+ export async function sendWhatsAppReaction(params: {
+   phone: string;
+   emoji: string;
+   messageId: string;
+   isFromMe?: boolean;
+ }): Promise<WhatsAppResult> {
+   const provider = getActiveProvider();
+   
+   if (provider === "evolution") {
+     const result = await sendEvolutionReaction(params);
+     return {
+       ok: result.ok,
+       status: result.status,
+       data: result.data,
+       raw: result.raw
+     };
+   } else {
+     // UAZAPI reaction
+     const serverUrl = Deno.env.get("UAZAPI_SERVER_URL");
+     const token = Deno.env.get("UAZAPI_INSTANCE_TOKEN");
+     
+     const res = await fetch(`${serverUrl}/message/react`, {
+       method: "POST",
+       headers: {
+         "Content-Type": "application/json",
+         "token": token!,
+       },
+       body: JSON.stringify({
+         number: `${digitsOnly(params.phone)}@s.whatsapp.net`,
+         text: params.emoji,
+         id: params.messageId,
+       }),
+     });
+     
+     const raw = await res.text();
+     let data: any;
+     try { data = JSON.parse(raw); } catch { data = { raw }; }
+     
+     return { ok: res.ok, status: res.status, data, raw };
+   }
+ }
+ import { sendUazapiText, sendUazapiMedia, hasUazapiCredentials, UazapiMediaType } from "./uazapi.ts";
+ import { sendEvolutionText, sendEvolutionMedia, hasEvolutionCredentials, sendEvolutionReaction } from "./evolution-api.ts";
+ import { digitsOnly } from "./phone.ts";
+ 
+ export type WhatsAppProvider = "uazapi" | "evolution";
+ 
+ export interface WhatsAppResult {
+   ok: boolean;
+   status: number;
+   data: any;
+   raw: string;
+ }
+ 
+ export function getActiveProvider(): WhatsAppProvider {
+   const provider = Deno.env.get("WHATSAPP_PROVIDER")?.toLowerCase();
+   if (provider === "evolution") return "evolution";
+   return "uazapi"; // Default to uazapi for backward compatibility
+ }
+ 
+ export async function sendWhatsAppText(phone: string, text: string): Promise<WhatsAppResult> {
+   const provider = getActiveProvider();
+   
+   if (provider === "evolution") {
+     const result = await sendEvolutionText(phone, text);
+     return {
+       ok: result.ok,
+       status: result.status,
+       data: result.data,
+       raw: result.raw
+     };
+   } else {
+     const result = await sendUazapiText(phone, text);
+     return {
+       ok: result.ok,
+       status: result.status,
+       data: result.data,
+       raw: result.raw
+     };
+   }
+ }
+ 
+ export async function sendWhatsAppMedia(params: {
+   phone: string;
+   mediaType: "image" | "video" | "audio" | "document";
+   fileUrl: string;
+   caption?: string;
+ }): Promise<WhatsAppResult> {
+   const provider = getActiveProvider();
+   
+   if (provider === "evolution") {
+     const result = await sendEvolutionMedia(params);
+     return {
+       ok: result.ok,
+       status: result.status,
+       data: result.data,
+       raw: result.raw
+     };
+   } else {
+     const result = await sendUazapiMedia({
+       phone: params.phone,
+       mediaType: params.mediaType as UazapiMediaType,
+       fileUrl: params.fileUrl,
+       caption: params.caption
+     });
+     return {
+       ok: result.ok,
+       status: result.status,
+       data: result.data,
+       raw: result.raw
+     };
+   }
+ }
+ 
+ export function hasWhatsAppCredentials(): boolean {
+   const provider = getActiveProvider();
+   if (provider === "evolution") return hasEvolutionCredentials();
+   return hasUazapiCredentials();
+ }
