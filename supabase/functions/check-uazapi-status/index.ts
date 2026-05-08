@@ -46,31 +46,57 @@
          );
        }
  
-       try {
-         const baseUrl = EVOLUTION_API_URL.endsWith("/") ? EVOLUTION_API_URL.slice(0, -1) : EVOLUTION_API_URL;
-          const checkUrl = `${baseUrl}/instance/connectionState/${EVOLUTION_INSTANCE}`;
-          console.log(`Fetching Evolution status from: ${checkUrl}`);
+        const baseUrl = EVOLUTION_API_URL.endsWith("/") ? EVOLUTION_API_URL.slice(0, -1) : EVOLUTION_API_URL;
+        const endpoints = [
+          `/instance/connectionState/${EVOLUTION_INSTANCE}`,
+          `/instance/status/${EVOLUTION_INSTANCE}`,
+          `/instance/info/${EVOLUTION_INSTANCE}`
+        ];
 
-          const response = await fetch(checkUrl, {
-           headers: { "apikey": EVOLUTION_API_KEY }
-         });
-         
-         const data = await response.json();
-          console.log("Evolution response data:", JSON.stringify(data));
-          const isConnected = data.instance?.state === "open" || data.status === "open" || data.state === "open" || data.connected === true;
- 
-         return new Response(
-           JSON.stringify({
-             success: true,
-             connected: isConnected,
-             serverUrl: EVOLUTION_API_URL.replace(/https?:\/\//, "").split("/")[0],
-             name: EVOLUTION_INSTANCE,
-             status: data.instance?.state || "unknown",
-             provider: "evolution"
-           }),
-           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-         );
-       } catch (e) {
+        let lastData = null;
+        let isConnected = false;
+
+        for (const endpoint of endpoints) {
+          try {
+            const checkUrl = `${baseUrl}${endpoint}`;
+            console.log(`Trying Evolution endpoint: ${checkUrl}`);
+            const response = await fetch(checkUrl, {
+              headers: { "apikey": EVOLUTION_API_KEY }
+            });
+            
+            if (response.ok) {
+              const data = await response.json();
+              console.log(`Evolution response from ${endpoint}:`, JSON.stringify(data));
+              lastData = data;
+              // Check various formats of "connected" status
+              isConnected = 
+                data.instance?.state === "open" || 
+                data.status === "open" || 
+                data.state === "open" || 
+                data.instance?.status === "connected" ||
+                data.instance?.connected === true ||
+                data.connected === true;
+              
+              if (isConnected) break;
+            }
+          } catch (e) {
+            console.log(`Error on Evolution endpoint ${endpoint}:`, e.message);
+          }
+        }
+
+        if (lastData || isConnected) {
+          return new Response(
+            JSON.stringify({
+              success: true,
+              connected: isConnected,
+              serverUrl: EVOLUTION_API_URL.replace(/https?:\/\//, "").split("/")[0],
+              name: EVOLUTION_INSTANCE,
+              status: isConnected ? "open" : (lastData?.instance?.state || "disconnected"),
+              provider: "evolution"
+            }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        } else {
          return new Response(
            JSON.stringify({ success: false, connected: false, error: e.message }),
            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
