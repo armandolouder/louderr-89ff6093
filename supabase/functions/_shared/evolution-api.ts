@@ -41,19 +41,23 @@
    };
  }
  
- async function postToEvolution(path: string, body: Record<string, any>): Promise<EvolutionApiResult> {
-   const { serverUrl, apiKey, instance } = getCredentials();
- 
-   const res = await fetch(`${serverUrl}${path.replace("{instance}", instance)}`, {
-     method: "POST",
-     headers: {
-       "Content-Type": "application/json",
-       "apikey": apiKey,
-     },
-     body: JSON.stringify(body),
-   });
- 
-   const raw = await res.text();
+  async function postToEvolution(path: string, body: Record<string, any>): Promise<EvolutionApiResult> {
+    const { serverUrl, apiKey, instance } = getCredentials();
+    const fullUrl = `${serverUrl}${path.replace("{instance}", instance)}`;
+    
+    console.log(`Evolution API Request: POST ${fullUrl}`);
+  
+    const res = await fetch(fullUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": apiKey,
+      },
+      body: JSON.stringify(body),
+    });
+  
+    const raw = await res.text();
+    console.log(`Evolution API Response [${res.status}]: ${raw.substring(0, 500)}`);
    let data: any;
    try {
      data = JSON.parse(raw);
