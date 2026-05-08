@@ -765,12 +765,12 @@ serve(async (req) => {
           .update({ status: newStatus })
           .eq("metadata->whatsapp_message_id", msg.messageid);
       }
-    }
+      }
 
-    return new Response(
-      JSON.stringify({ success: true }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+      return new Response(
+        JSON.stringify({ success: true }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
   } catch (error) {
     console.error("Webhook error:", error);
     return new Response(
