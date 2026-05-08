@@ -130,7 +130,12 @@
                    {status?.error || "Verifique se WHATSAPP_PROVIDER está como 'evolution' nos secrets"}
                  </p>
                </div>
-               <Badge variant="secondary">Offline</Badge>
+                <div className="flex flex-col items-end gap-1">
+                  <Badge variant="secondary">Offline</Badge>
+                  <p className="text-[10px] text-muted-foreground whitespace-nowrap">
+                    Secret: WHATSAPP_PROVIDER = evolution
+                  </p>
+                </div>
              </>
            )}
          </div>
