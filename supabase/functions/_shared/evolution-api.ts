@@ -68,21 +68,15 @@
    return { ok: res.ok, status: res.status, data, raw };
  }
  
-   export function sendEvolutionText(phone: string, text: string): Promise<EvolutionApiResult> {
-     // Evolution API v2 - fallback to standard payload if simplified fails
-     // Some implementations of "Evolution Proxy" or "ZapConnect" expect the full object
-     return postToEvolution("/message/sendText/{instance}", {
-       number: digitsOnly(phone),
-       options: {
-         delay: 1200,
-         presence: "composing",
-         linkPreview: false
-       },
-       textMessage: {
-         text: text
-       }
-     });
-   }
+    export function sendEvolutionText(phone: string, text: string): Promise<EvolutionApiResult> {
+      // Evolution API v2 - Strict format based on documentation
+      return postToEvolution("/message/sendText/{instance}", {
+        number: digitsOnly(phone),
+        text: text,
+        delay: 1200,
+        linkPreview: false
+      });
+    }
  
  export function sendEvolutionMedia(params: {
    phone: string;
