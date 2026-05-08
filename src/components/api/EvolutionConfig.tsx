@@ -26,9 +26,24 @@
  
  export function EvolutionConfig({ status, onStatusChange }: EvolutionConfigProps) {
    const [isChecking, setIsChecking] = useState(false);
-   const [apiUrl, setApiUrl] = useState("");
-   const [apiKey, setApiKey] = useState("");
-   const [instanceName, setInstanceName] = useState("");
+   const [apiUrl, setApiUrl] = useState(() => localStorage.getItem("evo_url_cache") || "");
+   const [apiKey, setApiKey] = useState(() => localStorage.getItem("evo_key_cache") || "");
+   const [instanceName, setInstanceName] = useState(() => localStorage.getItem("evo_instance_cache") || "");
+ 
+   const handleUrlChange = (val: string) => {
+     setApiUrl(val);
+     localStorage.setItem("evo_url_cache", val);
+   };
+ 
+   const handleKeyChange = (val: string) => {
+     setApiKey(val);
+     localStorage.setItem("evo_key_cache", val);
+   };
+ 
+   const handleInstanceChange = (val: string) => {
+     setInstanceName(val);
+     localStorage.setItem("evo_instance_cache", val);
+   };
  
    const saveConfig = async () => {
      if (!apiUrl || !apiKey || !instanceName) {
@@ -146,7 +161,7 @@
                  id="evo-url" 
                  placeholder="https://seu-servidor.com" 
                  value={apiUrl}
-                 onChange={(e) => setApiUrl(e.target.value)}
+                 onChange={(e) => handleUrlChange(e.target.value)}
                  className="font-mono text-sm"
                />
              </div>
@@ -158,7 +173,7 @@
                  type="password"
                  placeholder="Sua apikey global" 
                  value={apiKey}
-                 onChange={(e) => setApiKey(e.target.value)}
+                 onChange={(e) => handleKeyChange(e.target.value)}
                  className="font-mono text-sm"
                />
              </div>
@@ -169,7 +184,7 @@
                  id="evo-instance" 
                  placeholder="Ex: MinhaInstancia" 
                  value={instanceName}
-                 onChange={(e) => setInstanceName(e.target.value)}
+                 onChange={(e) => handleInstanceChange(e.target.value)}
                  className="font-mono text-sm"
                />
              </div>
