@@ -53,11 +53,12 @@
        }
  
         const baseUrl = EVOLUTION_API_URL.endsWith("/") ? EVOLUTION_API_URL.slice(0, -1) : EVOLUTION_API_URL;
-        const endpoints = [
-          `/instance/connectionState/${EVOLUTION_INSTANCE}`,
-          `/instance/status/${EVOLUTION_INSTANCE}`,
-          `/instance/info/${EVOLUTION_INSTANCE}`
-        ];
+         const endpoints = [
+           `/instance/connectionState/${EVOLUTION_INSTANCE}`,
+           `/instance/fetchInstances?instanceName=${EVOLUTION_INSTANCE}`,
+           `/instance/status/${EVOLUTION_INSTANCE}`,
+           `/instance/info/${EVOLUTION_INSTANCE}`
+         ];
 
         let lastData = null;
         let isConnected = false;
