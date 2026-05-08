@@ -26,57 +26,7 @@ function buildPhoneCandidates(rawPhone: string) {
   return Array.from(candidates).filter(Boolean);
 }
 
-async function sendToUazapi({
-  baseUrl,
-  token,
-  number,
-  content,
-  mediaUrl,
-}: {
-  baseUrl: string;
-  token: string;
-  number: string;
-  content: string;
-  mediaUrl?: string;
-}) {
-  const endpoint = mediaUrl ? "/send/media" : "/send/text";
-  const body = mediaUrl
-    ? {
-        number,
-        type: "image",
-        file: mediaUrl,
-        text: content,
-      }
-    : {
-        number,
-        text: content,
-      };
-
-  const response = await fetch(`${baseUrl}${endpoint}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      token,
-    },
-    body: JSON.stringify(body),
-  });
-
-  const responseText = await response.text();
-
-  let data: Record<string, unknown>;
-  try {
-    data = JSON.parse(responseText);
-  } catch {
-    data = { raw: responseText };
-  }
-
-  return {
-    ok: response.ok,
-    status: response.status,
-    responseText,
-    data,
-  };
-}
+ import { sendWhatsAppText, sendWhatsAppMedia, hasWhatsAppCredentials } from "../_shared/whatsapp.ts";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -109,15 +59,13 @@ serve(async (req) => {
       });
     }
 
-    const authenticatedUserId = claimsData.claims.sub;
-    const UAZAPI_SERVER_URL = Deno.env.get("UAZAPI_SERVER_URL");
-    const UAZAPI_INSTANCE_TOKEN = Deno.env.get("UAZAPI_INSTANCE_TOKEN");
-    const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
-    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-
-    if (!UAZAPI_SERVER_URL || !UAZAPI_INSTANCE_TOKEN) {
-      throw new Error("UAZAPI credentials not configured");
-    }
+     const authenticatedUserId = claimsData.claims.sub;
+     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+ 
+     if (!hasWhatsAppCredentials()) {
+       throw new Error("WhatsApp credentials not configured");
+     }
 
     if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
       throw new Error("Supabase credentials not configured");
@@ -140,40 +88,36 @@ serve(async (req) => {
     console.log(`Sending individual message, candidates: ${phoneCandidates.join(", ")}, hasMedia: ${!!mediaUrl}`);
 
     let successfulCandidate: string | null = null;
-    let uazapiData: Record<string, unknown> | null = null;
-    let lastErrorMessage = "";
-
-    for (const candidate of phoneCandidates) {
-      const result = await sendToUazapi({
-        baseUrl: UAZAPI_SERVER_URL,
-        token: UAZAPI_INSTANCE_TOKEN,
-        number: candidate,
-        content,
-        mediaUrl,
-      });
-
-      console.log(`UAZAPI response status for ${candidate}:`, result.status);
-      console.log(`UAZAPI response for ${candidate}:`, result.responseText);
-
-      if (result.ok) {
-        successfulCandidate = candidate;
-        uazapiData = result.data;
-        break;
-      }
-
-      lastErrorMessage = `UAZAPI error: ${result.status} - ${result.responseText}`;
-      uazapiData = result.data;
-
-      const responseText = result.responseText.toLowerCase();
-      const notFoundOnWhatsApp =
-        responseText.includes("not on whatsapp") ||
-        responseText.includes("não está no whatsapp") ||
-        responseText.includes("not found");
-
-      if (!notFoundOnWhatsApp) {
-        break;
-      }
-    }
+     let apiData: any = null;
+     let lastErrorMessage = "";
+ 
+     for (const candidate of phoneCandidates) {
+       const result = mediaUrl
+         ? await sendWhatsAppMedia({ phone: candidate, mediaType: "image", fileUrl: mediaUrl, caption: content })
+         : await sendWhatsAppText(candidate, content);
+ 
+       console.log(`WhatsApp API response status for ${candidate}:`, result.status);
+       console.log(`WhatsApp API response for ${candidate}:`, result.raw);
+ 
+       if (result.ok) {
+         successfulCandidate = candidate;
+         apiData = result.data;
+         break;
+       }
+ 
+       lastErrorMessage = `WhatsApp API error: ${result.status} - ${result.raw}`;
+       apiData = result.data;
+ 
+       const responseText = result.raw.toLowerCase();
+       const notFoundOnWhatsApp =
+         responseText.includes("not on whatsapp") ||
+         responseText.includes("não está no whatsapp") ||
+         responseText.includes("not found");
+ 
+       if (!notFoundOnWhatsApp) {
+         break;
+       }
+     }
 
     if (!successfulCandidate) {
       return new Response(
@@ -301,7 +245,7 @@ serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ success: true, data: uazapiData }), {
+     return new Response(JSON.stringify({ success: true, data: apiData }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
