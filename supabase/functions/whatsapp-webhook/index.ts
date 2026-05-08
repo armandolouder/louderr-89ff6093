@@ -321,8 +321,8 @@ serve(async (req) => {
         const payload = rawPayload as UazapiPayload;
         console.log("Processing as Uazapi payload:", payload.EventType);
 
-    // Handle reaction messages
-    if (payload.EventType === "messages" && payload.message) {
+        // Handle reaction messages
+        if (payload.EventType === "messages" && payload.message) {
       const msg = payload.message;
       const msgType = (msg.messageType || "").toLowerCase();
       
