@@ -24,7 +24,9 @@
         return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
-      console.log(`Starting status check...`);
+      const body = await req.json().catch(() => ({}));
+      console.log(`Starting status check with body:`, JSON.stringify(body));
+
       const WHATSAPP_PROVIDER_RAW = Deno.env.get("WHATSAPP_PROVIDER") || "";
       const WHATSAPP_PROVIDER = WHATSAPP_PROVIDER_RAW.toLowerCase().trim();
       
@@ -32,11 +34,12 @@
       
       // If it starts with zc_ or doesn't match 'evolution', it might be a legacy token in the wrong field
       // or just the default uazapi.
-      const isEvolution = WHATSAPP_PROVIDER === "evolution";
+      const isEvolution = WHATSAPP_PROVIDER === "evolution" || body.evolution_url;
+      
       if (isEvolution) {
-       const EVOLUTION_API_URL = Deno.env.get("EVOLUTION_API_URL");
-       const EVOLUTION_API_KEY = Deno.env.get("EVOLUTION_API_KEY");
-       const EVOLUTION_INSTANCE = Deno.env.get("EVOLUTION_INSTANCE_NAME");
+        const EVOLUTION_API_URL = body.evolution_url || Deno.env.get("EVOLUTION_API_URL");
+        const EVOLUTION_API_KEY = body.evolution_key || Deno.env.get("EVOLUTION_API_KEY");
+        const EVOLUTION_INSTANCE = body.evolution_instance || Deno.env.get("EVOLUTION_INSTANCE_NAME");
  
         console.log(`Evolution Config - URL: ${EVOLUTION_API_URL}, Instance: ${EVOLUTION_INSTANCE}`);
 

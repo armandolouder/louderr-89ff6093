@@ -58,41 +58,52 @@
      toast.info("As credenciais foram inseridas. Agora clique em 'Verificar Conexão' para testar.");
    };
  
-   const checkStatus = async () => {
-     setIsChecking(true);
-     try {
-       const { data, error } = await supabase.functions.invoke("check-uazapi-status");
- 
-       if (error) {
-         console.error("Error checking status:", error);
-         onStatusChange({ connected: false, error: error.message });
-         toast.error("Erro ao verificar status");
-       } else if (data) {
-         onStatusChange({
-           connected: data.connected,
-           serverUrl: data.serverUrl,
-           phoneNumber: data.phoneNumber,
-           name: data.name,
-           status: data.status,
-           message: data.message,
-           error: data.error,
-           provider: data.provider
-         });
-         
-         if (data.connected) {
-           toast.success("Evolution API conectada!");
-         } else if (data.error) {
-           toast.error(data.error);
-         }
-       }
-     } catch (error) {
-       console.error("Error checking instance status:", error);
-       onStatusChange({ connected: false, error: "Erro de conexão" });
-       toast.error("Erro ao verificar status da instância");
-     } finally {
-       setIsChecking(false);
-     }
-   };
+  const checkStatus = async () => {
+    if (!apiUrl || !apiKey || !instanceName) {
+      toast.error("Preencha todos os campos do formulário antes de verificar");
+      return;
+    }
+
+    setIsChecking(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("check-uazapi-status", {
+        body: {
+          evolution_url: apiUrl,
+          evolution_key: apiKey,
+          evolution_instance: instanceName
+        }
+      });
+
+      if (error) {
+        console.error("Error checking status:", error);
+        onStatusChange({ connected: false, error: error.message });
+        toast.error("Erro ao verificar status");
+      } else if (data) {
+        onStatusChange({
+          connected: data.connected,
+          serverUrl: data.serverUrl,
+          phoneNumber: data.phoneNumber,
+          name: data.name,
+          status: data.status,
+          message: data.message,
+          error: data.error,
+          provider: data.provider
+        });
+        
+        if (data.connected) {
+          toast.success("Evolution API conectada!");
+        } else if (data.error) {
+          toast.error(data.error);
+        }
+      }
+    } catch (error) {
+      console.error("Error checking instance status:", error);
+      onStatusChange({ connected: false, error: "Erro de conexão" });
+      toast.error("Erro ao verificar status da instância");
+    } finally {
+      setIsChecking(false);
+    }
+  };
  
    return (
      <div className="flex-1 p-6 overflow-y-auto">
