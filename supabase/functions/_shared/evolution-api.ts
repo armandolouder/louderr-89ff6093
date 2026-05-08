@@ -74,8 +74,9 @@
     const isZapConnect = serverUrl.includes("zapconnect");
 
     if (isZapConnect) {
-      console.log("Relay/Proxy detected (zapconnect), using simplified JSON format");
-      return postToEvolution("/message/sendText/{instance}", {
+      console.log("Relay/Proxy detected (zapconnect), using Uazapi-style endpoint/format");
+      // Use direct relay endpoint which usually mirrors Uazapi behavior
+      return postToEvolution("/message/sendText", {
         number: digitsOnly(phone),
         text: text
       });
