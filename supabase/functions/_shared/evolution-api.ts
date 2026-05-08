@@ -1,3 +1,21 @@
+ export function sendEvolutionReaction(params: {
+   phone: string;
+   emoji: string;
+   messageId: string;
+   isFromMe?: boolean;
+ }): Promise<EvolutionApiResult> {
+   return postToEvolution("/message/sendReaction/{instance}", {
+     number: digitsOnly(params.phone),
+     reactionMessage: {
+       key: {
+         id: params.messageId,
+         fromMe: params.isFromMe ?? false,
+         remoteJid: `${digitsOnly(params.phone)}@s.whatsapp.net`
+       },
+       reaction: params.emoji
+     }
+   });
+ }
  import { digitsOnly } from "./phone.ts";
  
  export interface EvolutionApiResult {
