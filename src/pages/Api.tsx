@@ -41,7 +41,9 @@ interface BrevoStatus {
 }
 
 export default function Api() {
-  const [activeIntegration, setActiveIntegration] = useState<IntegrationId>("uazapi");
+  const [activeIntegration, setActiveIntegration] = useState<IntegrationId>(() => {
+    return (localStorage.getItem("active_integration_id") as IntegrationId) || "uazapi";
+  });
    const [instanceStatus, setInstanceStatus] = useState<InstanceStatus | null>(() => {
      const saved = localStorage.getItem("evolution_config_cache");
      return saved ? JSON.parse(saved) : null;
@@ -52,10 +54,20 @@ export default function Api() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([checkInstanceStatus(), checkGroqStatus(), checkBrevoStatus()]).finally(() => {
+    const loadStatus = async () => {
+      await Promise.all([checkInstanceStatus(), checkGroqStatus(), checkBrevoStatus()]);
       setIsLoading(false);
-    });
+    };
+    loadStatus();
+    
+    const interval = setInterval(checkInstanceStatus, 30000);
+    return () => clearInterval(interval);
   }, []);
+
+  const handleSelectIntegration = (id: IntegrationId) => {
+    setActiveIntegration(id);
+    localStorage.setItem("active_integration_id", id);
+  };
 
   const checkInstanceStatus = async () => {
     try {
@@ -190,7 +202,7 @@ export default function Api() {
     <div className="flex h-full bg-background">
       <IntegrationSidebar
         activeIntegration={activeIntegration}
-        onSelect={setActiveIntegration}
+        onSelect={handleSelectIntegration}
         integrations={integrations}
       />
       
