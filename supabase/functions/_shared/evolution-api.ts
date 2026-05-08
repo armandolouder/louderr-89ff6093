@@ -41,19 +41,23 @@
    };
  }
  
- async function postToEvolution(path: string, body: Record<string, any>): Promise<EvolutionApiResult> {
-   const { serverUrl, apiKey, instance } = getCredentials();
- 
-   const res = await fetch(`${serverUrl}${path.replace("{instance}", instance)}`, {
-     method: "POST",
-     headers: {
-       "Content-Type": "application/json",
-       "apikey": apiKey,
-     },
-     body: JSON.stringify(body),
-   });
- 
-   const raw = await res.text();
+  async function postToEvolution(path: string, body: Record<string, any>): Promise<EvolutionApiResult> {
+    const { serverUrl, apiKey, instance } = getCredentials();
+    const fullUrl = `${serverUrl}${path.replace("{instance}", instance)}`;
+    
+    console.log(`Evolution API Request: POST ${fullUrl}`);
+  
+    const res = await fetch(fullUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": apiKey,
+      },
+      body: JSON.stringify(body),
+    });
+  
+    const raw = await res.text();
+    console.log(`Evolution API Response [${res.status}]: ${raw.substring(0, 500)}`);
    let data: any;
    try {
      data = JSON.parse(raw);
@@ -64,19 +68,31 @@
    return { ok: res.ok, status: res.status, data, raw };
  }
  
- export function sendEvolutionText(phone: string, text: string): Promise<EvolutionApiResult> {
-   return postToEvolution("/message/sendText/{instance}", {
-     number: digitsOnly(phone),
-     options: {
-       delay: 1200,
-       presence: "composing",
-       linkPreview: false
-     },
-     textMessage: {
-       text: text
-     }
-   });
- }
+  export function sendEvolutionText(phone: string, text: string): Promise<EvolutionApiResult> {
+    // If serverUrl contains zapconnect/api, it might be a relay/proxy that expects Uazapi-style JSON
+    const serverUrl = Deno.env.get("EVOLUTION_API_URL") || "";
+    const isZapConnect = serverUrl.includes("zapconnect");
+
+    if (isZapConnect) {
+      console.log("Relay/Proxy detected (zapconnect), using simplified JSON format");
+      return postToEvolution("/message/sendText/{instance}", {
+        number: digitsOnly(phone),
+        text: text
+      });
+    }
+
+    return postToEvolution("/message/sendText/{instance}", {
+      number: digitsOnly(phone),
+      options: {
+        delay: 1200,
+        presence: "composing",
+        linkPreview: false
+      },
+      textMessage: {
+        text: text
+      }
+    });
+  }
  
  export function sendEvolutionMedia(params: {
    phone: string;
