@@ -760,11 +760,11 @@ serve(async (req) => {
         };
         const newStatus = statusMap[msg.status] || "sent";
 
-        await supabase
-          .from("messages")
-          .update({ status: newStatus })
-          .eq("metadata->whatsapp_message_id", msg.messageid);
-      }
+          await supabase
+            .from("messages")
+            .update({ status: newStatus })
+            .eq("metadata->whatsapp_message_id", msg.messageid);
+        }
       }
 
       return new Response(
