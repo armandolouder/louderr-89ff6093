@@ -69,30 +69,7 @@
  }
  
   export function sendEvolutionText(phone: string, text: string): Promise<EvolutionApiResult> {
-    // If serverUrl contains zapconnect/api, it might be a relay/proxy that expects Uazapi-style JSON
-    const serverUrl = Deno.env.get("EVOLUTION_API_URL") || "";
-    const isZapConnect = serverUrl.includes("zapconnect");
-
-    if (isZapConnect) {
-      console.log("Relay/Proxy detected (zapconnect), trying direct text send endpoint with simple payload");
-      const { serverUrl, apiKey, instance } = getCredentials();
-      const fullUrl = `${serverUrl}/message/sendText/${instance}`;
-      
-      return (async () => {
-        console.log(`Evolution API Request (Relay): POST ${fullUrl}`);
-        const res = await fetch(fullUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "apikey": apiKey },
-          body: JSON.stringify({ number: digitsOnly(phone), text: text })
-        });
-        const raw = await res.text();
-        console.log(`Evolution API Response (Relay) [${res.status}]: ${raw.substring(0, 500)}`);
-        let data: any;
-        try { data = JSON.parse(raw); } catch { data = { raw }; }
-        return { ok: res.ok, status: res.status, data, raw };
-      })();
-    }
-
+    // Padrão Evolution API v2 completo
     return postToEvolution("/message/sendText/{instance}", {
       number: digitsOnly(phone),
       options: {
