@@ -49,15 +49,26 @@ interface UazapiChat {
   imagePreview: string;
 }
 
-interface UazapiPayload {
-  EventType: string;
-  message?: UazapiMessage;
-  chat?: UazapiChat;
-  owner: string;
-  token: string;
-  instanceName: string;
-  BaseUrl?: string;
-}
+ interface UazapiPayload {
+   EventType: string;
+   message?: UazapiMessage;
+   chat?: UazapiChat;
+   owner: string;
+   token: string;
+   instanceName: string;
+   BaseUrl?: string;
+ }
+ 
+ interface EvolutionPayload {
+   event: string;
+   instance: string;
+   data: any;
+   destination?: string;
+   date_time?: string;
+   sender?: string;
+   server_url?: string;
+   apikey?: string;
+ }
 
 // Download media from UAZAPI and upload to Supabase Storage
 async function downloadAndStoreMedia(
@@ -209,9 +220,18 @@ serve(async (req) => {
     const ownerUserId = ownerData as string | null;
     console.log("Webhook owner user_id:", ownerUserId);
 
-    const payload: UazapiPayload = await req.json();
-    console.log("Webhook received:", payload.EventType);
-    console.log("Payload:", JSON.stringify(payload).substring(0, 500));
+     const rawPayload = await req.json();
+     console.log("Webhook received. Payload preview:", JSON.stringify(rawPayload).substring(0, 500));
+ 
+     // Determine if it's Evolution API or Uazapi
+     const isEvolution = !!rawPayload.event && !!rawPayload.instance;
+     
+     if (isEvolution) {
+       return await handleEvolutionWebhook(supabase, rawPayload as EvolutionPayload, ownerUserId);
+     }
+ 
+     const payload = rawPayload as UazapiPayload;
+     console.log("Processing as Uazapi payload:", payload.EventType);
 
     // Handle reaction messages
     if (payload.EventType === "messages" && payload.message) {
