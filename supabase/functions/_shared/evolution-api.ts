@@ -74,11 +74,23 @@
     const isZapConnect = serverUrl.includes("zapconnect");
 
     if (isZapConnect) {
-      console.log("Relay/Proxy detected (zapconnect), using simplified JSON format");
-      return postToEvolution("/message/sendText/{instance}", {
-        number: digitsOnly(phone),
-        text: text
-      });
+      console.log("Relay/Proxy detected (zapconnect), trying direct text send endpoint with simple payload");
+      const { serverUrl, apiKey, instance } = getCredentials();
+      const fullUrl = `${serverUrl}/message/sendText/${instance}`;
+      
+      return (async () => {
+        console.log(`Evolution API Request (Relay): POST ${fullUrl}`);
+        const res = await fetch(fullUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "apikey": apiKey },
+          body: JSON.stringify({ number: digitsOnly(phone), text: text })
+        });
+        const raw = await res.text();
+        console.log(`Evolution API Response (Relay) [${res.status}]: ${raw.substring(0, 500)}`);
+        let data: any;
+        try { data = JSON.parse(raw); } catch { data = { raw }; }
+        return { ok: res.ok, status: res.status, data, raw };
+      })();
     }
 
     return postToEvolution("/message/sendText/{instance}", {
