@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { handleCorsPreflightRequest, jsonResponse } from "../_shared/cors.ts";
 import { verifyUserJwt } from "../_shared/auth.ts";
-import { sendUazapiText, sendUazapiMedia, hasUazapiCredentials, UazapiMediaType } from "../_shared/uazapi.ts";
+ import { sendWhatsAppText, sendWhatsAppMedia, hasWhatsAppCredentials } from "../_shared/whatsapp.ts";
 import { digitsOnly } from "../_shared/phone.ts";
 
 interface QueueItem {
@@ -36,7 +36,7 @@ serve(async (req) => {
     const authResult = await verifyUserJwt(req);
     if (!authResult.ok) return authResult.response;
 
-    if (!hasUazapiCredentials()) throw new Error("UAZAPI credentials not configured");
+     if (!hasWhatsAppCredentials()) throw new Error("WhatsApp credentials not configured");
 
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -94,19 +94,19 @@ serve(async (req) => {
         const formattedPhone = digitsOnly(item.phone);
         const hasMedia = item.metadata?.media_url && item.metadata?.media_type && item.metadata.media_type !== "none";
 
-        const uazapiResult = hasMedia
-          ? await sendUazapiMedia({
-              phone: formattedPhone,
-              mediaType: item.metadata.media_type as UazapiMediaType,
-              fileUrl: item.metadata.media_url!,
-              caption: item.content || "",
-            })
-          : await sendUazapiText(formattedPhone, item.content);
+         const apiResult = hasMedia
+           ? await sendWhatsAppMedia({
+               phone: formattedPhone,
+               mediaType: item.metadata.media_type as any,
+               fileUrl: item.metadata.media_url!,
+               caption: item.content || "",
+             })
+           : await sendWhatsAppText(formattedPhone, item.content);
 
-        console.log(`UAZAPI response for ${formattedPhone}: ${uazapiResult.status}`);
-        const responseData = uazapiResult.data;
+         console.log(`WhatsApp API response for ${formattedPhone}: ${apiResult.status}`);
+         const responseData = apiResult.data;
 
-        if (uazapiResult.ok) {
+         if (apiResult.ok) {
           // Success - update queue and create log
           await supabase
             .from("whatsapp_queue")
@@ -145,7 +145,7 @@ serve(async (req) => {
           results.push({ id: item.id, success: true });
         } else {
           // Failed
-          const errorMessage = (responseData as any)?.message || uazapiResult.raw || "Unknown error";
+           const errorMessage = (responseData as any)?.message || apiResult.raw || "Unknown error";
           
           await supabase
             .from("whatsapp_queue")
