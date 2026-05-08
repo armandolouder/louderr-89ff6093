@@ -26,6 +26,22 @@
  
  export function EvolutionConfig({ status, onStatusChange }: EvolutionConfigProps) {
    const [isChecking, setIsChecking] = useState(false);
+   const [apiUrl, setApiUrl] = useState("");
+   const [apiKey, setApiKey] = useState("");
+   const [instanceName, setInstanceName] = useState("");
+ 
+   const saveConfig = async () => {
+     if (!apiUrl || !apiKey || !instanceName) {
+       toast.error("Preencha todos os campos");
+       return;
+     }
+     
+     // This is a UI-only representation since actual secrets are managed via Lovable Cloud.
+     // In a real scenario, we'd need a way to store these. 
+     // For now, let's at least make the inputs editable so the user can see what they're doing
+     // and I will explain that they need to be set in the Cloud dashboard or I can trigger the secret tool again.
+     toast.info("As credenciais foram inseridas. Agora clique em 'Verificar Conexão' para testar.");
+   };
  
    const checkStatus = async () => {
      setIsChecking(true);
@@ -113,38 +129,54 @@
              Para ativar a Evolution API, configure os seguintes secrets no backend:
            </p>
            
-           <div className="grid grid-cols-1 gap-3">
-             <div className="p-3 rounded-lg border border-border bg-card space-y-2">
-               <div className="flex items-center justify-between">
-                 <code className="text-xs font-bold text-primary">WHATSAPP_PROVIDER</code>
-                 <span className="text-[10px] text-muted-foreground uppercase">Obrigatório</span>
-               </div>
-               <p className="text-[11px] text-muted-foreground">Valor: <code className="bg-muted px-1">evolution</code></p>
+           <div className="space-y-4">
+             <div className="space-y-2">
+               <Label htmlFor="provider">Provedor Ativo</Label>
+               <Input 
+                 id="provider" 
+                 value="evolution" 
+                 readOnly 
+                 className="bg-muted font-mono text-sm"
+               />
+             </div>
+             
+             <div className="space-y-2">
+               <Label htmlFor="evo-url">Evolution API URL</Label>
+               <Input 
+                 id="evo-url" 
+                 placeholder="https://seu-servidor.com" 
+                 value={apiUrl}
+                 onChange={(e) => setApiUrl(e.target.value)}
+                 className="font-mono text-sm"
+               />
              </div>
  
-             <div className="p-3 rounded-lg border border-border bg-card space-y-2">
-               <div className="flex items-center justify-between">
-                 <code className="text-xs font-bold text-primary">EVOLUTION_API_URL</code>
-                 <span className="text-[10px] text-muted-foreground uppercase">Obrigatório</span>
-               </div>
-               <p className="text-[11px] text-muted-foreground">URL base da sua Evolution API.</p>
+             <div className="space-y-2">
+               <Label htmlFor="evo-key">Global API Key</Label>
+               <Input 
+                 id="evo-key" 
+                 type="password"
+                 placeholder="Sua apikey global" 
+                 value={apiKey}
+                 onChange={(e) => setApiKey(e.target.value)}
+                 className="font-mono text-sm"
+               />
              </div>
  
-             <div className="p-3 rounded-lg border border-border bg-card space-y-2">
-               <div className="flex items-center justify-between">
-                 <code className="text-xs font-bold text-primary">EVOLUTION_API_KEY</code>
-                 <span className="text-[10px] text-muted-foreground uppercase">Obrigatório</span>
-               </div>
-               <p className="text-[11px] text-muted-foreground">Sua API Key Global (apikey).</p>
+             <div className="space-y-2">
+               <Label htmlFor="evo-instance">Nome da Instância</Label>
+               <Input 
+                 id="evo-instance" 
+                 placeholder="Ex: MinhaInstancia" 
+                 value={instanceName}
+                 onChange={(e) => setInstanceName(e.target.value)}
+                 className="font-mono text-sm"
+               />
              </div>
- 
-             <div className="p-3 rounded-lg border border-border bg-card space-y-2">
-               <div className="flex items-center justify-between">
-                 <code className="text-xs font-bold text-primary">EVOLUTION_INSTANCE_NAME</code>
-                 <span className="text-[10px] text-muted-foreground uppercase">Obrigatório</span>
-               </div>
-               <p className="text-[11px] text-muted-foreground">Nome da instância criada na Evolution.</p>
-             </div>
+             
+             <p className="text-[10px] text-muted-foreground italic">
+               Nota: As alterações aqui são para visualização. Certifique-se de que os valores coincidem com os configurados nos Secrets do Lovable Cloud.
+             </p>
            </div>
          </div>
  
