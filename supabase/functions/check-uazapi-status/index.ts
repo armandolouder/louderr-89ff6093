@@ -84,7 +84,7 @@
           }
         }
 
-        if (lastData || isConnected) {
+        if (isConnected || lastData) {
           return new Response(
             JSON.stringify({
               success: true,
@@ -98,7 +98,7 @@
           );
         } else {
          return new Response(
-           JSON.stringify({ success: false, connected: false, error: e.message }),
+            JSON.stringify({ success: false, connected: false, error: "Não foi possível obter o status da instância Evolution." }),
            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
          );
        }
