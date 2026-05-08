@@ -69,17 +69,12 @@
  }
  
   export function sendEvolutionText(phone: string, text: string): Promise<EvolutionApiResult> {
-    // Padrão Evolution API v2 completo
+    // Evolution API v2 - formato simplificado oficial
     return postToEvolution("/message/sendText/{instance}", {
       number: digitsOnly(phone),
-      options: {
-        delay: 1200,
-        presence: "composing",
-        linkPreview: false
-      },
-      textMessage: {
-        text: text
-      }
+      text: text,
+      delay: 1200,
+      linkPreview: false
     });
   }
  
@@ -96,18 +91,13 @@
      document: "document"
    };
  
-   return postToEvolution("/message/sendMedia/{instance}", {
-     number: digitsOnly(params.phone),
-     options: {
-       delay: 1200,
-       presence: "composing"
-     },
-     mediaMessage: {
-       mediatype: mediaTypeMap[params.mediaType] || "image",
-       caption: params.caption || "",
-       media: params.fileUrl
-     }
-   });
+    return postToEvolution("/message/sendMedia/{instance}", {
+      number: digitsOnly(params.phone),
+      mediatype: mediaTypeMap[params.mediaType] || "image",
+      media: params.fileUrl,
+      caption: params.caption || "",
+      delay: 1200
+    });
  }
  
  export function hasEvolutionCredentials(): boolean {
