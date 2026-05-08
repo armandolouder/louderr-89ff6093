@@ -49,7 +49,8 @@ serve(async (req) => {
     }
 
     const formattedPhone = digitsOnly(phone);
-    console.log(`Sending ${messageType} message to ${formattedPhone}`);
+    const provider = Deno.env.get("WHATSAPP_PROVIDER")?.toLowerCase()?.trim() || "uazapi";
+    console.log(`Sending ${messageType} message to ${formattedPhone} using provider: ${provider}`);
 
      let result: { ok: boolean; status: number; data: any; raw: string };
     if (messageType === "text") {
