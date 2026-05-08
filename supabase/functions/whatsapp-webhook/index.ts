@@ -3,59 +3,75 @@
    
    if (payload.event === "messages.upsert") {
      const messageData = payload.data;
-     const msg = messageData.message;
-     if (!msg) return new Response(JSON.stringify({ success: true, skipped: true }), { headers: corsHeaders });
+     // Evolution API v2 sends an array of messages sometimes
+     const messages = Array.isArray(messageData) ? messageData : [messageData];
      
-     // Don't process messages from me
-     if (messageData.key.fromMe) {
-       console.log("Skipping message from me");
-       return new Response(JSON.stringify({ success: true, skipped: true }), { headers: corsHeaders });
-     }
-     
-     // Transform Evolution to Uazapi-like format for easier processing or just handle it here
-     // For Evolution, we have messageData.key.remoteJid (phone)
-     const phone = messageData.key.remoteJid.replace("@s.whatsapp.net", "").replace("@c.us", "");
-     if (phone.includes("@g.us")) {
-       console.log("Skipping group message");
-       return new Response(JSON.stringify({ success: true, skipped: true }), { headers: corsHeaders });
-     }
+     for (const m of messages) {
+       const msg = m.message;
+       if (!msg) continue;
+       if (m.key?.fromMe) continue;
+       
+       const remoteJid = m.key?.remoteJid || "";
+       const phone = remoteJid.replace("@s.whatsapp.net", "").replace("@c.us", "");
+       
+       if (remoteJid.includes("@g.us")) {
+         console.log("Skipping group message from Evolution");
+         continue;
+       }
  
-     const contactName = messageData.pushName || phone;
-     
-     let content = "";
-     let messageType: "text" | "image" | "audio" | "video" | "document" = "text";
-     let mediaUrl: string | null = null;
-     
-     // Extract content based on message type
-     if (msg.conversation) {
-       content = msg.conversation;
-     } else if (msg.extendedTextMessage) {
-       content = msg.extendedTextMessage.text;
-     } else if (msg.imageMessage) {
-       messageType = "image";
-       content = msg.imageMessage.caption || "[Imagem]";
-     } else if (msg.videoMessage) {
-       messageType = "video";
-       content = msg.videoMessage.caption || "[Vídeo]";
-     } else if (msg.audioMessage) {
-       messageType = "audio";
-       content = "[Áudio]";
-     } else if (msg.documentMessage) {
-       messageType = "document";
-       content = msg.documentMessage.title || msg.documentMessage.fileName || "[Documento]";
+       const contactName = m.pushName || phone;
+       let content = "";
+       let messageType: "text" | "image" | "audio" | "video" | "document" = "text";
+ 
+       if (msg.conversation) content = msg.conversation;
+       else if (msg.extendedTextMessage) content = msg.extendedTextMessage.text;
+       else if (msg.imageMessage) { messageType = "image"; content = msg.imageMessage.caption || "[Imagem]"; }
+       else if (msg.videoMessage) { messageType = "video"; content = msg.videoMessage.caption || "[Vídeo]"; }
+       else if (msg.audioMessage) { messageType = "audio"; content = "[Áudio]"; }
+       else if (msg.documentMessage) { messageType = "document"; content = msg.documentMessage.title || "[Documento]"; }
+       
+       if (!content) content = "[Mensagem]";
+ 
+       // Reuse logic: Find or create contact
+       const phoneVariants = [phone, `+${phone}`, phone.startsWith("55") ? phone.slice(2) : phone];
+       const { data: existingContacts } = await supabase.from("contacts").select("*").eq("user_id", ownerUserId).in("phone", phoneVariants).limit(1);
+       let contact = existingContacts?.[0];
+ 
+       if (!contact) {
+         const { data: newContact } = await supabase.from("contacts").insert({ name: contactName, phone, user_id: ownerUserId }).select().single();
+         contact = newContact;
+       }
+ 
+       if (!contact) continue;
+ 
+       // Find latest open conversation
+       let { data: conversation } = await supabase.from("conversations").select("*").eq("contact_id", contact.id).eq("channel", "whatsapp").neq("status", "finalizado").order("last_message_at", { ascending: false }).limit(1).maybeSingle();
+ 
+       if (!conversation) {
+         const { data: newConv } = await supabase.from("conversations").insert({ contact_id: contact.id, channel: "whatsapp", status: "novo", user_id: ownerUserId }).select().single();
+         conversation = newConv;
+       }
+ 
+       if (!conversation) continue;
+ 
+       // Save message
+       await supabase.from("messages").insert({
+         conversation_id: conversation.id,
+         content,
+         sender_type: "contact",
+         message_type: messageType,
+         status: "received",
+         user_id: ownerUserId,
+         metadata: { evolution_message_id: m.key?.id, evolution_raw: m }
+       });
+ 
+       // Update conversation
+       await supabase.from("conversations").update({
+         last_message: content.substring(0, 100),
+         last_message_at: new Date().toISOString(),
+         status: conversation.status === "finalizado" ? "novo" : conversation.status
+       }).eq("id", conversation.id);
      }
- 
-     // If it has media, we'd need to download it. 
-     // Evolution API v2 often provides media in a different way.
-     // For now, let's at least save the text.
- 
-     // Map to a Uazapi-like message object to reuse existing logic if possible
-     // Or just manually do what the rest of the file does.
-     
-     // To avoid code duplication, I'll extract the core "save message" logic 
-     // in a future refactor, but for now I'll implement a minimal version.
-     
-     // [This is a placeholder for the logic - I will implement the full version below]
    }
    
    return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
