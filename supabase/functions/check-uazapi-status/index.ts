@@ -11,19 +11,7 @@
      return new Response(null, { headers: corsHeaders });
    }
  
-   try {
-     // Auth check
-     const authHeader = req.headers.get('Authorization');
-     if (!authHeader?.startsWith('Bearer ')) {
-       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-     }
-     const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
-     const anonClient = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: authHeader } } });
-     const { data: claimsData, error: claimsError } = await anonClient.auth.getClaims(authHeader.replace('Bearer ', ''));
-     if (claimsError || !claimsData?.claims) {
-       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-     }
- 
+    try {  
        const WHATSAPP_PROVIDER_RAW = Deno.env.get("WHATSAPP_PROVIDER") || "";
        const WHATSAPP_PROVIDER = WHATSAPP_PROVIDER_RAW.toLowerCase().trim();
        
