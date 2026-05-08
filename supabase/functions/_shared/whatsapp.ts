@@ -40,7 +40,8 @@
    }
  }
  import { sendUazapiText, sendUazapiMedia, hasUazapiCredentials, UazapiMediaType } from "./uazapi.ts";
- import { sendEvolutionText, sendEvolutionMedia, hasEvolutionCredentials } from "./evolution-api.ts";
+ import { sendEvolutionText, sendEvolutionMedia, hasEvolutionCredentials, sendEvolutionReaction } from "./evolution-api.ts";
+ import { digitsOnly } from "./phone.ts";
  
  export type WhatsAppProvider = "uazapi" | "evolution";
  
