@@ -323,10 +323,10 @@ serve(async (req) => {
 
         // Handle reaction messages
         if (payload.EventType === "messages" && payload.message) {
-      const msg = payload.message;
-      const msgType = (msg.messageType || "").toLowerCase();
-      
-      if (msgType === "reactionmessage") {
+          const msg = payload.message;
+          const msgType = (msg.messageType || "").toLowerCase();
+          
+          if (msgType === "reactionmessage") {
         console.log("Processing reaction message");
         
         const reactionContent = typeof msg.content === "object" ? msg.content : null;
