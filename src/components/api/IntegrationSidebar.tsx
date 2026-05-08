@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 import { MessageSquare, Brain, Server, CreditCard, Database, CheckCircle, XCircle, ShoppingBag, Mail, Instagram } from "lucide-react";
 
-export type IntegrationId = "uazapi" | "groq" | "nuvemshop" | "brevo" | "meta" | "instagram-personal";
+ export type IntegrationId = "uazapi" | "evolution" | "groq" | "nuvemshop" | "brevo" | "meta" | "instagram-personal";
 
 interface Integration {
   id: IntegrationId;
@@ -69,6 +69,7 @@ export function getIntegrationIcon(id: IntegrationId) {
   const iconClass = "w-5 h-5";
   switch (id) {
     case "uazapi":
+    case "evolution":
       return <MessageSquare className={iconClass} />;
     case "groq":
       return <Brain className={iconClass} />;

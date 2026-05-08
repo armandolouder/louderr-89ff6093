@@ -3,6 +3,7 @@ import { MessageSquare, Brain, Loader2, ShoppingBag, Mail, Instagram } from "luc
 import { supabase } from "@/integrations/supabase/client";
 import { IntegrationSidebar, type IntegrationId } from "@/components/api/IntegrationSidebar";
 import { UazapiConfig } from "@/components/api/UazapiConfig";
+import { EvolutionConfig } from "@/components/api/EvolutionConfig";
 import { GroqConfig } from "@/components/api/GroqConfig";
 import { NuvemshopConfig } from "@/components/api/NuvemshopConfig";
 import { BrevoConfig } from "@/components/api/BrevoConfig";
@@ -17,6 +18,7 @@ interface InstanceStatus {
   status?: string;
   message?: string;
   error?: string;
+  provider?: string;
 }
 
 interface GroqStatus {
@@ -66,6 +68,7 @@ export default function Api() {
           status: data.status,
           message: data.message,
           error: data.error,
+          provider: data.provider,
         });
       }
     } catch (error) {
@@ -124,7 +127,14 @@ export default function Api() {
       name: "WhatsApp (UAZAPI)",
       description: "Envio e recebimento de mensagens",
       icon: <MessageSquare className="w-5 h-5" />,
-      connected: instanceStatus?.connected ?? false,
+      connected: (instanceStatus?.connected && instanceStatus?.provider !== "evolution") ?? false,
+    },
+    {
+      id: "evolution" as IntegrationId,
+      name: "WhatsApp (Evolution)",
+      description: "API Avançada v2",
+      icon: <MessageSquare className="w-5 h-5" />,
+      connected: (instanceStatus?.connected && instanceStatus?.provider === "evolution") ?? false,
     },
     {
       id: "groq" as IntegrationId,
@@ -181,6 +191,10 @@ export default function Api() {
       
       {activeIntegration === "uazapi" && (
         <UazapiConfig status={instanceStatus} onStatusChange={setInstanceStatus} />
+      )}
+      
+      {activeIntegration === "evolution" && (
+        <EvolutionConfig status={instanceStatus} onStatusChange={setInstanceStatus} />
       )}
       
       {activeIntegration === "groq" && (
