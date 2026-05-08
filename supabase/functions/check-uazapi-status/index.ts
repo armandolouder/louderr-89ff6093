@@ -11,7 +11,8 @@
      return new Response(null, { headers: corsHeaders });
    }
  
-    try {  
+    try {
+      console.log(`Starting status check...`);
        const WHATSAPP_PROVIDER_RAW = Deno.env.get("WHATSAPP_PROVIDER") || "";
        const WHATSAPP_PROVIDER = WHATSAPP_PROVIDER_RAW.toLowerCase().trim();
        
