@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, Instagram, Loader2, Archive, ShoppingBag } from "lucide-react";
+import { Search, Instagram, Loader2, Archive, ShoppingBag, Inbox as InboxIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ConversationItem } from "./ConversationItem";
@@ -18,6 +18,7 @@ interface ConversationListProps {
 export function ConversationList({ selectedId, onSelect, filterTabId, showArchived = false, onToggleArchived }: ConversationListProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [channelFilter, setChannelFilter] = useState<"whatsapp" | "instagram" | "customers">("customers");
+  const [unreadOnly, setUnreadOnly] = useState(false);
   const [customerPhones, setCustomerPhones] = useState<Set<string> | null>(null);
   
   const { data: conversations, isLoading, error } = useConversations();
@@ -58,10 +59,12 @@ export function ConversationList({ selectedId, onSelect, filterTabId, showArchiv
         : filterTabId === "__waiting__"
           ? (conv.unread_count || 0) > 0
           : (conv as any).tab_id === filterTabId;
-    return matchesArchived && matchesSearch && matchesChannel && matchesTab;
+    const matchesUnread = !unreadOnly || (conv.unread_count || 0) > 0;
+    return matchesArchived && matchesSearch && matchesChannel && matchesTab && matchesUnread;
   });
 
   const archivedCount = (conversations || []).filter(c => c.is_archived).length;
+  const unreadCount = (conversations || []).filter(c => !c.is_archived && (c.unread_count || 0) > 0).length;
 
   return (
     <div className="flex flex-col h-full border-r border-border bg-sidebar/50">
@@ -86,6 +89,24 @@ export function ConversationList({ selectedId, onSelect, filterTabId, showArchiv
           >
             <ShoppingBag className="w-3.5 h-3.5" />
             Clientes
+          </Button>
+          <Button
+            variant={unreadOnly ? "default" : "outline"}
+            size="sm"
+            onClick={() => setUnreadOnly(v => !v)}
+            className={cn("h-8 px-3 gap-1.5 relative", !unreadOnly && "border-border text-muted-foreground")}
+            title="Aguardando — mensagens não abertas ainda"
+          >
+            <InboxIcon className="w-3.5 h-3.5" />
+            Aguardando
+            {unreadCount > 0 && (
+              <span className={cn(
+                "ml-1 text-[10px] font-semibold rounded-full px-1.5 py-0.5 min-w-[18px] text-center",
+                unreadOnly ? "bg-primary-foreground/20 text-primary-foreground" : "bg-primary text-primary-foreground"
+              )}>
+                {unreadCount}
+              </span>
+            )}
           </Button>
           <Button
             variant={channelFilter === "instagram" && !showArchived ? "default" : "outline"}
