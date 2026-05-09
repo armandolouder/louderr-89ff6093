@@ -83,10 +83,41 @@ serve(async (req) => {
      console.log("WhatsApp API response:", result.raw);
 
     if (!result.ok) {
-       console.error("WhatsApp API error:", result.raw);
-       throw new Error(`Failed to send message via WhatsApp API: ${result.status} - ${result.raw}`);
-     }
-     const apiResponseData = result.data;
+      console.error("WhatsApp API error:", result.raw);
+      throw new Error(`Failed to send message via WhatsApp API: ${result.status} - ${result.raw}`);
+    }
+    const apiResponseData = result.data;
+
+    // Extract message ID to help with deduplication in webhooks
+    const messageMetadata: any = { api_response: apiResponseData };
+    if (provider === "evolution") {
+      // Evolution v2 response structure often has key.id or just id
+      const evolutionId = apiResponseData?.key?.id || apiResponseData?.id || apiResponseData?.item?.key?.id;
+      if (evolutionId) {
+        messageMetadata.evolution_message_id = evolutionId;
+      }
+    } else {
+      // UAZAPI response structure
+      const uazapiId = apiResponseData?.messageid || apiResponseData?.id;
+      if (uazapiId) {
+        messageMetadata.whatsapp_message_id = uazapiId;
+      }
+    }
+
+    // Check if message already exists (webhook might have been faster)
+    const messageId = messageMetadata.evolution_message_id || messageMetadata.whatsapp_message_id;
+    if (messageId) {
+      const { data: existingMsg } = await supabase
+        .from("messages")
+        .select("*")
+        .or(`metadata->>evolution_message_id.eq.${messageId},metadata->>whatsapp_message_id.eq.${messageId}`)
+        .maybeSingle();
+
+      if (existingMsg) {
+        console.log("Message already exists (likely from webhook), skipping insert");
+        return jsonResponse({ success: true, message: existingMsg, apiResponseData });
+      }
+    }
 
     // Save message to database
     const { data: message, error: msgError } = await supabase
@@ -99,7 +130,7 @@ serve(async (req) => {
         media_url: mediaUrl || null,
         status: "sent",
         user_id: authenticatedUserId,
-         metadata: { api_response: apiResponseData },
+        metadata: messageMetadata,
       })
       .select()
       .single();
