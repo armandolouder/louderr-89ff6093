@@ -21,6 +21,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface ChatViewProps {
   conversation: Conversation;
@@ -28,6 +29,7 @@ interface ChatViewProps {
 }
 
 export function ChatView({ conversation, hideHeader }: ChatViewProps) {
+  const queryClient = useQueryClient();
   const [message, setMessage] = useState("");
   const [isImproving, setIsImproving] = useState(false);
   const [showQuickResponseManager, setShowQuickResponseManager] = useState(false);
