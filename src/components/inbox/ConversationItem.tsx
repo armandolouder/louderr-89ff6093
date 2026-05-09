@@ -128,9 +128,9 @@ export function ConversationItem({ conversation, isActive, onClick }: Conversati
       </div>
       
       <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between gap-2 mb-1">
-          <h4 className="font-medium text-foreground truncate">{conversation.contact.name}</h4>
-          <span className="text-xs text-muted-foreground flex-shrink-0">{formattedTime}</span>
+        <div className="flex items-center justify-between gap-2 mb-0.5">
+          <h4 className="font-semibold text-foreground truncate">{conversation.contact.name}</h4>
+          <span className="text-[11px] text-muted-foreground flex-shrink-0 font-medium">{formattedTime}</span>
         </div>
         
         <div className="flex items-center gap-2 mb-1.5">
