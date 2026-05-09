@@ -77,8 +77,10 @@ export function useConversations() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "conversations" },
-        () => {
+        (payload) => {
+          console.log("Realtime conversation update:", payload);
           queryClient.invalidateQueries({ queryKey: ["conversations"] });
+          queryClient.refetchQueries({ queryKey: ["conversations"] });
         }
       )
       .subscribe();

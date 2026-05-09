@@ -75,11 +75,15 @@ export function useMessages(conversationId: string | null) {
           table: "messages",
           filter: `conversation_id=eq.${conversationId}`
         },
-        () => {
+        (payload) => {
+          console.log("Realtime message update:", payload);
           queryClient.invalidateQueries({ queryKey: ["messages", conversationId] });
+          queryClient.refetchQueries({ queryKey: ["messages", conversationId] });
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log(`Realtime subscription status for messages (${conversationId}):`, status);
+      });
 
     return () => {
       supabase.removeChannel(channel);
