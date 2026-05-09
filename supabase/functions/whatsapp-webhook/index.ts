@@ -93,7 +93,8 @@ async function handleEvolutionWebhook(supabase: any, payload: EvolutionPayload, 
       if (!msg) continue;
 
       const messageId = m.key?.id;
-      const isFromMe = m.key?.fromMe === true;
+      const fromMeValue = m.key?.fromMe;
+      const isFromMe = fromMeValue === true || fromMeValue === 1 || String(fromMeValue) === "true";
 
       if (messageId) {
         const existing = await getExistingMessage(supabase, messageId);
