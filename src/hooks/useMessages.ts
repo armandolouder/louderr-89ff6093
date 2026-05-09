@@ -78,11 +78,12 @@ export function useMessages(conversationId: string | null) {
         (payload) => {
           console.log("Realtime message update:", payload);
           queryClient.invalidateQueries({ queryKey: ["messages", conversationId] });
-          // Refetch immediately to ensure UI updates fast
           queryClient.refetchQueries({ queryKey: ["messages", conversationId] });
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log(`Realtime subscription status for messages (${conversationId}):`, status);
+      });
 
     return () => {
       supabase.removeChannel(channel);
