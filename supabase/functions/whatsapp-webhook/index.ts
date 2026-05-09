@@ -99,10 +99,10 @@ async function handleEvolutionWebhook(supabase: any, payload: EvolutionPayload, 
       if (messageId) {
         const existing = await getExistingMessage(supabase, messageId);
         if (existing) {
-          // If it exists but doesn't have Evolution metadata, update it to merge the info
-          if (!existing.metadata?.evolution_message_id) {
+          if (!existing.metadata?.evolution_message_id || !existing.evolution_message_id) {
             console.log(`Merging Evolution metadata into existing message: ${messageId}`);
             await supabase.from("messages").update({
+              evolution_message_id: messageId,
               metadata: {
                 ...existing.metadata,
                 evolution_message_id: messageId,
