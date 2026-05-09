@@ -61,12 +61,23 @@ serve(async (req) => {
       throw new Error("Message not found");
     }
 
-    const whatsappMessageId = message.metadata?.whatsapp_message_id;
-    const chatId = message.metadata?.chatid;
+    const meta = message.metadata || {};
+    const whatsappMessageId =
+      meta.whatsapp_message_id ||
+      meta.evolution_message_id ||
+      meta.evolution_raw?.key?.id ||
+      meta.uazapi_response?.messageid;
 
-    if (!whatsappMessageId || !chatId) {
+    const remoteJid =
+      meta.chatid ||
+      meta.evolution_raw?.key?.remoteJid ||
+      message.conversation?.contact?.phone;
+
+    if (!whatsappMessageId || !remoteJid) {
       throw new Error("WhatsApp message ID not found in message metadata");
     }
+
+    const chatId = remoteJid;
 
     console.log(`Sending reaction ${emoji} to message ${whatsappMessageId}`);
 
