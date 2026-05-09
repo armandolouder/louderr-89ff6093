@@ -402,10 +402,10 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
                       </svg>
                        <div
                          className={cn(
-                           "px-4 py-2.5 rounded-2xl relative z-[1] fintech-card",
+                           "px-4 py-2.5 rounded-2xl relative z-[1] shadow-sm",
                            msg.sender_type === "agent"
-                             ? "bg-primary/90 text-primary-foreground rounded-br-none"
-                             : "bg-secondary/80 backdrop-blur text-secondary-foreground rounded-bl-none border-0"
+                             ? "bg-primary text-primary-foreground rounded-br-none"
+                             : "bg-card border border-border text-foreground rounded-bl-none"
                          )}
                        >
                       <MediaPreview 

@@ -5,73 +5,74 @@
 
 @layer base {
   :root {
-    --background: 222 47% 4%;
-    --foreground: 210 40% 98%;
+    /* Fintech Light — inspirado em FinSight (verde menta) */
+    --background: 140 30% 97%;
+    --foreground: 160 25% 12%;
 
-    --card: 222 47% 6%;
-    --card-foreground: 210 20% 95%;
+    --card: 0 0% 100%;
+    --card-foreground: 160 25% 12%;
 
-    --popover: 220 15% 13%;
-    --popover-foreground: 210 20% 95%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 160 25% 12%;
 
-    --primary: 52 100% 50%; /* Mantendo o amarelo característico, mas com refinamento */
-    --primary-foreground: 220 15% 10%;
+    --primary: 145 55% 55%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 222 47% 10%;
-    --secondary-foreground: 210 20% 95%;
+    --secondary: 145 40% 94%;
+    --secondary-foreground: 160 25% 18%;
 
-    --muted: 222 47% 12%;
-    --muted-foreground: 215 20% 65%;
+    --muted: 150 25% 95%;
+    --muted-foreground: 160 10% 45%;
 
-    --accent: 217 91% 60%; /* Azul Fintech */
-    --accent-foreground: 210 20% 98%;
+    --accent: 145 60% 60%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 210 20% 98%;
+    --destructive: 0 72% 55%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 222 47% 15%;
-    --input: 222 47% 15%;
-    --ring: 52 100% 50%;
+    --border: 150 20% 90%;
+    --input: 150 20% 90%;
+    --ring: 145 55% 55%;
 
-    --radius: 0.75rem;
+    --radius: 0.875rem;
 
     --whatsapp: 142 70% 45%;
-    --whatsapp-foreground: 210 20% 98%;
-    
+    --whatsapp-foreground: 0 0% 100%;
+
     --instagram: 280 70% 55%;
-    --instagram-foreground: 210 20% 98%;
+    --instagram-foreground: 0 0% 100%;
 
     --success: 142 70% 45%;
-    --success-foreground: 210 20% 98%;
-    
-    --warning: 38 92% 50%;
-    --warning-foreground: 220 15% 10%;
+    --success-foreground: 0 0% 100%;
 
-    --sidebar-background: 222 47% 2%;
-    --sidebar-foreground: 210 20% 95%;
-    --sidebar-primary: 52 100% 50%;
-    --sidebar-primary-foreground: 220 15% 10%;
-    --sidebar-accent: 220 15% 15%;
-    --sidebar-accent-foreground: 210 20% 95%;
-    --sidebar-border: 220 15% 18%;
-    --sidebar-ring: 52 100% 50%;
+    --warning: 38 92% 55%;
+    --warning-foreground: 160 25% 12%;
 
-    --chart-1: 142 70% 45%;
-    --chart-2: 280 70% 55%;
-    --chart-3: 52 100% 50%;
-    --chart-4: 200 80% 55%;
-    --chart-5: 340 75% 55%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 160 20% 25%;
+    --sidebar-primary: 145 55% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 145 40% 94%;
+    --sidebar-accent-foreground: 160 25% 18%;
+    --sidebar-border: 150 20% 92%;
+    --sidebar-ring: 145 55% 55%;
+
+    --chart-1: 145 55% 55%;
+    --chart-2: 280 60% 65%;
+    --chart-3: 38 92% 60%;
+    --chart-4: 200 75% 60%;
+    --chart-5: 340 70% 65%;
 
     --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
-    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.4);
-    --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.5);
-    --shadow-md: 0 10px 15px -3px rgb(0 0 0 / 0.6);
-    --shadow-lg: 0 20px 25px -5px rgb(0 0 0 / 0.7);
-    --shadow-xl: 0 25px 50px -12px rgb(0 0 0 / 0.8);
-    --shadow-glow: 0 0 30px hsl(52 100% 50% / 0.1);
-    --shadow-glow-accent: 0 0 30px hsl(217 91% 60% / 0.15);
+    --shadow-sm: 0 1px 2px 0 hsl(150 30% 20% / 0.04);
+    --shadow: 0 4px 12px -2px hsl(150 30% 20% / 0.06);
+    --shadow-md: 0 10px 25px -5px hsl(150 30% 20% / 0.08);
+    --shadow-lg: 0 20px 40px -10px hsl(150 30% 20% / 0.10);
+    --shadow-xl: 0 25px 50px -12px hsl(150 30% 20% / 0.14);
+    --shadow-glow: 0 0 30px hsl(145 55% 55% / 0.2);
+    --shadow-glow-accent: 0 0 30px hsl(145 60% 60% / 0.18);
   }
 }
 
@@ -82,6 +83,10 @@
 
   body {
     @apply bg-background text-foreground font-sans antialiased;
+    background-image:
+      radial-gradient(at 20% 0%, hsl(145 55% 88% / 0.45), transparent 50%),
+      radial-gradient(at 80% 100%, hsl(145 50% 90% / 0.35), transparent 50%);
+    background-attachment: fixed;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -103,20 +108,19 @@
   }
 
   .glass {
-    @apply bg-card/60 backdrop-blur-md border border-white/5;
+    @apply bg-card/70 backdrop-blur-xl border border-white/40 shadow-md;
   }
 
   .fintech-card {
-    @apply relative overflow-hidden bg-gradient-to-br from-card to-card/50 border border-border/50 shadow-lg;
-    background-image: 
-      radial-gradient(at top left, rgba(255, 255, 255, 0.03), transparent 50%),
-      linear-gradient(to bottom right, hsl(var(--card)), transparent);
+    @apply relative overflow-hidden bg-card border border-border/60 shadow-md backdrop-blur-sm;
+    background-image:
+      linear-gradient(135deg, hsl(0 0% 100%) 0%, hsl(145 30% 98%) 100%);
   }
 
   .fintech-card::before {
     content: '';
     @apply absolute inset-0 pointer-events-none;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, transparent 100%);
+    background: linear-gradient(135deg, hsl(145 55% 55% / 0.04) 0%, transparent 60%);
   }
 
   .channel-whatsapp {
