@@ -81,6 +81,20 @@ export function ConversationList({ selectedId, onSelect, filterTabId, showArchiv
         
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
           <Button
+            variant={unreadOnly ? "default" : "outline"}
+            size="icon"
+            onClick={() => setUnreadOnly(v => !v)}
+            className={cn("h-8 w-8 relative flex-shrink-0", !unreadOnly && "border-border text-muted-foreground")}
+            title="Aguardando — mensagens não abertas ainda"
+          >
+            <InboxIcon className="w-4 h-4" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 text-[10px] font-semibold bg-primary text-primary-foreground rounded-full min-w-[16px] h-4 px-1 flex items-center justify-center">
+                {unreadCount}
+              </span>
+            )}
+          </Button>
+          <Button
             variant={channelFilter === "customers" && !showArchived ? "default" : "outline"}
             size="sm"
             onClick={() => { setChannelFilter("customers"); if (showArchived && onToggleArchived) onToggleArchived(); }}
@@ -89,24 +103,6 @@ export function ConversationList({ selectedId, onSelect, filterTabId, showArchiv
           >
             <ShoppingBag className="w-3.5 h-3.5" />
             Clientes
-          </Button>
-          <Button
-            variant={unreadOnly ? "default" : "outline"}
-            size="sm"
-            onClick={() => setUnreadOnly(v => !v)}
-            className={cn("h-8 px-3 gap-1.5 relative", !unreadOnly && "border-border text-muted-foreground")}
-            title="Aguardando — mensagens não abertas ainda"
-          >
-            <InboxIcon className="w-3.5 h-3.5" />
-            Aguardando
-            {unreadCount > 0 && (
-              <span className={cn(
-                "ml-1 text-[10px] font-semibold rounded-full px-1.5 py-0.5 min-w-[18px] text-center",
-                unreadOnly ? "bg-primary-foreground/20 text-primary-foreground" : "bg-primary text-primary-foreground"
-              )}>
-                {unreadCount}
-              </span>
-            )}
           </Button>
           <Button
             variant={channelFilter === "instagram" && !showArchived ? "default" : "outline"}
