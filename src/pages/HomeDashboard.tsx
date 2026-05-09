@@ -238,7 +238,7 @@ export default function HomeDashboard() {
 
       {/* Row 2: Pending & Abandoned */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <Card className="border-warning/30">
+        <Card className="fintech-card border-warning/10">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm font-medium text-muted-foreground">Vendas Pendentes</CardTitle>
@@ -254,7 +254,7 @@ export default function HomeDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="border-destructive/30">
+        <Card className="fintech-card border-destructive/10">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm font-medium text-muted-foreground">Carrinhos Abandonados</CardTitle>
@@ -273,7 +273,7 @@ export default function HomeDashboard() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="fintech-card">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Margem de Lucro</CardTitle>
           </CardHeader>
@@ -332,7 +332,7 @@ export default function HomeDashboard() {
       </div>
 
       {/* Acesso rápido ao módulo de Despesas */}
-      <Card className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => navigate("/expenses")}>
+      <Card className="fintech-card cursor-pointer hover:border-primary/30 transition-all hover:shadow-glow" onClick={() => navigate("/expenses")}>
         <CardContent className="pt-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="p-3 bg-primary/10">
@@ -348,7 +348,7 @@ export default function HomeDashboard() {
       </Card>
 
       {/* Row 4: Recent Orders */}
-      <Card>
+      <Card className="fintech-card">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-base font-semibold flex items-center gap-2">
@@ -434,15 +434,15 @@ function MiniCard({ title, value, icon: Icon, onClick, subtitle }: {
   title: string; value: number; icon: any; onClick?: () => void; subtitle?: string;
 }) {
   return (
-    <Card className={onClick ? "cursor-pointer hover:border-primary/50 transition-colors" : ""} onClick={onClick}>
-      <CardContent className="pt-6">
+    <Card className={`fintech-card ${onClick ? "cursor-pointer hover:border-primary/30 transition-all" : ""}`} onClick={onClick}>
+      <CardContent className="pt-5">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-primary/10">
+          <div className="p-2 rounded-lg bg-primary/5 border border-primary/10">
             <Icon className="w-4 h-4 text-primary" />
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">{title}</p>
-            <p className="text-xl font-bold text-foreground">{value}</p>
+            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{title}</p>
+            <p className="text-lg font-bold text-foreground">{value}</p>
             {subtitle && <p className="text-[11px] text-muted-foreground">{subtitle}</p>}
           </div>
         </div>
