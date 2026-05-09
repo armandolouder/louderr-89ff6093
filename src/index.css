@@ -48,14 +48,15 @@
     --warning: 38 92% 55%;
     --warning-foreground: 160 25% 12%;
 
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 160 20% 25%;
-    --sidebar-primary: 145 55% 55%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 145 40% 94%;
-    --sidebar-accent-foreground: 160 25% 18%;
-    --sidebar-border: 150 20% 92%;
-    --sidebar-ring: 145 55% 55%;
+    /* Sidebar: same Evergreen Dark canvas as body */
+    --sidebar-background: 154 18% 11%;
+    --sidebar-foreground: 154 12% 70%;
+    --sidebar-primary: 158 64% 52%;
+    --sidebar-primary-foreground: 158 64% 60%;
+    --sidebar-accent: 158 35% 18%;
+    --sidebar-accent-foreground: 158 64% 70%;
+    --sidebar-border: 154 15% 16%;
+    --sidebar-ring: 158 64% 52%;
 
     --chart-1: 145 55% 55%;
     --chart-2: 280 60% 65%;
