@@ -71,6 +71,16 @@ interface EvolutionPayload {
   apikey?: string;
 }
 
+ async function messageExists(supabase: any, messageId: string) {
+   const { data } = await supabase
+     .from("messages")
+     .select("id")
+     .or(`metadata->>evolution_message_id.eq.${messageId},metadata->>whatsapp_message_id.eq.${messageId}`)
+     .limit(1)
+     .maybeSingle();
+   return !!data;
+ }
+
 async function handleEvolutionWebhook(supabase: any, payload: EvolutionPayload, ownerUserId: string | null) {
   console.log(`Processing Evolution Webhook: ${payload.event}`);
   
@@ -83,6 +93,12 @@ async function handleEvolutionWebhook(supabase: any, payload: EvolutionPayload, 
       if (!msg) continue;
       if (m.key?.fromMe) continue;
       
+       const messageId = m.key?.id;
+       if (messageId && await messageExists(supabase, messageId)) {
+         console.log(`Duplicate message ignored (Evolution): ${messageId}`);
+         continue;
+       }
+
       const remoteJid = m.key?.remoteJid || "";
       const phone = remoteJid.replace("@s.whatsapp.net", "").replace("@c.us", "");
       
@@ -178,6 +194,12 @@ serve(async (req) => {
       if (payload.EventType === "messages" && payload.message && payload.chat) {
         const msg = payload.message;
         if (msg.wasSentByApi || msg.isGroup) return new Response(JSON.stringify({ success: true, skipped: true }), { headers: corsHeaders });
+
+         const messageId = msg.messageid;
+         if (messageId && await messageExists(supabase, messageId)) {
+           console.log(`Duplicate message ignored (Uazapi): ${messageId}`);
+           return new Response(JSON.stringify({ success: true, duplicate: true }), { headers: corsHeaders });
+         }
 
         const phone = msg.chatid.replace("@s.whatsapp.net", "").replace("@c.us", "");
         const contactName = msg.senderName || payload.chat.wa_name || phone;
