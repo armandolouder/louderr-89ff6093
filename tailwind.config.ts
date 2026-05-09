@@ -87,8 +87,10 @@ export default {
         sm: "calc(var(--radius) - 4px)",
       },
       fontFamily: {
-        sans: ["Inter", "Geist", "ui-sans-serif", "system-ui", "-apple-system", "sans-serif"],
-        mono: ["Geist Mono", "ui-monospace", "SFMono-Regular", "monospace"],
+        sans: ["Lora", "ui-serif", "Georgia", "Cambria", "Times New Roman", "Times", "serif"],
+        serif: ["Lora", "ui-serif", "Georgia", "serif"],
+        display: ["Playfair Display", "ui-serif", "Georgia", "serif"],
+        mono: ["Lora", "ui-serif", "Georgia", "serif"],
       },
       boxShadow: {
         sm: "var(--shadow-sm)",
