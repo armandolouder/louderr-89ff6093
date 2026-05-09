@@ -106,32 +106,34 @@ serve(async (req) => {
 
     // Check if message already exists (webhook might have been faster)
     const messageId = messageMetadata.evolution_message_id || messageMetadata.whatsapp_message_id;
-    if (messageId) {
-      const { data: existingMsg } = await supabase
-        .from("messages")
-        .select("*")
-        .or(`metadata->>evolution_message_id.eq.${messageId},metadata->>whatsapp_message_id.eq.${messageId}`)
-        .maybeSingle();
+     if (messageId) {
+       const { data: existingMsg } = await supabase
+         .from("messages")
+         .select("*")
+         .or(`evolution_message_id.eq.${messageId},whatsapp_message_id.eq.${messageId}`)
+         .maybeSingle();
+ 
+       if (existingMsg) {
+         console.log("Message already exists (likely from webhook), skipping insert");
+         return jsonResponse({ success: true, message: existingMsg, apiResponseData });
+       }
+     }
 
-      if (existingMsg) {
-        console.log("Message already exists (likely from webhook), skipping insert");
-        return jsonResponse({ success: true, message: existingMsg, apiResponseData });
-      }
-    }
-
-    // Save message to database
-    const { data: message, error: msgError } = await supabase
-      .from("messages")
-      .insert({
-        conversation_id: conversationId,
-        content,
-        sender_type: "agent",
-        message_type: messageType,
-        media_url: mediaUrl || null,
-        status: "sent",
-        user_id: authenticatedUserId,
-        metadata: messageMetadata,
-      })
+     // Save message to database
+     const { data: message, error: msgError } = await supabase
+       .from("messages")
+       .insert({
+         conversation_id: conversationId,
+         content,
+         sender_type: "agent",
+         message_type: messageType,
+         media_url: mediaUrl || null,
+         status: "sent",
+         user_id: authenticatedUserId,
+         evolution_message_id: messageMetadata.evolution_message_id,
+         whatsapp_message_id: messageMetadata.whatsapp_message_id,
+         metadata: messageMetadata,
+       })
       .select()
       .single();
 
