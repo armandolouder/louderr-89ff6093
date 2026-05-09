@@ -71,15 +71,15 @@ interface EvolutionPayload {
   apikey?: string;
 }
 
- async function messageExists(supabase: any, messageId: string) {
-   const { data } = await supabase
-     .from("messages")
-     .select("id")
-     .or(`metadata->>evolution_message_id.eq.${messageId},metadata->>whatsapp_message_id.eq.${messageId}`)
-     .limit(1)
-     .maybeSingle();
-   return !!data;
- }
+async function getExistingMessage(supabase: any, messageId: string) {
+  const { data } = await supabase
+    .from("messages")
+    .select("id, metadata")
+    .or(`metadata->>evolution_message_id.eq.${messageId},metadata->>whatsapp_message_id.eq.${messageId}`)
+    .limit(1)
+    .maybeSingle();
+  return data;
+}
 
 async function handleEvolutionWebhook(supabase: any, payload: EvolutionPayload, ownerUserId: string | null) {
   console.log(`Processing Evolution Webhook: ${payload.event}`);
@@ -94,9 +94,24 @@ async function handleEvolutionWebhook(supabase: any, payload: EvolutionPayload, 
       if (m.key?.fromMe) continue;
       
        const messageId = m.key?.id;
-       if (messageId && await messageExists(supabase, messageId)) {
-         console.log(`Duplicate message ignored (Evolution): ${messageId}`);
-         continue;
+       if (messageId) {
+         const existing = await getExistingMessage(supabase, messageId);
+         if (existing) {
+           // If it exists but doesn't have Evolution metadata, update it to merge the info
+           if (!existing.metadata?.evolution_message_id) {
+             console.log(`Merging Evolution metadata into existing message: ${messageId}`);
+             await supabase.from("messages").update({
+               metadata: { 
+                 ...existing.metadata,
+                 evolution_message_id: messageId, 
+                 evolution_raw: m 
+               }
+             }).eq("id", existing.id);
+           } else {
+             console.log(`Duplicate message ignored (Evolution): ${messageId}`);
+           }
+           continue;
+         }
        }
 
       const remoteJid = m.key?.remoteJid || "";
@@ -196,9 +211,23 @@ serve(async (req) => {
         if (msg.wasSentByApi || msg.isGroup) return new Response(JSON.stringify({ success: true, skipped: true }), { headers: corsHeaders });
 
          const messageId = msg.messageid;
-         if (messageId && await messageExists(supabase, messageId)) {
-           console.log(`Duplicate message ignored (Uazapi): ${messageId}`);
-           return new Response(JSON.stringify({ success: true, duplicate: true }), { headers: corsHeaders });
+         if (messageId) {
+           const existing = await getExistingMessage(supabase, messageId);
+           if (existing) {
+             // If it exists but doesn't have Uazapi metadata, update it
+             if (!existing.metadata?.whatsapp_message_id) {
+               console.log(`Merging Uazapi metadata into existing message: ${messageId}`);
+               await supabase.from("messages").update({
+                 metadata: { 
+                   ...existing.metadata,
+                   whatsapp_message_id: messageId 
+                 }
+               }).eq("id", existing.id);
+             } else {
+               console.log(`Duplicate message ignored (Uazapi): ${messageId}`);
+             }
+             return new Response(JSON.stringify({ success: true, duplicate: true }), { headers: corsHeaders });
+           }
          }
 
         const phone = msg.chatid.replace("@s.whatsapp.net", "").replace("@c.us", "");
