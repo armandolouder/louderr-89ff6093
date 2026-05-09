@@ -87,7 +87,7 @@ export default {
         sm: "calc(var(--radius) - 4px)",
       },
       fontFamily: {
-        sans: ["Geist", "ui-sans-serif", "system-ui", "-apple-system", "sans-serif"],
+        sans: ["Inter", "Geist", "ui-sans-serif", "system-ui", "-apple-system", "sans-serif"],
         mono: ["Geist Mono", "ui-monospace", "SFMono-Regular", "monospace"],
       },
       boxShadow: {
