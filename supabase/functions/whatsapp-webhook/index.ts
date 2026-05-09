@@ -213,16 +213,22 @@ serve(async (req) => {
     if (isEvolution) {
       if (rawPayload.event === "messages.reaction") {
         const reactionData = rawPayload.data;
-        const messageId = reactionData?.key?.id;
-        if (messageId) {
-          const existing = await getExistingMessage(supabase, messageId);
+        // For Evolution reactions, the target message ID is in reaction.key.id
+        const targetMessageId = reactionData?.reaction?.key?.id;
+        
+        if (targetMessageId) {
+          const existing = await getExistingMessage(supabase, targetMessageId);
           if (existing) {
-            console.log(`Processing reaction for message: ${messageId}`);
+            console.log(`Processing Evolution reaction for message: ${targetMessageId}`);
             const emoji = reactionData.reaction?.text || reactionData.reaction;
             const reactions = existing.metadata?.reactions || [];
             
-            // Evitar duplicados se o webhook vier duas vezes
-            const alreadyHasEmoji = reactions.some((r: any) => r.emoji === emoji);
+            // Deduplicate: same emoji within 5 seconds
+            const alreadyHasEmoji = reactions.some((r: any) => 
+              r.emoji === emoji && 
+              (r.from_webhook || (new Date().getTime() - new Date(r.sent_at).getTime() < 5000))
+            );
+
             if (!alreadyHasEmoji) {
               const newReactions = [...reactions, { emoji, sent_at: new Date().toISOString(), from_webhook: true }];
               await supabase.from("messages").update({
