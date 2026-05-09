@@ -21,7 +21,7 @@ export default defineConfig(({ mode }) => ({
         short_name: "OmniDesk",
         description: "Plataforma de atendimento omnichannel com WhatsApp, Instagram e IA",
         theme_color: "#8B5CF6",
-        background_color: "#0F172A",
+        background_color: "#1a2620",
         display: "standalone",
         orientation: "portrait",
         scope: "/",

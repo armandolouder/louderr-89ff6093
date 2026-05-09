@@ -5,34 +5,34 @@
 
 @layer base {
   :root {
-    /* Fintech Light — inspirado em FinSight (verde menta) */
-    --background: 140 30% 97%;
-    --foreground: 160 25% 12%;
+    /* Inspirado no OmniDesk Standalone do Usuário */
+    --background: 154 18% 13%; /* #1a2620 */
+    --foreground: 154 20% 95%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 160 25% 12%;
+    --card: 154 18% 16%; /* #1f2d26 */
+    --card-foreground: 154 20% 95%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 160 25% 12%;
+    --popover: 154 18% 14%;
+    --popover-foreground: 154 20% 95%;
 
-    --primary: 145 55% 55%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 158 64% 52%; /* #3ad19a */
+    --primary-foreground: 154 30% 10%;
 
-    --secondary: 145 40% 94%;
-    --secondary-foreground: 160 25% 18%;
+    --secondary: 154 15% 20%;
+    --secondary-foreground: 154 20% 95%;
 
-    --muted: 150 25% 95%;
-    --muted-foreground: 160 10% 45%;
+    --muted: 154 15% 18%;
+    --muted-foreground: 154 10% 65%;
 
-    --accent: 145 60% 60%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 158 64% 52%;
+    --accent-foreground: 154 30% 10%;
 
-    --destructive: 0 72% 55%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 150 20% 90%;
-    --input: 150 20% 90%;
-    --ring: 145 55% 55%;
+    --border: 154 15% 22%;
+    --input: 154 15% 22%;
+    --ring: 158 64% 52%;
 
     --radius: 0.875rem;
 
@@ -84,9 +84,10 @@
 
   body {
     @apply bg-background text-foreground font-sans antialiased;
-    background-image:
-      radial-gradient(at 20% 0%, hsl(145 55% 88% / 0.45), transparent 50%),
-      radial-gradient(at 80% 100%, hsl(145 50% 90% / 0.35), transparent 50%);
+    background-color: hsl(var(--background));
+    background-image: 
+      radial-gradient(at 0% 0%, hsla(158, 64%, 52%, 0.15), transparent 40%),
+      radial-gradient(at 100% 100%, hsla(158, 64%, 52%, 0.1), transparent 40%);
     background-attachment: fixed;
     font-family: var(--font-sans);
   }
@@ -115,9 +116,8 @@
   }
 
   .fintech-card {
-    @apply relative overflow-hidden bg-card border border-border/60 shadow-md backdrop-blur-sm;
-    background-image:
-      linear-gradient(135deg, hsl(0 0% 100%) 0%, hsl(145 30% 98%) 100%);
+    @apply relative overflow-hidden bg-card/80 border border-white/5 shadow-xl backdrop-blur-md;
+    background-image: linear-gradient(135deg, hsla(154, 18%, 20%, 0.5) 0%, hsla(154, 18%, 14%, 0.5) 100%);
   }
 
   .fintech-card::before {
