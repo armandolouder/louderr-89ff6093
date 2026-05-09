@@ -87,10 +87,10 @@ export default {
         sm: "calc(var(--radius) - 4px)",
       },
       fontFamily: {
-        sans: ["Lora", "ui-serif", "Georgia", "Cambria", "Times New Roman", "Times", "serif"],
-        serif: ["Lora", "ui-serif", "Georgia", "serif"],
-        display: ["Playfair Display", "ui-serif", "Georgia", "serif"],
-        mono: ["Lora", "ui-serif", "Georgia", "serif"],
+        sans: ["Inter", "ui-sans-serif", "system-ui", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "sans-serif"],
+        serif: ["ui-serif", "Georgia", "serif"],
+        display: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"],
+        mono: ["ui-monospace", "SFMono-Regular", "Menlo", "Monaco", "Consolas", "monospace"],
       },
       boxShadow: {
         sm: "var(--shadow-sm)",
