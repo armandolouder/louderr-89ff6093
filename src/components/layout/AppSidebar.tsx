@@ -110,9 +110,9 @@ export function AppSidebar() {
                     key={child.href}
                     to={child.href}
                     className={cn(
-                      "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
+                      "relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150",
                       isActive
-                        ? "bg-sidebar-accent text-sidebar-primary-foreground"
+                        ? "bg-sidebar-accent text-sidebar-primary-foreground before:content-[''] before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[3px] before:rounded-full before:bg-primary"
                         : "text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
                     )}
                   >
@@ -127,9 +127,9 @@ export function AppSidebar() {
                 <button
                   onClick={() => toggleMenu(item.name)}
                   className={cn(
-                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 w-full",
+                    "relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150 w-full",
                     childActive
-                      ? "text-sidebar-primary-foreground bg-sidebar-accent"
+                      ? "text-sidebar-primary-foreground bg-sidebar-accent before:content-[''] before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[3px] before:rounded-full before:bg-primary"
                       : "text-sidebar-foreground hover:bg-sidebar-accent"
                   )}
                 >
@@ -151,9 +151,9 @@ export function AppSidebar() {
                           key={child.href}
                           to={child.href}
                           className={cn(
-                            "flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+                            "relative flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-150",
                             isActive
-                              ? "bg-sidebar-accent text-sidebar-primary-foreground"
+                              ? "bg-sidebar-accent text-sidebar-primary-foreground before:content-[''] before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[3px] before:rounded-full before:bg-primary"
                               : "text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
                           )}
                         >
@@ -174,9 +174,9 @@ export function AppSidebar() {
               key={item.name}
               to={item.href!}
               className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
+                "relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150",
                 isActive
-                  ? "bg-sidebar-accent text-sidebar-primary-foreground"
+                  ? "bg-sidebar-accent text-sidebar-primary-foreground before:content-[''] before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[3px] before:rounded-full before:bg-primary"
                   : "text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
               )}
             >
