@@ -1207,6 +1207,7 @@ export type Database = {
           content: string
           conversation_id: string
           created_at: string | null
+          evolution_message_id: string | null
           id: string
           media_url: string | null
           message_type: string | null
@@ -1215,11 +1216,13 @@ export type Database = {
           sender_type: string
           status: string | null
           user_id: string | null
+          whatsapp_message_id: string | null
         }
         Insert: {
           content: string
           conversation_id: string
           created_at?: string | null
+          evolution_message_id?: string | null
           id?: string
           media_url?: string | null
           message_type?: string | null
@@ -1228,11 +1231,13 @@ export type Database = {
           sender_type: string
           status?: string | null
           user_id?: string | null
+          whatsapp_message_id?: string | null
         }
         Update: {
           content?: string
           conversation_id?: string
           created_at?: string | null
+          evolution_message_id?: string | null
           id?: string
           media_url?: string | null
           message_type?: string | null
@@ -1241,6 +1246,7 @@ export type Database = {
           sender_type?: string
           status?: string | null
           user_id?: string | null
+          whatsapp_message_id?: string | null
         }
         Relationships: [
           {

@@ -71,15 +71,15 @@ interface EvolutionPayload {
   apikey?: string;
 }
 
-async function getExistingMessage(supabase: any, messageId: string) {
-  const { data } = await supabase
-    .from("messages")
-    .select("id, metadata")
-    .or(`metadata->>evolution_message_id.eq.${messageId},metadata->>whatsapp_message_id.eq.${messageId}`)
-    .limit(1)
-    .maybeSingle();
-  return data;
-}
+ async function getExistingMessage(supabase: any, messageId: string) {
+   const { data } = await supabase
+     .from("messages")
+     .select("id, metadata, evolution_message_id, whatsapp_message_id")
+     .or(`evolution_message_id.eq.${messageId},whatsapp_message_id.eq.${messageId}`)
+     .limit(1)
+     .maybeSingle();
+   return data;
+ }
 
 async function handleEvolutionWebhook(supabase: any, payload: EvolutionPayload, ownerUserId: string | null) {
   console.log(`Processing Evolution Webhook: ${payload.event}`);
@@ -169,15 +169,16 @@ async function handleEvolutionWebhook(supabase: any, payload: EvolutionPayload, 
 
       if (!conversation) continue;
 
-      await supabase.from("messages").insert({
-        conversation_id: conversation.id,
-        content,
-        sender_type: "contact",
-        message_type: messageType,
-        status: "received",
-        user_id: ownerUserId,
-        metadata: { evolution_message_id: m.key?.id, evolution_raw: m }
-      });
+       await supabase.from("messages").insert({
+         conversation_id: conversation.id,
+         content,
+         sender_type: "contact",
+         message_type: messageType,
+         status: "received",
+         user_id: ownerUserId,
+         evolution_message_id: m.key?.id,
+         metadata: { evolution_message_id: m.key?.id, evolution_raw: m }
+       });
 
       await supabase.from("conversations").update({
         last_message: content.substring(0, 100),
@@ -278,15 +279,16 @@ serve(async (req) => {
           conv = newConv;
         }
 
-        await supabase.from("messages").insert({
-          conversation_id: conv?.id,
-          content,
-          sender_type: "contact",
-          message_type: "text",
-          status: "received",
-          user_id: ownerUserId,
-          metadata: { whatsapp_message_id: msg.messageid }
-        });
+         await supabase.from("messages").insert({
+           conversation_id: conv?.id,
+           content,
+           sender_type: "contact",
+           message_type: "text",
+           status: "received",
+           user_id: ownerUserId,
+           whatsapp_message_id: msg.messageid,
+           metadata: { whatsapp_message_id: msg.messageid }
+         });
 
         await supabase.from("conversations").update({ last_message: content.substring(0, 100), last_message_at: new Date().toISOString() }).eq("id", conv?.id);
       }
