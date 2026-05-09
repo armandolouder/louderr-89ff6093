@@ -118,10 +118,11 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
     };
   }, [pastedImage]);
 
-  // Marca a conversa como lida ao abrir (zera unread_count) + atualização otimista
+  // Marca a conversa como lida APENAS ao abrir/trocar de conversa.
+  // Se o cliente enviar nova mensagem com a conversa já aberta, o unread_count
+  // volta a subir via webhook e a conversa reaparece no filtro Aguardando.
   useEffect(() => {
     if (!conversation.id) return;
-    if ((conversation.unread_count || 0) === 0) return;
 
     // Atualização otimista do cache para refletir na UI imediatamente
     queryClient.setQueryData<any[]>(["conversations"], (old) =>
@@ -134,11 +135,10 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
         .update({ unread_count: 0 })
         .eq("id", conversation.id);
       if (error) {
-        // Reverte em caso de erro
         queryClient.invalidateQueries({ queryKey: ["conversations"] });
       }
     })();
-  }, [conversation.id, conversation.unread_count, queryClient]);
+  }, [conversation.id, queryClient]);
 
   const clearPastedImage = () => {
     if (pastedImage?.preview) {
