@@ -1,24 +1,24 @@
-The issue of double messages (a local message followed by a webhook confirmation appearing as a duplicate) is likely caused by a race condition or an incomplete deduplication check. 
+I will update the visual design of the application to follow a "fintech" aesthetic, characterized by a refined dark theme, sophisticated gradients, subtle borders, and improved typography.
 
-I will implement the following changes:
+### Technical Details
 
-### 1. Database Schema Update
-- Add explicit columns `evolution_message_id` and `whatsapp_message_id` to the `messages` table for more reliable deduplication than JSON metadata indexing.
-- Update existing messages to move metadata IDs to these new columns.
+- **Tailwind Configuration**:
+  - Update `tailwind.config.ts` to include a custom palette with more balanced dark tones.
+  - Refine `borderRadius` to `12px` (0.75rem) for a more modern, premium feel.
+  - Add "fintech-blue" and "fintech-purple" as accent colors.
+- **Global CSS (`index.css`)**:
+  - Update CSS variables for a deep charcoal/navy background (`#0A0C10` range).
+  - Implement subtle "glassmorphism" effects for cards and headers.
+  - Update the scrollbar to be more discreet.
+- **UI Components**:
+  - **Button**: Update `button.tsx` with subtle transitions and cleaner padding.
+  - **AppLayout**: Add a subtle background gradient or grain effect to enhance depth.
+  - **HomeDashboard**: Update card layouts to use the new "fintech" style with improved spacing and iconography.
+- **Typography**: Ensure the application uses "Geist" (already in config) consistently with optimized tracking and leading.
 
-### 2. Edge Function: send-whatsapp
-- Improve the logic that checks for existing messages before inserting.
-- Ensure that the local insertion uses the new columns.
+### Visual Changes
 
-### 3. Edge Function: whatsapp-webhook
-- Refine the deduplication logic to use the new columns.
-- Ensure messages with `fromMe: true` (sent by the system) are correctly identified and either merged or skipped if they already exist.
-
-### 4. Frontend Optimization (hooks/useMessages.ts)
-- Add a client-side deduplication logic to the `useMessages` hook as a safety net, ensuring that messages with the same content and near-identical timestamps or identical external IDs aren't displayed twice.
-
-Technical details:
-- Migration to add `evolution_message_id` and `whatsapp_message_id` (TEXT, indexed).
-- Update `whatsapp-webhook/index.ts` to query these columns.
-- Update `send-whatsapp/index.ts` to insert into these columns.
-- Update `useMessages.ts` to filter duplicates in the `queryFn`.
+- **Background**: Shift from pure black/dark gray to a deep navy/slate charcoal.
+- **Accents**: Maintain the primary yellow but complement it with subtle blue/purple gradients for a professional financial look.
+- **Cards**: Add inner borders and very subtle shadows to create a layered "stack" effect.
+- **Animations**: Add smooth, subtle fade-ins for content loading.

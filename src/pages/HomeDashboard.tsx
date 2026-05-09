@@ -206,24 +206,25 @@ export default function HomeDashboard() {
           value={formatCurrency(d.profit)}
           subtitle={`Margem ${d.margin.toFixed(1)}%`}
           icon={d.profit >= 0 ? TrendingUp : TrendingDown}
-          color={d.profit >= 0 ? "text-emerald-500" : "text-destructive"}
-          bg={d.profit >= 0 ? "bg-emerald-500/10" : "bg-destructive/10"}
+          color={d.profit >= 0 ? "text-emerald-400" : "text-rose-400"}
+          bg={d.profit >= 0 ? "bg-emerald-500/5" : "bg-rose-500/5"}
+          trend={d.profit >= 0 ? "up" : "down"}
         />
         <KPICard
           title="Receita (Pagos)"
           value={formatCurrency(d.revenue)}
           subtitle={`${d.paidOrdersCount} pedidos pagos`}
           icon={DollarSign}
-          color="text-emerald-500"
-          bg="bg-emerald-500/10"
+          color="text-emerald-400"
+          bg="bg-emerald-500/5"
         />
         <KPICard
-          title="Custos de Produto (CPV)"
+          title="Custos (CPV)"
           value={formatCurrency(d.totalCosts)}
           subtitle={d.totalCosts > 0 ? `${((d.totalCosts / d.revenue) * 100).toFixed(1)}% da receita` : "Sem custos lançados"}
           icon={Package}
-          color="text-orange-500"
-          bg="bg-orange-500/10"
+          color="text-orange-400"
+          bg="bg-orange-500/5"
         />
         <KPICard
           title="Ticket Médio"
@@ -231,13 +232,13 @@ export default function HomeDashboard() {
           subtitle={`${d.totalOrders} pedidos no total`}
           icon={BarChart3}
           color="text-primary"
-          bg="bg-primary/10"
+          bg="bg-primary/5"
         />
       </div>
 
       {/* Row 2: Pending & Abandoned */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <Card className="border-warning/30">
+        <Card className="fintech-card border-warning/10">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm font-medium text-muted-foreground">Vendas Pendentes</CardTitle>
@@ -253,7 +254,7 @@ export default function HomeDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="border-destructive/30">
+        <Card className="fintech-card border-destructive/10">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm font-medium text-muted-foreground">Carrinhos Abandonados</CardTitle>
@@ -272,7 +273,7 @@ export default function HomeDashboard() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="fintech-card">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Margem de Lucro</CardTitle>
           </CardHeader>
@@ -331,7 +332,7 @@ export default function HomeDashboard() {
       </div>
 
       {/* Acesso rápido ao módulo de Despesas */}
-      <Card className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => navigate("/expenses")}>
+      <Card className="fintech-card cursor-pointer hover:border-primary/30 transition-all hover:shadow-glow" onClick={() => navigate("/expenses")}>
         <CardContent className="pt-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="p-3 bg-primary/10">
@@ -347,7 +348,7 @@ export default function HomeDashboard() {
       </Card>
 
       {/* Row 4: Recent Orders */}
-      <Card>
+      <Card className="fintech-card">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-base font-semibold flex items-center gap-2">
@@ -401,19 +402,26 @@ export default function HomeDashboard() {
   );
 }
 
-function KPICard({ title, value, subtitle, icon: Icon, color, bg }: {
-  title: string; value: string; subtitle: string; icon: any; color: string; bg: string;
+function KPICard({ title, value, subtitle, icon: Icon, color, bg, trend }: {
+  title: string; value: string; subtitle: string; icon: any; color: string; bg: string; trend?: "up" | "down";
 }) {
   return (
-    <Card>
+    <Card className="fintech-card group">
       <CardContent className="pt-6">
         <div className="flex items-start justify-between">
           <div className="space-y-1">
-            <p className="text-sm text-muted-foreground">{title}</p>
-            <p className="text-2xl font-bold text-foreground">{value}</p>
-            <p className="text-xs text-muted-foreground">{subtitle}</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{title}</p>
+            <p className="text-2xl font-bold tracking-tight text-foreground">{value}</p>
+            <div className="flex items-center gap-1.5">
+              {trend && (
+                <div className={`flex items-center ${trend === 'up' ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  {trend === 'up' ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground/80">{subtitle}</p>
+            </div>
           </div>
-          <div className={`p-3 rounded-lg ${bg}`}>
+          <div className={`p-2.5 rounded-xl ${bg} border border-white/5 group-hover:border-white/10 transition-colors`}>
             <Icon className={`w-5 h-5 ${color}`} />
           </div>
         </div>
@@ -426,15 +434,15 @@ function MiniCard({ title, value, icon: Icon, onClick, subtitle }: {
   title: string; value: number; icon: any; onClick?: () => void; subtitle?: string;
 }) {
   return (
-    <Card className={onClick ? "cursor-pointer hover:border-primary/50 transition-colors" : ""} onClick={onClick}>
-      <CardContent className="pt-6">
+    <Card className={`fintech-card ${onClick ? "cursor-pointer hover:border-primary/30 transition-all" : ""}`} onClick={onClick}>
+      <CardContent className="pt-5">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-primary/10">
+          <div className="p-2 rounded-lg bg-primary/5 border border-primary/10">
             <Icon className="w-4 h-4 text-primary" />
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">{title}</p>
-            <p className="text-xl font-bold text-foreground">{value}</p>
+            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{title}</p>
+            <p className="text-lg font-bold text-foreground">{value}</p>
             {subtitle && <p className="text-[11px] text-muted-foreground">{subtitle}</p>}
           </div>
         </div>
