@@ -2,18 +2,20 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect } from "react";
 
-export interface Message {
-  id: string;
-  conversation_id: string;
-  content: string;
-  sender_type: "contact" | "agent";
-  sender_id: string | null;
-  message_type: "text" | "image" | "audio" | "video" | "document";
-  media_url: string | null;
-  metadata: Record<string, unknown>;
-  status: "sent" | "delivered" | "read";
-  created_at: string;
-}
+ export interface Message {
+   id: string;
+   conversation_id: string;
+   content: string;
+   sender_type: "contact" | "agent";
+   sender_id: string | null;
+   message_type: "text" | "image" | "audio" | "video" | "document";
+   media_url: string | null;
+   metadata: Record<string, unknown>;
+   evolution_message_id?: string | null;
+   whatsapp_message_id?: string | null;
+   status: "sent" | "delivered" | "read";
+   created_at: string;
+ }
 
 export function useMessages(conversationId: string | null) {
   const queryClient = useQueryClient();
@@ -29,8 +31,32 @@ export function useMessages(conversationId: string | null) {
         .eq("conversation_id", conversationId)
         .order("created_at", { ascending: true });
 
-      if (error) throw error;
-      return data as Message[];
+       if (error) throw error;
+       
+       // Deduplication logic for the UI
+       const deduplicated = (data as Message[]).reduce((acc: Message[], current) => {
+         const isDuplicate = acc.some(msg => {
+           // Check by external ID
+           const sameEvolutionId = current.evolution_message_id && msg.evolution_message_id === current.evolution_message_id;
+           const sameWhatsappId = current.whatsapp_message_id && msg.whatsapp_message_id === current.whatsapp_message_id;
+           
+           if (sameEvolutionId || sameWhatsappId) return true;
+           
+           // Fallback check by content and proximity (within 10 seconds)
+           const timeDiff = Math.abs(new Date(current.created_at).getTime() - new Date(msg.created_at).getTime());
+           const sameContent = msg.content === current.content;
+           const sameSender = msg.sender_type === current.sender_type;
+           
+           return sameContent && sameSender && timeDiff < 10000;
+         });
+ 
+         if (!isDuplicate) {
+           acc.push(current);
+         }
+         return acc;
+       }, []);
+ 
+       return deduplicated;
     },
     enabled: !!conversationId,
   });
