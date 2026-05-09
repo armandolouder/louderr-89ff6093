@@ -18,7 +18,7 @@ interface ConversationListProps {
 export function ConversationList({ selectedId, onSelect, filterTabId, showArchived = false, onToggleArchived }: ConversationListProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [channelFilter, setChannelFilter] = useState<"whatsapp" | "instagram" | "customers">("customers");
-  const [unreadOnly, setUnreadOnly] = useState(false);
+  const [unreadOnly, setUnreadOnly] = useState(true);
   const [customerPhones, setCustomerPhones] = useState<Set<string> | null>(null);
   
   const { data: conversations, isLoading, error } = useConversations();
