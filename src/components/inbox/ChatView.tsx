@@ -116,6 +116,18 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
     };
   }, [pastedImage]);
 
+  // Marca a conversa como lida ao abrir (zera unread_count)
+  useEffect(() => {
+    if (!conversation.id) return;
+    if ((conversation.unread_count || 0) === 0) return;
+    (async () => {
+      await supabase
+        .from("conversations")
+        .update({ unread_count: 0 })
+        .eq("id", conversation.id);
+    })();
+  }, [conversation.id]);
+
   const clearPastedImage = () => {
     if (pastedImage?.preview) {
       URL.revokeObjectURL(pastedImage.preview);
