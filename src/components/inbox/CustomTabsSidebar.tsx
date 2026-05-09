@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, FolderOpen, Inbox as InboxIcon } from "lucide-react";
+import { Plus, FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { TabItem } from "./TabItem";
@@ -43,7 +43,6 @@ export function CustomTabsSidebar({ selectedTabId, onSelectTab }: CustomTabsSide
 
   const totalConversations = Object.values(counts).reduce((a, b) => a + b, 0);
   const unassignedCount = counts["all"] || 0;
-  const waitingCount = counts["__waiting__"] || 0;
 
   const handleSave = async (data: { name: string; color: string; icon: string }) => {
     try {
@@ -115,33 +114,6 @@ export function CustomTabsSidebar({ selectedTabId, onSelectTab }: CustomTabsSide
             </div>
             <span className="text-xs font-medium text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
               {totalConversations}
-            </span>
-          </div>
-
-          {/* Aguardando — mensagens não abertas ainda */}
-          <div
-            className={cn(
-              "flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors",
-              selectedTabId === "__waiting__"
-                ? "bg-primary/10 text-primary"
-                : "hover:bg-secondary text-muted-foreground hover:text-foreground"
-            )}
-            onClick={() => onSelectTab("__waiting__")}
-          >
-            <div className="w-8 h-8 rounded-lg bg-primary/15 flex items-center justify-center flex-shrink-0">
-              <InboxIcon className="w-4 h-4 text-primary" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium">Aguardando</p>
-              <p className="text-[11px] text-muted-foreground truncate">Não abertas ainda</p>
-            </div>
-            <span className={cn(
-              "text-xs font-medium px-2 py-0.5 rounded-full",
-              waitingCount > 0
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground bg-secondary"
-            )}>
-              {waitingCount}
             </span>
           </div>
 
