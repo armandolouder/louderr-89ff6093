@@ -64,7 +64,26 @@ export function ConversationList({ selectedId, onSelect, filterTabId, showArchiv
   });
 
   const archivedCount = (conversations || []).filter(c => c.is_archived).length;
-  const unreadCount = (conversations || []).filter(c => !c.is_archived && (c.unread_count || 0) > 0).length;
+  // Conta apenas as não lidas que passam nos mesmos filtros visíveis (canal/aba/busca)
+  const unreadCount = (conversations || []).filter((conv) => {
+    if (conv.is_archived) return false;
+    if ((conv.unread_count || 0) === 0) return false;
+    const matchesSearch = conv.contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (conv.last_message?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
+    let matchesChannel = true;
+    if (channelFilter === "customers") {
+      if (!customerPhones) matchesChannel = false;
+      else {
+        const k = (conv.contact.phone || "").replace(/\D/g, "").slice(-10);
+        matchesChannel = !!k && customerPhones.has(k);
+      }
+    } else matchesChannel = conv.channel === channelFilter;
+    const matchesTab =
+      filterTabId === null || filterTabId === "__waiting__"
+        ? true
+        : (conv as any).tab_id === filterTabId;
+    return matchesSearch && matchesChannel && matchesTab;
+  }).length;
 
   return (
     <div className="flex flex-col h-full border-r border-border bg-sidebar/50">
