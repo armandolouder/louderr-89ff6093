@@ -183,6 +183,7 @@ async function handleEvolutionWebhook(supabase: any, payload: EvolutionPayload, 
       await supabase.from("conversations").update({
         last_message: content.substring(0, 100),
         last_message_at: new Date().toISOString(),
+        unread_count: (conversation.unread_count || 0) + 1,
         status: conversation.status === "finalizado" ? "novo" : conversation.status
       }).eq("id", conversation.id);
     }
@@ -296,7 +297,12 @@ serve(async (req) => {
            metadata: { whatsapp_message_id: msg.messageid }
          });
 
-        await supabase.from("conversations").update({ last_message: content.substring(0, 100), last_message_at: new Date().toISOString() }).eq("id", conv?.id);
+        const { data: convCurrent } = await supabase.from("conversations").select("unread_count").eq("id", conv?.id).maybeSingle();
+        await supabase.from("conversations").update({
+          last_message: content.substring(0, 100),
+          last_message_at: new Date().toISOString(),
+          unread_count: (convCurrent?.unread_count || 0) + 1,
+        }).eq("id", conv?.id);
       }
       return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
     }
