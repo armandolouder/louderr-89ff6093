@@ -206,24 +206,25 @@ export default function HomeDashboard() {
           value={formatCurrency(d.profit)}
           subtitle={`Margem ${d.margin.toFixed(1)}%`}
           icon={d.profit >= 0 ? TrendingUp : TrendingDown}
-          color={d.profit >= 0 ? "text-emerald-500" : "text-destructive"}
-          bg={d.profit >= 0 ? "bg-emerald-500/10" : "bg-destructive/10"}
+          color={d.profit >= 0 ? "text-emerald-400" : "text-rose-400"}
+          bg={d.profit >= 0 ? "bg-emerald-500/5" : "bg-rose-500/5"}
+          trend={d.profit >= 0 ? "up" : "down"}
         />
         <KPICard
           title="Receita (Pagos)"
           value={formatCurrency(d.revenue)}
           subtitle={`${d.paidOrdersCount} pedidos pagos`}
           icon={DollarSign}
-          color="text-emerald-500"
-          bg="bg-emerald-500/10"
+          color="text-emerald-400"
+          bg="bg-emerald-500/5"
         />
         <KPICard
-          title="Custos de Produto (CPV)"
+          title="Custos (CPV)"
           value={formatCurrency(d.totalCosts)}
           subtitle={d.totalCosts > 0 ? `${((d.totalCosts / d.revenue) * 100).toFixed(1)}% da receita` : "Sem custos lançados"}
           icon={Package}
-          color="text-orange-500"
-          bg="bg-orange-500/10"
+          color="text-orange-400"
+          bg="bg-orange-500/5"
         />
         <KPICard
           title="Ticket Médio"
@@ -231,7 +232,7 @@ export default function HomeDashboard() {
           subtitle={`${d.totalOrders} pedidos no total`}
           icon={BarChart3}
           color="text-primary"
-          bg="bg-primary/10"
+          bg="bg-primary/5"
         />
       </div>
 
@@ -401,19 +402,26 @@ export default function HomeDashboard() {
   );
 }
 
-function KPICard({ title, value, subtitle, icon: Icon, color, bg }: {
-  title: string; value: string; subtitle: string; icon: any; color: string; bg: string;
+function KPICard({ title, value, subtitle, icon: Icon, color, bg, trend }: {
+  title: string; value: string; subtitle: string; icon: any; color: string; bg: string; trend?: "up" | "down";
 }) {
   return (
-    <Card>
+    <Card className="fintech-card group">
       <CardContent className="pt-6">
         <div className="flex items-start justify-between">
           <div className="space-y-1">
-            <p className="text-sm text-muted-foreground">{title}</p>
-            <p className="text-2xl font-bold text-foreground">{value}</p>
-            <p className="text-xs text-muted-foreground">{subtitle}</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{title}</p>
+            <p className="text-2xl font-bold tracking-tight text-foreground">{value}</p>
+            <div className="flex items-center gap-1.5">
+              {trend && (
+                <div className={`flex items-center ${trend === 'up' ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  {trend === 'up' ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground/80">{subtitle}</p>
+            </div>
           </div>
-          <div className={`p-3 rounded-lg ${bg}`}>
+          <div className={`p-2.5 rounded-xl ${bg} border border-white/5 group-hover:border-white/10 transition-colors`}>
             <Icon className={`w-5 h-5 ${color}`} />
           </div>
         </div>
