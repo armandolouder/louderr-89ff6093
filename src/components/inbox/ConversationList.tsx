@@ -52,7 +52,12 @@ export function ConversationList({ selectedId, onSelect, filterTabId, showArchiv
         matchesChannel = !!k && customerPhones.has(k);
       }
     } else matchesChannel = conv.channel === channelFilter;
-    const matchesTab = filterTabId === null || (conv as any).tab_id === filterTabId;
+    const matchesTab =
+      filterTabId === null
+        ? true
+        : filterTabId === "__waiting__"
+          ? (conv.unread_count || 0) > 0
+          : (conv as any).tab_id === filterTabId;
     return matchesArchived && matchesSearch && matchesChannel && matchesTab;
   });
 

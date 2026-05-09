@@ -142,15 +142,18 @@ export function useTabConversationCounts() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("conversations")
-        .select("tab_id");
+        .select("tab_id, unread_count, is_archived");
 
       if (error) throw error;
 
       const counts: Record<string, number> = {};
+      let waiting = 0;
       data.forEach((conv) => {
         const tabId = conv.tab_id || "all";
         counts[tabId] = (counts[tabId] || 0) + 1;
+        if (!conv.is_archived && (conv.unread_count || 0) > 0) waiting++;
       });
+      counts["__waiting__"] = waiting;
 
       return counts;
     },
