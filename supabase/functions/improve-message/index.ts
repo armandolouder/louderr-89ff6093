@@ -23,43 +23,19 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    const { message, mode, customerName, variants = 3 } = await req.json();
+    const { message, mode, customerName, variants = 1 } = await req.json();
     const apiKey = Deno.env.get("GROQ_API_KEY");
     if (!apiKey) throw new Error("GROQ_API_KEY not configured");
 
     let systemPrompt: string;
 
-    if (mode === "generate") {
-      systemPrompt = `Você é um vendedor brasileiro super simpático e natural. Gere ${variants} variações DIFERENTES de mensagem curta de WhatsApp para enviar a um cliente${customerName ? ` chamado ${customerName}` : ""}.
-Cada variação deve:
-- Ser muito natural, como amigo batendo papo
-- Não parecer venda
-- Ser curta (3-4 linhas)
-- Usar linguagem informal brasileira
-- Ter no máximo 1-2 emojis
-- Não usar "promoção", "desconto", "oferta", "imperdível"
-- Soar genuína
+    systemPrompt = `Você é um assistente de escrita para mensagens de WhatsApp. Sua tarefa é APENAS corrigir erros de português, gramática e pontuação da mensagem fornecida, mantendo o tom original do usuário.
+Não adicione informações extras, não dê opções fora de contexto e não mude drasticamente o estilo.
+Apenas acerte o texto para que fique correto e profissional, mas natural.
 
-As ${variants} variações devem ter ABORDAGENS distintas (ex: descontraída, direta, calorosa).
+Responda APENAS com um JSON válido no formato: {"variants":["texto corrigido"]}. Sem markdown, sem explicação, sem \`\`\`.`;
 
-Responda APENAS com um JSON válido no formato: {"variants":["texto 1","texto 2","texto 3"]}. Sem markdown, sem explicação, sem \`\`\`.`;
-    } else {
-      systemPrompt = `Você é um especialista em comunicação natural brasileira. Reescreva a mensagem de WhatsApp do usuário em ${variants} versões DIFERENTES, cada uma:
-- Natural e humana, como amigo conversando
-- Sem tom de venda
-- Mantendo a essência e informações originais
-- Em português brasileiro informal
-- Com no máximo 1-2 emojis
-- Curta, direta e genuína
-
-As ${variants} versões devem ter TONS distintos (ex: amigável, direta, calorosa) — mas todas mantendo o conteúdo essencial.
-
-Responda APENAS com um JSON válido no formato: {"variants":["versão 1","versão 2","versão 3"]}. Sem markdown, sem explicação, sem \`\`\`.`;
-    }
-
-    const userMessage = mode === "generate"
-      ? "Gere as variações simpáticas e naturais para iniciar conversa com o cliente."
-      : `Reescreva esta mensagem em variações:\n\n${message}`;
+    const userMessage = `Corrija este texto:\n\n${message}`;
 
     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
