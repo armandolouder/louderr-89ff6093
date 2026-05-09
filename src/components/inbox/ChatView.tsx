@@ -400,14 +400,14 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
                       >
                         <path d="M0 0 L0 11 Q0 13 2 13 L8 13 Q2 11 0 0Z" fill="currentColor" />
                       </svg>
-                      <div
-                        className={cn(
-                          "px-4 py-2.5 rounded-2xl relative z-[1]",
-                          msg.sender_type === "agent"
-                            ? "bg-primary text-primary-foreground rounded-br-none"
-                            : "bg-secondary text-secondary-foreground rounded-bl-none"
-                        )}
-                      >
+                       <div
+                         className={cn(
+                           "px-4 py-2.5 rounded-2xl relative z-[1] fintech-card",
+                           msg.sender_type === "agent"
+                             ? "bg-primary/90 text-primary-foreground rounded-br-none"
+                             : "bg-secondary/80 backdrop-blur text-secondary-foreground rounded-bl-none border-0"
+                         )}
+                       >
                       <MediaPreview 
                         type={messageType}
                         url={msg.media_url}
