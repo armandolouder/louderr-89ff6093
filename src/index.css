@@ -5,35 +5,35 @@
 
 @layer base {
   :root {
-    --background: 220 15% 10%;
-    --foreground: 210 20% 95%;
+    --background: 222 47% 4%;
+    --foreground: 210 40% 98%;
 
-    --card: 220 15% 13%;
+    --card: 222 47% 6%;
     --card-foreground: 210 20% 95%;
 
     --popover: 220 15% 13%;
     --popover-foreground: 210 20% 95%;
 
-    --primary: 52 100% 50%;
+    --primary: 52 100% 50%; /* Mantendo o amarelo característico, mas com refinamento */
     --primary-foreground: 220 15% 10%;
 
-    --secondary: 220 15% 18%;
+    --secondary: 222 47% 10%;
     --secondary-foreground: 210 20% 95%;
 
-    --muted: 220 15% 20%;
-    --muted-foreground: 210 10% 60%;
+    --muted: 222 47% 12%;
+    --muted-foreground: 215 20% 65%;
 
-    --accent: 142 70% 45%;
+    --accent: 217 91% 60%; /* Azul Fintech */
     --accent-foreground: 210 20% 98%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 210 20% 98%;
 
-    --border: 220 15% 22%;
-    --input: 220 15% 22%;
+    --border: 222 47% 15%;
+    --input: 222 47% 15%;
     --ring: 52 100% 50%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
     --whatsapp: 142 70% 45%;
     --whatsapp-foreground: 210 20% 98%;
@@ -47,7 +47,7 @@
     --warning: 38 92% 50%;
     --warning-foreground: 220 15% 10%;
 
-    --sidebar-background: 220 15% 8%;
+    --sidebar-background: 222 47% 2%;
     --sidebar-foreground: 210 20% 95%;
     --sidebar-primary: 52 100% 50%;
     --sidebar-primary-foreground: 220 15% 10%;
@@ -65,13 +65,13 @@
     --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
-    --shadow-sm: 0 1px 2px 0 hsl(220 15% 5% / 0.3);
-    --shadow: 0 4px 6px -1px hsl(220 15% 5% / 0.4);
-    --shadow-md: 0 10px 15px -3px hsl(220 15% 5% / 0.5);
-    --shadow-lg: 0 20px 25px -5px hsl(220 15% 5% / 0.6);
-    --shadow-xl: 0 25px 50px -12px hsl(220 15% 5% / 0.7);
-    --shadow-glow: 0 0 20px hsl(52 100% 50% / 0.15);
-    --shadow-glow-accent: 0 0 20px hsl(142 70% 45% / 0.2);
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.4);
+    --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.5);
+    --shadow-md: 0 10px 15px -3px rgb(0 0 0 / 0.6);
+    --shadow-lg: 0 20px 25px -5px rgb(0 0 0 / 0.7);
+    --shadow-xl: 0 25px 50px -12px rgb(0 0 0 / 0.8);
+    --shadow-glow: 0 0 30px hsl(52 100% 50% / 0.1);
+    --shadow-glow-accent: 0 0 30px hsl(217 91% 60% / 0.15);
   }
 }
 
@@ -103,7 +103,20 @@
   }
 
   .glass {
-    @apply bg-card/80 backdrop-blur-xl border border-border/50;
+    @apply bg-card/60 backdrop-blur-md border border-white/5;
+  }
+
+  .fintech-card {
+    @apply relative overflow-hidden bg-gradient-to-br from-card to-card/50 border border-border/50 shadow-lg;
+    background-image: 
+      radial-gradient(at top left, rgba(255, 255, 255, 0.03), transparent 50%),
+      linear-gradient(to bottom right, hsl(var(--card)), transparent);
+  }
+
+  .fintech-card::before {
+    content: '';
+    @apply absolute inset-0 pointer-events-none;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, transparent 100%);
   }
 
   .channel-whatsapp {
@@ -117,7 +130,7 @@
 
 @layer components {
   .stat-card {
-    @apply bg-card border border-border p-6 transition-all duration-300 hover:border-primary/30 hover:glow-primary;
+    @apply fintech-card p-6 transition-all duration-300 hover:border-primary/20 hover:shadow-glow;
   }
 
   .conversation-item {
@@ -164,23 +177,21 @@
 
 /* Custom Scrollbar Styles */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 0; /* Hide horizontal scrollbar */
+  width: 4px;
+  height: 4px;
 }
 
 ::-webkit-scrollbar-track {
-  background: hsl(var(--secondary));
-  border-radius: 3px;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: hsl(var(--primary) / 0.5);
-  border-radius: 3px;
-  transition: background 0.2s;
+  background: hsl(var(--muted));
+  border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--primary) / 0.8);
+  background: hsl(var(--muted-foreground) / 0.5);
 }
 
 ::-webkit-scrollbar-corner {
