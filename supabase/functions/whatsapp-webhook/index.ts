@@ -195,12 +195,29 @@ serve(async (req) => {
     const isEvolution = !!rawPayload.event && !!rawPayload.instance;
     const isUazapi = !!rawPayload.EventType && !!rawPayload.BaseUrl;
 
-    if (isEvolution && isUazapi) {
-      console.log("Relay detected (Evo + Uazapi). Using Evolution handler.");
-      return await handleEvolutionWebhook(supabase, rawPayload, ownerUserId);
-    }
-
     if (isEvolution) {
+      if (rawPayload.event === "messages.reaction") {
+        const reactionData = rawPayload.data;
+        const messageId = reactionData?.key?.id;
+        if (messageId) {
+          const existing = await getExistingMessage(supabase, messageId);
+          if (existing) {
+            console.log(`Processing reaction for message: ${messageId}`);
+            const emoji = reactionData.reaction?.text || reactionData.reaction;
+            const reactions = existing.metadata?.reactions || [];
+            
+            // Evitar duplicados se o webhook vier duas vezes
+            const alreadyHasEmoji = reactions.some((r: any) => r.emoji === emoji);
+            if (!alreadyHasEmoji) {
+              const newReactions = [...reactions, { emoji, sent_at: new Date().toISOString(), from_webhook: true }];
+              await supabase.from("messages").update({
+                metadata: { ...existing.metadata, reactions: newReactions }
+              }).eq("id", existing.id);
+            }
+            return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
+          }
+        }
+      }
       return await handleEvolutionWebhook(supabase, rawPayload, ownerUserId);
     }
 
