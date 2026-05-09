@@ -30,8 +30,6 @@ interface ChatViewProps {
 export function ChatView({ conversation, hideHeader }: ChatViewProps) {
   const [message, setMessage] = useState("");
   const [isImproving, setIsImproving] = useState(false);
-  const [improveVariants, setImproveVariants] = useState<string[]>([]);
-  const [variantsOpen, setVariantsOpen] = useState(false);
   const [showQuickResponseManager, setShowQuickResponseManager] = useState(false);
   const [pastedImage, setPastedImage] = useState<{ file: File; preview: string } | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -148,14 +146,14 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
         return;
       }
 
-      const list: string[] = Array.isArray(data.variants) ? data.variants : [];
-      if (list.length === 0) {
-        toast.error("Nenhuma sugestão gerada");
+      const improvedText = data.message || (Array.isArray(data.variants) ? data.variants[0] : null);
+      if (!improvedText) {
+        toast.error("Nenhuma correção gerada");
         return;
       }
 
-      setImproveVariants(list);
-      setVariantsOpen(true);
+      setMessage(improvedText);
+      toast.success("Texto corrigido!");
     } catch (error) {
       console.error("Improve error:", error);
       toast.error("Erro ao melhorar mensagem");
@@ -671,32 +669,6 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
         onOpenChange={setShowQuickResponseManager} 
       />
 
-      <Dialog open={variantsOpen} onOpenChange={setVariantsOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Escolha uma versão</DialogTitle>
-            <DialogDescription>
-              A IA gerou {improveVariants.length} variações da sua mensagem. Clique para usar.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3 max-h-[60vh] overflow-y-auto">
-            {improveVariants.map((v, i) => (
-              <button
-                key={i}
-                onClick={() => {
-                  setMessage(v);
-                  setVariantsOpen(false);
-                  toast.success("Mensagem aplicada!");
-                }}
-                className="w-full text-left p-4 border border-border bg-card hover:bg-accent transition-colors"
-              >
-                <div className="text-xs text-muted-foreground mb-1">Variação {i + 1}</div>
-                <div className="text-sm whitespace-pre-wrap">{v}</div>
-              </button>
-            ))}
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
