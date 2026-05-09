@@ -91,28 +91,42 @@ async function handleEvolutionWebhook(supabase: any, payload: EvolutionPayload, 
     for (const m of messages) {
       const msg = m.message;
       if (!msg) continue;
-      if (m.key?.fromMe) continue;
-      
-       const messageId = m.key?.id;
-       if (messageId) {
-         const existing = await getExistingMessage(supabase, messageId);
-         if (existing) {
-           // If it exists but doesn't have Evolution metadata, update it to merge the info
-           if (!existing.metadata?.evolution_message_id) {
-             console.log(`Merging Evolution metadata into existing message: ${messageId}`);
-             await supabase.from("messages").update({
-               metadata: { 
-                 ...existing.metadata,
-                 evolution_message_id: messageId, 
-                 evolution_raw: m 
-               }
-             }).eq("id", existing.id);
-           } else {
-             console.log(`Duplicate message ignored (Evolution): ${messageId}`);
-           }
-           continue;
-         }
-       }
+
+      const messageId = m.key?.id;
+      const fromMeValue = m.key?.fromMe;
+      const isFromMe = fromMeValue === true || fromMeValue === 1 || String(fromMeValue) === "true";
+
+      if (messageId) {
+        const existing = await getExistingMessage(supabase, messageId);
+        if (existing) {
+          // If it exists but doesn't have Evolution metadata, update it to merge the info
+          if (!existing.metadata?.evolution_message_id) {
+            console.log(`Merging Evolution metadata into existing message: ${messageId}`);
+            await supabase.from("messages").update({
+              metadata: {
+                ...existing.metadata,
+                evolution_message_id: messageId,
+                evolution_raw: m
+              }
+            }).eq("id", existing.id);
+          } else {
+            console.log(`Duplicate message ignored (Evolution): ${messageId}`);
+          }
+          continue;
+        }
+      }
+
+      // If it's from me and wasn't found in the database, it might be a message sent from another device (phone)
+      // or we just didn't finish the local insert yet.
+      // If we want to support showing messages sent from the phone, we should process it.
+      // BUT, to avoid the race condition duplicate, we only proceed if it's NOT from me, 
+      // OR if we explicitly want to support multi-device sync.
+      // For now, let's keep skipping "fromMe" if not found, to avoid the agent message appearing as a contact message
+      // during the race condition.
+      if (isFromMe) {
+        console.log(`Skipping message from instance (fromMe: true): ${messageId}`);
+        continue;
+      }
 
       const remoteJid = m.key?.remoteJid || "";
       const phone = remoteJid.replace("@s.whatsapp.net", "").replace("@c.us", "");

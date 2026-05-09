@@ -212,6 +212,25 @@ serve(async (req) => {
       if (conversation) {
         const messageType = mediaUrl ? "image" : "text";
 
+        // Determine provider and extract message ID
+        const provider = Deno.env.get("WHATSAPP_PROVIDER")?.toLowerCase()?.trim() || "uazapi";
+        const metadata: any = {
+          api_response: apiData,
+          source: "individual_send"
+        };
+
+        if (provider === "evolution") {
+          const evolutionId = apiData?.key?.id || apiData?.id || apiData?.item?.key?.id;
+          if (evolutionId) {
+            metadata.evolution_message_id = evolutionId;
+          }
+        } else {
+          const uazapiId = apiData?.messageid || apiData?.id;
+          if (uazapiId) {
+            metadata.whatsapp_message_id = uazapiId;
+          }
+        }
+
         const { error: msgErr } = await supabase.from("messages").insert({
           conversation_id: String(conversation.id),
           content,
@@ -220,14 +239,7 @@ serve(async (req) => {
           media_url: mediaUrl || null,
           status: "sent",
           user_id: authenticatedUserId,
-          metadata: {
-            uazapi_response: uazapiData,
-            source: "individual_send",
-            whatsapp_message_id:
-              (uazapiData?.messageid as string | undefined) ||
-              (uazapiData?.messageId as string | undefined) ||
-              null,
-          },
+          metadata: metadata,
         });
 
         if (msgErr) {
