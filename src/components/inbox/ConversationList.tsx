@@ -114,22 +114,22 @@ export function ConversationList({ selectedId, onSelect, filterTabId, showArchiv
             )}
           </Button>
           <Button
-            variant={channelFilter === "customers" && !showArchived ? "default" : "outline"}
+            variant={channelFilter === "customers" && !showArchived && !unreadOnly ? "default" : "outline"}
             size="sm"
-            onClick={() => { setChannelFilter("customers"); if (showArchived && onToggleArchived) onToggleArchived(); }}
-            className={cn("h-8 px-3 gap-1.5", channelFilter !== "customers" || showArchived ? "border-border text-muted-foreground" : "")}
+            onClick={() => { setChannelFilter("customers"); setUnreadOnly(false); if (showArchived && onToggleArchived) onToggleArchived(); }}
+            className={cn("h-8 px-3 gap-1.5", channelFilter !== "customers" || showArchived || unreadOnly ? "border-border text-muted-foreground" : "")}
             title="Clientes (compradores e carrinhos)"
           >
             <ShoppingBag className="w-3.5 h-3.5" />
             Clientes
           </Button>
           <Button
-            variant={channelFilter === "instagram" && !showArchived ? "default" : "outline"}
+            variant={channelFilter === "instagram" && !showArchived && !unreadOnly ? "default" : "outline"}
             size="icon"
-            onClick={() => { setChannelFilter("instagram"); if (showArchived && onToggleArchived) onToggleArchived(); }}
+            onClick={() => { setChannelFilter("instagram"); setUnreadOnly(false); if (showArchived && onToggleArchived) onToggleArchived(); }}
             className={cn(
               "h-8 w-8",
-              channelFilter === "instagram" && !showArchived
+              channelFilter === "instagram" && !showArchived && !unreadOnly
                 ? "bg-instagram text-instagram-foreground hover:bg-instagram/90"
                 : "border-border text-muted-foreground"
             )}
@@ -138,12 +138,12 @@ export function ConversationList({ selectedId, onSelect, filterTabId, showArchiv
             <Instagram className="w-4 h-4" />
           </Button>
           <Button
-            variant={channelFilter === "whatsapp" && !showArchived ? "default" : "outline"}
+            variant={channelFilter === "whatsapp" && !showArchived && !unreadOnly ? "default" : "outline"}
             size="icon"
-            onClick={() => { setChannelFilter("whatsapp"); if (showArchived && onToggleArchived) onToggleArchived(); }}
+            onClick={() => { setChannelFilter("whatsapp"); setUnreadOnly(false); if (showArchived && onToggleArchived) onToggleArchived(); }}
             className={cn(
               "h-8 w-8",
-              channelFilter === "whatsapp" && !showArchived
+              channelFilter === "whatsapp" && !showArchived && !unreadOnly
                 ? "bg-whatsapp text-whatsapp-foreground hover:bg-whatsapp/90"
                 : "border-border text-muted-foreground"
             )}
