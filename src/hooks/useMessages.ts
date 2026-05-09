@@ -34,27 +34,27 @@ export function useMessages(conversationId: string | null) {
        if (error) throw error;
        
        // Deduplication logic for the UI
-       const deduplicated = (data as Message[]).reduce((acc: Message[], current) => {
-         const isDuplicate = acc.some(msg => {
-           // Check by external ID
-           const sameEvolutionId = current.evolution_message_id && msg.evolution_message_id === current.evolution_message_id;
-           const sameWhatsappId = current.whatsapp_message_id && msg.whatsapp_message_id === current.whatsapp_message_id;
-           
-           if (sameEvolutionId || sameWhatsappId) return true;
-           
-           // Fallback check by content and proximity (within 10 seconds)
-           const timeDiff = Math.abs(new Date(current.created_at).getTime() - new Date(msg.created_at).getTime());
-           const sameContent = msg.content === current.content;
-           const sameSender = msg.sender_type === current.sender_type;
-           
-           return sameContent && sameSender && timeDiff < 10000;
-         });
- 
-         if (!isDuplicate) {
-           acc.push(current);
-         }
-         return acc;
-       }, []);
+        const deduplicated = (data as Message[]).reduce((acc: Message[], current) => {
+          const isDuplicate = acc.some(msg => {
+            // Check by external ID
+            const sameEvolutionId = current.evolution_message_id && msg.evolution_message_id === current.evolution_message_id;
+            const sameWhatsappId = current.whatsapp_message_id && msg.whatsapp_message_id === current.whatsapp_message_id;
+            
+            if (sameEvolutionId || sameWhatsappId) return true;
+            
+            // Fallback check by content and proximity (within 5 seconds)
+            const timeDiff = Math.abs(new Date(current.created_at).getTime() - new Date(msg.created_at).getTime());
+            const sameContent = msg.content === current.content;
+            
+            // If content and time match, it's likely a duplicate regardless of sender_type
+            return sameContent && timeDiff < 5000;
+          });
+  
+          if (!isDuplicate) {
+            acc.push(current);
+          }
+          return acc;
+        }, []);
  
        return deduplicated;
     },
