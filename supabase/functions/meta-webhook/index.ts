@@ -360,23 +360,31 @@ async function handleInstagramChange(entry: any) {
     const businessId = integ.instagram_business_account_id;
     if (businessId && fromId === businessId) continue;
 
-    await supabase
-      .from("meta_comments")
-      .upsert(
-        {
-          user_id: integ.user_id,
-          comment_id: commentId,
-          parent_comment_id: parentId,
-          media_id: mediaId,
-          author_id: fromId,
-          author_username: fromName,
-          text,
-          status: "new",
-          received_at: new Date().toISOString(),
-          metadata: v,
-        },
-        { onConflict: "user_id,comment_id" } as any,
-      );
+    // 1. First, ensure the contact exists and has a name (from comments payload)
+    if (fromId) {
+      await upsertContact(integ.user_id, {
+        instagramId: fromId,
+        username: fromName,
+        name: fromName, // Use username as name if available
+      });
+    }
+
+    // 2. Then save the comment
+    await supabase.from("meta_comments").upsert(
+      {
+        user_id: integ.user_id,
+        comment_id: commentId,
+        parent_comment_id: parentId,
+        media_id: mediaId,
+        author_id: fromId,
+        author_username: fromName,
+        text,
+        status: "new",
+        received_at: new Date().toISOString(),
+        metadata: v,
+      },
+      { onConflict: "user_id,comment_id" } as any,
+    );
   }
 }
 
