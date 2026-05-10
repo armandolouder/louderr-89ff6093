@@ -360,12 +360,26 @@ async function handleInstagramChange(entry: any) {
     const businessId = integ.instagram_business_account_id;
     if (businessId && fromId === businessId) continue;
 
-    // 1. First, ensure the contact exists and has a name (from comments payload)
+    // 1. First, ensure the contact exists and has profile data (from comments payload or API)
     if (fromId) {
+      let profile = {
+        name: fromName,
+        username: fromName,
+        avatarUrl: null as string | null
+      };
+
+      // Try to get avatar even without review, sometimes profile_pic is accessible
+      if (integ.page_access_token) {
+        const apiProfile = await fetchInstagramProfile(fromId, integ.page_access_token);
+        if (apiProfile.avatarUrl) profile.avatarUrl = apiProfile.avatarUrl;
+        if (apiProfile.name) profile.name = apiProfile.name;
+      }
+
       await upsertContact(integ.user_id, {
         instagramId: fromId,
-        username: fromName,
-        name: fromName, // Use username as name if available
+        username: profile.username,
+        name: profile.name,
+        avatarUrl: profile.avatarUrl,
       });
     }
 
