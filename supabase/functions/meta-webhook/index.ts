@@ -368,11 +368,20 @@ async function handleInstagramChange(entry: any) {
         avatarUrl: null as string | null
       };
 
-      // Try to get avatar even without review, sometimes profile_pic is accessible
-      if (integ.page_access_token) {
+      // Try to get avatar even without review
+      // If it's a comment, sometimes the payload itself has the profile_pic_url or similar
+      if (v.from?.profile_pic_url) {
+        profile.avatarUrl = v.from.profile_pic_url;
+      } else if (integ.page_access_token) {
         const apiProfile = await fetchInstagramProfile(fromId, integ.page_access_token);
         if (apiProfile.avatarUrl) profile.avatarUrl = apiProfile.avatarUrl;
         if (apiProfile.name) profile.name = apiProfile.name;
+      }
+
+      // Fallback: If we still don't have an avatar, try to use a default Instagram profile URL
+      // This is a common pattern for public profiles
+      if (!profile.avatarUrl && fromName) {
+        profile.avatarUrl = `https://www.instagram.com/${fromName}/media/?size=l`;
       }
 
       await upsertContact(integ.user_id, {
