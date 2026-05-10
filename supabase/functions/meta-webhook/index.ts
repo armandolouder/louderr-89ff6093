@@ -279,21 +279,30 @@ async function handleInstagramMessaging(entry: any) {
     const peerId = isEcho ? recipientId : senderId;
     if (!peerId) continue;
 
-    // 1. Get initial profile from message payload (if available)
-    // Meta sometimes includes a 'from' object with name/username in some webhook versions
-    let profile = { 
-      name: evt.message?.from?.name || evt.message?.from?.username || null as string | null, 
-      username: evt.message?.from?.username || null as string | null, 
-      avatarUrl: null as string | null 
+    // 1. Get initial profile from message payload
+    let profile = {
+      name: null as string | null,
+      username: null as string | null,
+      avatarUrl: null as string | null
     };
 
-    // 2. Enrich contact with name + avatar from Graph API (only for inbound)
+    // 2. Enrich contact with name + avatar from Graph API
     if (!isEcho && integ.page_access_token) {
       const apiProfile = await fetchInstagramProfile(peerId, integ.page_access_token);
-      // Use API data if available, otherwise keep what we have
-      if (apiProfile.name) profile.name = apiProfile.name;
-      if (apiProfile.username) profile.username = apiProfile.username;
-      if (apiProfile.avatarUrl) profile.avatarUrl = apiProfile.avatarUrl;
+      profile.name = apiProfile.name;
+      profile.username = apiProfile.username;
+      profile.avatarUrl = apiProfile.avatarUrl;
+    }
+
+    // 3. Fallback to placeholder if everything fails
+    if (!profile.name && !profile.username) {
+       // If it's the business itself, use the integration name
+       if (isEcho) {
+         profile.name = integ.page_name || integ.instagram_username || "Agent";
+         profile.username = integ.instagram_username;
+       } else {
+         profile.name = `IG ${peerId.slice(-6)}`;
+       }
     }
 
     const contactId = await upsertContact(integ.user_id, {
