@@ -7,6 +7,7 @@ export interface CustomTab {
   name: string;
   color: string;
   icon: string;
+  manychat_url?: string;
   order: number;
   created_at: string;
   updated_at: string;
@@ -53,7 +54,7 @@ export function useCreateTab() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (tab: { name: string; color: string; icon: string }) => {
+    mutationFn: async (tab: { name: string; color: string; icon: string; manychat_url?: string }) => {
       // Get the max order to add at the end
       const { data: existing } = await supabase
         .from("custom_tabs")
@@ -82,7 +83,7 @@ export function useUpdateTab() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, ...updates }: { id: string; name?: string; color?: string; icon?: string }) => {
+    mutationFn: async ({ id, ...updates }: { id: string; name?: string; color?: string; icon?: string; manychat_url?: string }) => {
       const { data, error } = await supabase
         .from("custom_tabs")
         .update(updates)

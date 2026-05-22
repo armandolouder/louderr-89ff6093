@@ -30,7 +30,7 @@ interface TabManagerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   tab?: CustomTab | null;
-  onSave: (data: { name: string; color: string; icon: string }) => void;
+  onSave: (data: { name: string; color: string; icon: string; manychat_url?: string }) => void;
   isLoading?: boolean;
 }
 
@@ -102,6 +102,19 @@ export function TabManager({ open, onOpenChange, tab, onSave, isLoading }: TabMa
               placeholder="Ex: Suporte, Vendas, Trocas..."
               autoFocus
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="manychat_url">URL do ManyChat (opcional)</Label>
+            <Input
+              id="manychat_url"
+              value={manychatUrl}
+              onChange={(e) => setManychatUrl(e.target.value)}
+              placeholder="https://app.manychat.com/..."
+            />
+            <p className="text-[10px] text-muted-foreground">
+              Se preenchido, esta aba mostrará o ManyChat em vez das conversas.
+            </p>
           </div>
 
           <div className="space-y-2">
