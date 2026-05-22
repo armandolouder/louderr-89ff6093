@@ -1,0 +1,1 @@
+ALTER TABLE public.custom_tabs ADD COLUMN IF NOT EXISTS manychat_url TEXT;

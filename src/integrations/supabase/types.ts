@@ -396,6 +396,7 @@ export type Database = {
           created_at: string
           icon: string
           id: string
+          manychat_url: string | null
           name: string
           order: number
           updated_at: string
@@ -406,6 +407,7 @@ export type Database = {
           created_at?: string
           icon?: string
           id?: string
+          manychat_url?: string | null
           name: string
           order?: number
           updated_at?: string
@@ -416,6 +418,7 @@ export type Database = {
           created_at?: string
           icon?: string
           id?: string
+          manychat_url?: string | null
           name?: string
           order?: number
           updated_at?: string
