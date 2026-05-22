@@ -21,6 +21,7 @@ import {
   Eye,
   FileText,
   Wallet,
+  ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -30,12 +31,14 @@ interface NavItem {
   name: string;
   href?: string;
   icon: any;
+  external?: boolean;
   children?: { name: string; href: string; icon: any }[];
 }
 
 const navigation: NavItem[] = [
   { name: "Resumo Geral", href: "/home", icon: LayoutDashboard },
   { name: "Atendimentos", href: "/inbox", icon: MessageSquare },
+  { name: "ManyChat", href: "https://app.manychat.com/fb476276/chat/", icon: ExternalLink, external: true },
   { name: "Painel de Vendas", href: "/sales", icon: TrendingUp },
   { name: "Despesas", href: "/expenses", icon: Wallet },
   { name: "Clientes", href: "/customers", icon: Users },
@@ -169,6 +172,27 @@ export function AppSidebar() {
           }
 
           const isActive = location.pathname === item.href;
+          
+          if (item.external) {
+            return (
+              <a
+                key={item.name}
+                href={item.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={cn(
+                  "relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150",
+                  "text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
+                )}
+              >
+                <div className="relative flex-shrink-0">
+                  <item.icon className="w-5 h-5" />
+                </div>
+                {!collapsed && <span className="flex-1">{item.name}</span>}
+              </a>
+            );
+          }
+
           return (
             <Link
               key={item.name}
