@@ -146,6 +146,29 @@ export function CustomTabsSidebar({ selectedTabId, onSelectTab }: CustomTabsSide
         </div>
       </ScrollArea>
 
+      {/* External Link Section */}
+      <div className="p-3 border-t border-border mt-auto">
+        <Button 
+          variant="outline" 
+          className="w-full justify-start gap-3 h-11 border-dashed hover:border-primary hover:bg-primary/5 transition-all text-muted-foreground hover:text-primary"
+          onClick={() => window.open("https://app.manychat.com/fb476276/chat/", "_blank")}
+        >
+          <div className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0 group-hover:bg-primary/10">
+            <svg 
+              viewBox="0 0 24 24" 
+              className="w-4 h-4 fill-current"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14.5v-9l6 4.5-6 4.5z"/>
+            </svg>
+          </div>
+          <div className="flex flex-col items-start overflow-hidden">
+            <span className="text-xs font-semibold truncate">ManyChat</span>
+            <span className="text-[10px] opacity-70 truncate">Abrir Externo</span>
+          </div>
+        </Button>
+      </div>
+
       <TabManager
         open={isManagerOpen}
         onOpenChange={setIsManagerOpen}
