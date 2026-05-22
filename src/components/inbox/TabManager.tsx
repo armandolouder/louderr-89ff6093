@@ -66,23 +66,26 @@ export function TabManager({ open, onOpenChange, tab, onSave, isLoading }: TabMa
   const [name, setName] = useState("");
   const [color, setColor] = useState(AVAILABLE_COLORS[0]);
   const [icon, setIcon] = useState("Folder");
+  const [manychatUrl, setManychatUrl] = useState("");
 
   useEffect(() => {
     if (tab) {
       setName(tab.name);
       setColor(tab.color);
       setIcon(tab.icon);
+      setManychatUrl(tab.manychat_url || "");
     } else {
       setName("");
       setColor(AVAILABLE_COLORS[0]);
       setIcon("Folder");
+      setManychatUrl("");
     }
   }, [tab, open]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
-    onSave({ name: name.trim(), color, icon });
+    onSave({ name: name.trim(), color, icon, manychat_url: manychatUrl.trim() || undefined });
   };
 
   return (
