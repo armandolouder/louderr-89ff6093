@@ -44,7 +44,7 @@ export function CustomTabsSidebar({ selectedTabId, onSelectTab }: CustomTabsSide
   const totalConversations = Object.values(counts).reduce((a, b) => a + b, 0);
   const unassignedCount = counts["all"] || 0;
 
-  const handleSave = async (data: { name: string; color: string; icon: string }) => {
+  const handleSave = async (data: { name: string; color: string; icon: string; manychat_url?: string }) => {
     try {
       if (editingTab) {
         await updateTab.mutateAsync({ id: editingTab.id, ...data });

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useCustomTabs } from "@/hooks/useCustomTabs";
 import { MessageSquareOff, ArrowLeft } from "lucide-react";
 import { ConversationList } from "@/components/inbox/ConversationList";
 import { ChatView } from "@/components/inbox/ChatView";
@@ -15,6 +16,7 @@ export default function Inbox() {
   const [selectedTabId, setSelectedTabId] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
   const isMobile = useIsMobile();
+  const { data: tabs } = useCustomTabs();
   
   // Ativa notificações de novas mensagens (som + toast + animação)
   useNewMessageAlerts();
@@ -100,20 +102,38 @@ export default function Inbox() {
       </div>
       
       <div className="flex-1 min-w-0 overflow-hidden">
-        {selectedConversation ? (
-          <ChatView conversation={selectedConversation} />
-        ) : (
-          <div className="flex flex-col items-center justify-center h-full text-center p-8">
-            <div className="w-20 h-20 bg-secondary rounded-full flex items-center justify-center mb-4">
-              <MessageSquareOff className="w-10 h-10 text-muted-foreground" />
+        {selectedTabId && (() => {
+          const activeTab = (tabs || []).find(t => t.id === selectedTabId);
+          if (activeTab?.manychat_url) {
+            return (
+              <div className="h-full w-full bg-background">
+                <iframe 
+                  src={activeTab.manychat_url} 
+                  className="w-full h-full border-none"
+                  allow="camera; microphone; clipboard-read; clipboard-write"
+                />
+              </div>
+            );
+          }
+          return null;
+        })()}
+        
+        {(!selectedTabId || !((tabs || []).find(t => t.id === selectedTabId))?.manychat_url) && (
+          selectedConversation ? (
+            <ChatView conversation={selectedConversation} />
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full text-center p-8">
+              <div className="w-20 h-20 bg-secondary rounded-full flex items-center justify-center mb-4">
+                <MessageSquareOff className="w-10 h-10 text-muted-foreground" />
+              </div>
+              <h3 className="text-xl font-semibold text-foreground mb-2">
+                Selecione uma conversa
+              </h3>
+              <p className="text-muted-foreground max-w-sm">
+                Escolha uma conversa na lista ao lado para visualizar e responder as mensagens
+              </p>
             </div>
-            <h3 className="text-xl font-semibold text-foreground mb-2">
-              Selecione uma conversa
-            </h3>
-            <p className="text-muted-foreground max-w-sm">
-              Escolha uma conversa na lista ao lado para visualizar e responder as mensagens
-            </p>
-          </div>
+          )
         )}
       </div>
 

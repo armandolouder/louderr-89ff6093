@@ -30,7 +30,7 @@ interface TabManagerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   tab?: CustomTab | null;
-  onSave: (data: { name: string; color: string; icon: string }) => void;
+  onSave: (data: { name: string; color: string; icon: string; manychat_url?: string }) => void;
   isLoading?: boolean;
 }
 
@@ -66,23 +66,26 @@ export function TabManager({ open, onOpenChange, tab, onSave, isLoading }: TabMa
   const [name, setName] = useState("");
   const [color, setColor] = useState(AVAILABLE_COLORS[0]);
   const [icon, setIcon] = useState("Folder");
+  const [manychatUrl, setManychatUrl] = useState("");
 
   useEffect(() => {
     if (tab) {
       setName(tab.name);
       setColor(tab.color);
       setIcon(tab.icon);
+      setManychatUrl(tab.manychat_url || "");
     } else {
       setName("");
       setColor(AVAILABLE_COLORS[0]);
       setIcon("Folder");
+      setManychatUrl("");
     }
   }, [tab, open]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
-    onSave({ name: name.trim(), color, icon });
+    onSave({ name: name.trim(), color, icon, manychat_url: manychatUrl.trim() || undefined });
   };
 
   return (
@@ -102,6 +105,19 @@ export function TabManager({ open, onOpenChange, tab, onSave, isLoading }: TabMa
               placeholder="Ex: Suporte, Vendas, Trocas..."
               autoFocus
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="manychat_url">URL do ManyChat (opcional)</Label>
+            <Input
+              id="manychat_url"
+              value={manychatUrl}
+              onChange={(e) => setManychatUrl(e.target.value)}
+              placeholder="https://app.manychat.com/..."
+            />
+            <p className="text-[10px] text-muted-foreground">
+              Se preenchido, esta aba mostrará o ManyChat em vez das conversas.
+            </p>
           </div>
 
           <div className="space-y-2">
