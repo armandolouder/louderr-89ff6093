@@ -73,6 +73,8 @@ export function CarouselBuilder() {
   const [delayMin, setDelayMin] = useState(180);
   const [delayMax, setDelayMax] = useState(480);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+
 
   const { data: clusters } = useQuery({
     queryKey: ["customer-clusters"],
@@ -190,6 +192,36 @@ export function CarouselBuilder() {
       setPreviewCardIdx(previewCardIdx - 1);
     }
   };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, idx: number) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
+      const filePath = `images/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('whatsapp-media')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('whatsapp-media')
+        .getPublicUrl(filePath);
+
+      updateCard(idx, "image", publicUrl);
+      toast.success("Imagem enviada!");
+    } catch (error: any) {
+      toast.error("Erro no upload: " + error.message);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
 
   const sendCarousel = async () => {
     if (sendMode === "manual" && !phone.trim()) {
@@ -496,13 +528,40 @@ export function CarouselBuilder() {
               <div className="space-y-2">
                 <Label className="text-xs flex items-center gap-1">
                   <ImagePlus className="w-3 h-3" />
-                  URL da imagem
+                  Imagem ou Upload
                 </Label>
-                <Input
-                  placeholder="https://exemplo.com/imagem.jpg"
-                  value={activeCard.image}
-                  onChange={(e) => updateCard(activeCardIdx, "image", e.target.value)}
-                />
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="https://exemplo.com/imagem.jpg"
+                    value={activeCard.image}
+                    onChange={(e) => updateCard(activeCardIdx, "image", e.target.value)}
+                    className="flex-1"
+                  />
+                  <div className="relative">
+                    <input
+                      type="file"
+                      id={`carousel-upload-${activeCardIdx}`}
+                      className="hidden"
+                      accept="image/*"
+                      onChange={(e) => handleFileUpload(e, activeCardIdx)}
+                      disabled={isUploading}
+                    />
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      asChild
+                      disabled={isUploading}
+                    >
+                      <label htmlFor={`carousel-upload-${activeCardIdx}`} className="cursor-pointer">
+                        {isUploading ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <ImagePlus className="w-4 h-4" />
+                        )}
+                      </label>
+                    </Button>
+                  </div>
+                </div>
               </div>
 
               <div className="space-y-2">

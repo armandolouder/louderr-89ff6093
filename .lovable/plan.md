@@ -1,24 +1,17 @@
-I will update the visual design of the application to follow a "fintech" aesthetic, characterized by a refined dark theme, sophisticated gradients, subtle borders, and improved typography.
+I will add an image upload option to the "Individual Campaign" (Individual Sender) feature, as well as to other campaign and automation builders.
 
 ### Technical Details
+- **Individual Sender**: Add a file upload button and logic to `src/components/campaigns/IndividualSender.tsx`. Uploaded images will be stored in the `whatsapp-media` Supabase bucket.
+- **Campaign Wizard**: Add image upload to the message creation step in `src/components/campaigns/CreateCampaignView.tsx`.
+- **Carousel Builder**: Add image upload to each card in `src/components/campaigns/CarouselBuilder.tsx`.
+- **Automation Flows**: Add image upload to the flow editor in `src/components/automations/FlowEditor.tsx`.
+- **Naming**: Rename "Envio Individual" to "Campanha Individual" in the UI to match your request.
 
-- **Tailwind Configuration**:
-  - Update `tailwind.config.ts` to include a custom palette with more balanced dark tones.
-  - Refine `borderRadius` to `12px` (0.75rem) for a more modern, premium feel.
-  - Add "fintech-blue" and "fintech-purple" as accent colors.
-- **Global CSS (`index.css`)**:
-  - Update CSS variables for a deep charcoal/navy background (`#0A0C10` range).
-  - Implement subtle "glassmorphism" effects for cards and headers.
-  - Update the scrollbar to be more discreet.
-- **UI Components**:
-  - **Button**: Update `button.tsx` with subtle transitions and cleaner padding.
-  - **AppLayout**: Add a subtle background gradient or grain effect to enhance depth.
-  - **HomeDashboard**: Update card layouts to use the new "fintech" style with improved spacing and iconography.
-- **Typography**: Ensure the application uses "Geist" (already in config) consistently with optimized tracking and leading.
+### Implementation Steps
+1. Create a hidden `input type="file"` and a trigger button for each component.
+2. Implement an `handleFileUpload` function using `supabase.storage.from('whatsapp-media').upload()`.
+3. Update the `mediaUrl` state with the public URL returned after upload.
+4. Show a loading state during the upload process.
+5. Update the UI labels to be consistent with "Campanha Individual".
 
-### Visual Changes
-
-- **Background**: Shift from pure black/dark gray to a deep navy/slate charcoal.
-- **Accents**: Maintain the primary yellow but complement it with subtle blue/purple gradients for a professional financial look.
-- **Cards**: Add inner borders and very subtle shadows to create a layered "stack" effect.
-- **Animations**: Add smooth, subtle fade-ins for content loading.
+Summary: Adding image upload functionality to individual senders and campaigns, and updating labels.

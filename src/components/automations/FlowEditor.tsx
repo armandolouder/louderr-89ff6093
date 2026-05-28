@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
-import { ArrowLeft, Save, Image as ImageIcon } from "lucide-react";
+import { ArrowLeft, Save, Image as ImageIcon, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,8 +35,10 @@ export function FlowEditor({ flow, onBack }: FlowEditorProps) {
   const [delayUnit, setDelayUnit] = useState(flow?.delay_unit || "minutes");
   const [messageContent, setMessageContent] = useState(flow?.message_content || "");
   const [mediaUrl, setMediaUrl] = useState(flow?.media_url || "");
+  const [isUploading, setIsUploading] = useState(false);
 
   const saveFlow = useSaveAutomationFlow();
+
 
   useEffect(() => {
     if (flow) {
@@ -51,6 +55,36 @@ export function FlowEditor({ flow, onBack }: FlowEditorProps) {
   const insertVariable = (variable: string) => {
     setMessageContent((prev) => prev + variable);
   };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
+      const filePath = `images/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('whatsapp-media')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('whatsapp-media')
+        .getPublicUrl(filePath);
+
+      setMediaUrl(publicUrl);
+      toast.success("Imagem enviada!");
+    } catch (error: any) {
+      toast.error("Erro no upload: " + error.message);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -218,13 +252,39 @@ export function FlowEditor({ flow, onBack }: FlowEditorProps) {
                   </Button>
                 ) : (
                   <div className="space-y-1">
-                    <Label className="text-xs">URL da Mídia (opcional)</Label>
-                    <Input
-                      value={mediaUrl}
-                      onChange={(e) => setMediaUrl(e.target.value)}
-                      placeholder="https://..."
-                      className="w-64"
-                    />
+                    <Label className="text-xs">URL da Mídia ou Upload (opcional)</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        value={mediaUrl}
+                        onChange={(e) => setMediaUrl(e.target.value)}
+                        placeholder="https://..."
+                        className="w-64"
+                      />
+                      <div className="relative">
+                        <input
+                          type="file"
+                          id="flow-media-upload"
+                          className="hidden"
+                          accept="image/*"
+                          onChange={handleFileUpload}
+                          disabled={isUploading}
+                        />
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          asChild
+                          disabled={isUploading}
+                        >
+                          <label htmlFor="flow-media-upload" className="cursor-pointer">
+                            {isUploading ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <ImageIcon className="w-4 h-4" />
+                            )}
+                          </label>
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>

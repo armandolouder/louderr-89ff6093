@@ -173,6 +173,8 @@ export function CreateCampaignView({ onBack }: CreateCampaignViewProps) {
   const textareaRefs = useRef<(HTMLTextAreaElement | null)[]>([]);
   const [testPhone, setTestPhone] = useState("");
   const [isSendingTest, setIsSendingTest] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+
 
   const { data: clusters } = useQuery({
     queryKey: ["customer-clusters"],
@@ -260,6 +262,38 @@ export function CreateCampaignView({ onBack }: CreateCampaignViewProps) {
       setActiveMessageIdx(activeMessageIdx - 1);
     }
   };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, idx: number) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
+      const isVideo = file.type.startsWith('video/');
+      const filePath = `${isVideo ? 'videos' : 'images'}/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('whatsapp-media')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('whatsapp-media')
+        .getPublicUrl(filePath);
+
+      updateMessage(idx, "mediaUrl", publicUrl);
+      updateMessage(idx, "mediaType", isVideo ? "video" : "image");
+      toast.success("Arquivo enviado!");
+    } catch (error: any) {
+      toast.error("Erro no upload: " + error.message);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
 
   const insertEmoji = (emoji: string) => {
     const idx = activeMessageIdx;
@@ -694,7 +728,7 @@ export function CreateCampaignView({ onBack }: CreateCampaignViewProps) {
                           <div className="space-y-2">
                             <Label className="text-sm flex items-center gap-2">
                               <ImagePlus className="w-4 h-4" />
-                              Imagem/Vídeo (opcional)
+                              Imagem/Vídeo ou Upload (opcional)
                             </Label>
                             <div className="flex gap-2">
                               <Input
@@ -711,6 +745,30 @@ export function CreateCampaignView({ onBack }: CreateCampaignViewProps) {
                                 }}
                                 className="flex-1"
                               />
+                              <div className="relative">
+                                <input
+                                  type="file"
+                                  id={`media-upload-${activeMessageIdx}`}
+                                  className="hidden"
+                                  accept="image/*,video/*"
+                                  onChange={(e) => handleFileUpload(e, activeMessageIdx)}
+                                  disabled={isUploading}
+                                />
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  asChild
+                                  disabled={isUploading}
+                                >
+                                  <label htmlFor={`media-upload-${activeMessageIdx}`} className="cursor-pointer">
+                                    {isUploading ? (
+                                      <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                      <ImagePlus className="w-4 h-4" />
+                                    )}
+                                  </label>
+                                </Button>
+                              </div>
                               {activeMessage.mediaUrl && (
                                 <Button
                                   variant="ghost"
