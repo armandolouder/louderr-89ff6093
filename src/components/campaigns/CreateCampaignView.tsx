@@ -728,7 +728,7 @@ export function CreateCampaignView({ onBack }: CreateCampaignViewProps) {
                           <div className="space-y-2">
                             <Label className="text-sm flex items-center gap-2">
                               <ImagePlus className="w-4 h-4" />
-                              Imagem/Vídeo (opcional)
+                              Imagem/Vídeo ou Upload (opcional)
                             </Label>
                             <div className="flex gap-2">
                               <Input
@@ -745,6 +745,30 @@ export function CreateCampaignView({ onBack }: CreateCampaignViewProps) {
                                 }}
                                 className="flex-1"
                               />
+                              <div className="relative">
+                                <input
+                                  type="file"
+                                  id={`media-upload-${activeMessageIdx}`}
+                                  className="hidden"
+                                  accept="image/*,video/*"
+                                  onChange={(e) => handleFileUpload(e, activeMessageIdx)}
+                                  disabled={isUploading}
+                                />
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  asChild
+                                  disabled={isUploading}
+                                >
+                                  <label htmlFor={`media-upload-${activeMessageIdx}`} className="cursor-pointer">
+                                    {isUploading ? (
+                                      <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                      <ImagePlus className="w-4 h-4" />
+                                    )}
+                                  </label>
+                                </Button>
+                              </div>
                               {activeMessage.mediaUrl && (
                                 <Button
                                   variant="ghost"
