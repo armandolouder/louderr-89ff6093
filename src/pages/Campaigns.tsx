@@ -36,7 +36,7 @@ export default function Campaigns() {
             </TabsTrigger>
             <TabsTrigger value="individual" className="flex items-center gap-2">
               <MessageSquare className="w-4 h-4" />
-              <span className="hidden sm:inline">Individual</span>
+              <span className="hidden sm:inline">Campanha Individual</span>
             </TabsTrigger>
             <TabsTrigger value="carousel" className="flex items-center gap-2">
               <GalleryHorizontalEnd className="w-4 h-4" />
