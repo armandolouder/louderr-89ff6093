@@ -17,7 +17,7 @@ export default function Auth() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) navigate("/inbox", { replace: true });
+      if (session) navigate("/home", { replace: true });
     });
   }, [navigate]);
 
@@ -33,7 +33,7 @@ export default function Auth() {
         toast.error(error.message || "Erro ao fazer login");
       } else {
         toast.success("Login realizado com sucesso!");
-        navigate("/inbox");
+        navigate("/home");
       }
     } catch (error) {
       toast.error("Erro ao fazer login");

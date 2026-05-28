@@ -81,7 +81,7 @@ export function AppSidebar() {
     >
       <div className="flex items-center justify-between h-16 px-4 border-b border-sidebar-border">
         {!collapsed && (
-          <Link to="/dashboard" className="flex items-center gap-2">
+          <Link to="/home" className="flex items-center gap-2">
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
               <MessageSquare className="w-4 h-4 text-primary-foreground" />
             </div>

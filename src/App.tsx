@@ -44,13 +44,13 @@ const App = () => (
             <Route path="/install" element={<Install />} />
             <Route element={<AppLayout />}>
               <Route path="/home" element={<HomeDashboard />} />
-              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/dashboard" element={<Navigate to="/home" replace />} />
               <Route path="/inbox" element={<Inbox />} />
               <Route path="/campaigns" element={<Campaigns />} />
               <Route path="/customers" element={<Customers />} />
               <Route path="/rfm" element={<RFMMatrixPage />} />
               <Route path="/bot" element={<Bot />} />
-              <Route path="/crm" element={<Dashboard />} />
+              <Route path="/crm" element={<Navigate to="/home" replace />} />
               <Route path="/apis" element={<Api />} />
               <Route path="/sales" element={<SalesDashboard />} />
               <Route path="/abandoned-checkouts" element={<AbandonedCheckouts />} />
