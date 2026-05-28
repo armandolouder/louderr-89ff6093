@@ -73,6 +73,8 @@ export function CarouselBuilder() {
   const [delayMin, setDelayMin] = useState(180);
   const [delayMax, setDelayMax] = useState(480);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+
 
   const { data: clusters } = useQuery({
     queryKey: ["customer-clusters"],
