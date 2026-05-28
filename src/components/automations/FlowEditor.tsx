@@ -252,13 +252,39 @@ export function FlowEditor({ flow, onBack }: FlowEditorProps) {
                   </Button>
                 ) : (
                   <div className="space-y-1">
-                    <Label className="text-xs">URL da Mídia (opcional)</Label>
-                    <Input
-                      value={mediaUrl}
-                      onChange={(e) => setMediaUrl(e.target.value)}
-                      placeholder="https://..."
-                      className="w-64"
-                    />
+                    <Label className="text-xs">URL da Mídia ou Upload (opcional)</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        value={mediaUrl}
+                        onChange={(e) => setMediaUrl(e.target.value)}
+                        placeholder="https://..."
+                        className="w-64"
+                      />
+                      <div className="relative">
+                        <input
+                          type="file"
+                          id="flow-media-upload"
+                          className="hidden"
+                          accept="image/*"
+                          onChange={handleFileUpload}
+                          disabled={isUploading}
+                        />
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          asChild
+                          disabled={isUploading}
+                        >
+                          <label htmlFor="flow-media-upload" className="cursor-pointer">
+                            {isUploading ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <ImageIcon className="w-4 h-4" />
+                            )}
+                          </label>
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
