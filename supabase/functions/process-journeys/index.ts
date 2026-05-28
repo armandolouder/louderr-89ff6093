@@ -140,6 +140,7 @@ async function bootstrapFromTrigger(
     .update({
       current_node_id: firstEdge.target,
       next_action_at: new Date().toISOString(),
+      status: "active",
     })
     .eq("id", exec.id);
 }
