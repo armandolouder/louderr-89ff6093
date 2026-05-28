@@ -30,11 +30,8 @@ async function fetchActiveJourneys(supabase: any) {
 }
 
 async function fetchDueExecutions(supabase: any) {
-  const { data, error } = await supabase
-    .from("journey_executions")
-    .select("*")
-    .eq("status", "active")
-    .lte("next_action_at", new Date().toISOString());
+  // Use atomic RPC to pick tasks and prevent concurrent processing
+  const { data, error } = await supabase.rpc("pick_journey_executions", { batch_size: 50 });
   if (error) throw error;
   return data || [];
 }
@@ -136,6 +133,7 @@ async function bootstrapFromTrigger(
     .update({
       current_node_id: firstEdge.target,
       next_action_at: new Date().toISOString(),
+      status: "active",
     })
     .eq("id", exec.id);
 }

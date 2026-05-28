@@ -2150,6 +2150,57 @@ export type Database = {
         Args: { campaign_id_param: string }
         Returns: undefined
       }
+      pick_automation_executions: {
+        Args: { batch_size: number }
+        Returns: {
+          completed_at: string | null
+          created_at: string
+          customer_name: string | null
+          error_message: string | null
+          executed_at: string | null
+          flow_id: string | null
+          id: string
+          phone: string | null
+          result: Json | null
+          scheduled_at: string | null
+          started_at: string | null
+          status: string | null
+          trigger_data: Json | null
+          user_id: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "automation_executions"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      pick_journey_executions: {
+        Args: { batch_size: number }
+        Returns: {
+          completed_at: string | null
+          created_at: string
+          current_node_id: string | null
+          customer_email: string | null
+          customer_name: string | null
+          customer_phone: string | null
+          error_message: string | null
+          execution_data: Json
+          id: string
+          journey_id: string
+          next_action_at: string | null
+          started_at: string
+          status: string
+          updated_at: string
+          user_id: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "journey_executions"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
     }
     Enums: {
       [_ in never]: never

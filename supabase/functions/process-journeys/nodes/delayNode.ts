@@ -21,6 +21,7 @@ export class DelayNodeExecutor implements NodeExecutor {
         .update({
           current_node_id: nextEdge.target,
           next_action_at: new Date(Date.now() + delayMs).toISOString(),
+          status: "active",
         })
         .eq("id", exec.id);
     } else {

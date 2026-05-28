@@ -93,6 +93,7 @@ export class MessageNodeExecutor implements NodeExecutor {
         .update({
           next_action_at: new Date(Date.now() + EMAIL_RETRY_INTERVAL_MS).toISOString(),
           execution_data: { ...execData, email_wait_count: waitCount },
+          status: "active",
         })
         .eq("id", exec.id);
       return { shouldWait: true, skipped: true };
