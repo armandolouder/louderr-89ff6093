@@ -373,9 +373,41 @@ export function IndividualSender({ initialPhone, initialMessage }: { initialPhon
               <div className="space-y-2">
                 <Label className="flex items-center gap-1">
                   <Image className="w-4 h-4" />
-                  URL da Imagem (opcional)
+                  URL da Imagem ou Upload (opcional)
                 </Label>
-                <Input placeholder="https://exemplo.com/foto.jpg" value={mediaUrl} onChange={(e) => setMediaUrl(e.target.value)} />
+                <div className="flex gap-2">
+                  <Input 
+                    placeholder="https://exemplo.com/foto.jpg" 
+                    value={mediaUrl} 
+                    onChange={(e) => setMediaUrl(e.target.value)} 
+                    className="flex-1"
+                  />
+                  <div className="relative">
+                    <input
+                      type="file"
+                      id="image-upload"
+                      className="hidden"
+                      accept="image/*"
+                      onChange={handleFileUpload}
+                      disabled={uploading}
+                    />
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="shrink-0"
+                      asChild
+                      disabled={uploading}
+                    >
+                      <label htmlFor="image-upload" className="cursor-pointer">
+                        {uploading ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Camera className="w-4 h-4" />
+                        )}
+                      </label>
+                    </Button>
+                  </div>
+                </div>
               </div>
 
               <Button onClick={handleSend} disabled={sending || !phone || !content} className="w-full">
