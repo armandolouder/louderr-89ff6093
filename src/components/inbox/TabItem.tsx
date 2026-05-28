@@ -113,6 +113,6 @@ export function TabItem({ tab, count, isActive, onClick, onEdit, onDelete }: Tab
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-    </div>
+    </motion.div>
   );
 }
