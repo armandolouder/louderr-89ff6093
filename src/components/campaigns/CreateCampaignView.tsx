@@ -173,6 +173,8 @@ export function CreateCampaignView({ onBack }: CreateCampaignViewProps) {
   const textareaRefs = useRef<(HTMLTextAreaElement | null)[]>([]);
   const [testPhone, setTestPhone] = useState("");
   const [isSendingTest, setIsSendingTest] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+
 
   const { data: clusters } = useQuery({
     queryKey: ["customer-clusters"],
