@@ -263,6 +263,38 @@ export function CreateCampaignView({ onBack }: CreateCampaignViewProps) {
     }
   };
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, idx: number) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
+      const isVideo = file.type.startsWith('video/');
+      const filePath = `${isVideo ? 'videos' : 'images'}/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('whatsapp-media')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('whatsapp-media')
+        .getPublicUrl(filePath);
+
+      updateMessage(idx, "mediaUrl", publicUrl);
+      updateMessage(idx, "mediaType", isVideo ? "video" : "image");
+      toast.success("Arquivo enviado!");
+    } catch (error: any) {
+      toast.error("Erro no upload: " + error.message);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+
   const insertEmoji = (emoji: string) => {
     const idx = activeMessageIdx;
     const textarea = textareaRefs.current[0];
