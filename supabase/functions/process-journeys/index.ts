@@ -30,15 +30,8 @@ async function fetchActiveJourneys(supabase: any) {
 }
 
 async function fetchDueExecutions(supabase: any) {
-  const now = new Date().toISOString();
-  // Mark as 'processing' to prevent other instances from picking it up
-  const { data, error } = await supabase
-    .from("journey_executions")
-    .update({ status: "processing" })
-    .eq("status", "active")
-    .lte("next_action_at", now)
-    .select("*");
-    
+  // Use atomic RPC to pick tasks and prevent concurrent processing
+  const { data, error } = await supabase.rpc("pick_journey_executions", { batch_size: 50 });
   if (error) throw error;
   return data || [];
 }
