@@ -12,6 +12,7 @@ export async function advanceToNextNode(
   if (nextEdge) {
     update.current_node_id = nextEdge.target;
     update.next_action_at = new Date().toISOString();
+    update.status = "active";
   } else {
     update.status = "completed";
     update.completed_at = new Date().toISOString();
