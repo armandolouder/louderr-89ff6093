@@ -30,11 +30,15 @@ async function fetchActiveJourneys(supabase: any) {
 }
 
 async function fetchDueExecutions(supabase: any) {
+  const now = new Date().toISOString();
+  // Mark as 'processing' to prevent other instances from picking it up
   const { data, error } = await supabase
     .from("journey_executions")
-    .select("*")
+    .update({ status: "processing" })
     .eq("status", "active")
-    .lte("next_action_at", new Date().toISOString());
+    .lte("next_action_at", now)
+    .select("*");
+    
   if (error) throw error;
   return data || [];
 }
