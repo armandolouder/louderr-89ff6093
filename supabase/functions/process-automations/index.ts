@@ -10,9 +10,7 @@
      if (!hasUazapiCredentials()) throw new Error("UAZAPI credentials not configured");
      const supabase = createServiceClient();
  
-     const { data: executions, error } = await supabase.from("automation_executions").select("*")
-       .eq("status", "pending").lte("scheduled_at", new Date().toISOString())
-       .order("scheduled_at", { ascending: true }).limit(20);
+      const { data: executions, error } = await supabase.rpc("pick_automation_executions", { batch_size: 20 });
  
      if (error) throw error;
      if (!executions?.length) return new Response(JSON.stringify({ processed: 0 }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
