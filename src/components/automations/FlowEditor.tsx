@@ -33,8 +33,10 @@ export function FlowEditor({ flow, onBack }: FlowEditorProps) {
   const [delayUnit, setDelayUnit] = useState(flow?.delay_unit || "minutes");
   const [messageContent, setMessageContent] = useState(flow?.message_content || "");
   const [mediaUrl, setMediaUrl] = useState(flow?.media_url || "");
+  const [isUploading, setIsUploading] = useState(false);
 
   const saveFlow = useSaveAutomationFlow();
+
 
   useEffect(() => {
     if (flow) {
