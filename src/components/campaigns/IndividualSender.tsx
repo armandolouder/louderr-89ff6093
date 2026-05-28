@@ -183,6 +183,7 @@ export function IndividualSender({ initialPhone, initialMessage }: { initialPhon
   const [phone, setPhone] = useState(initialPhone || "");
   const [content, setContent] = useState(initialMessage || "");
   const [mediaUrl, setMediaUrl] = useState("");
+  const [uploading, setUploading] = useState(false);
   const [sending, setSending] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editItem, setEditItem] = useState<SavedMessage | null>(null);
@@ -190,6 +191,36 @@ export function IndividualSender({ initialPhone, initialMessage }: { initialPhon
   const [improvingAI, setImprovingAI] = useState(false);
   const [variantsOpen, setVariantsOpen] = useState(false);
   const [aiVariants, setAiVariants] = useState<string[]>([]);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
+      const filePath = `images/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('whatsapp-media')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('whatsapp-media')
+        .getPublicUrl(filePath);
+
+      setMediaUrl(publicUrl);
+      toast.success("Imagem enviada!");
+    } catch (error: any) {
+      toast.error("Erro no upload: " + error.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
 
   const queryClient = useQueryClient();
 
