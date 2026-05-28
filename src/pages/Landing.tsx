@@ -1,4 +1,6 @@
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { 
   MessageSquare, 
   Instagram, 
@@ -46,6 +48,17 @@ const features = [
 ];
 
 export default function Landing() {
+  const [session, setSession] = useState<any>(undefined);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Usuários logados vão direto para o Resumo Geral
+  if (session) return <Navigate to="/home" replace />;
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
