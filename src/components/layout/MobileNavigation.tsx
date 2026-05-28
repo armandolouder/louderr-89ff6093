@@ -3,7 +3,7 @@ import { LayoutDashboard, MessageSquare, Bot, Megaphone, Users, Settings } from 
 import { cn } from "@/lib/utils";
 
 const navigation = [
-  { name: "Home", href: "/dashboard", icon: LayoutDashboard },
+  { name: "Home", href: "/home", icon: LayoutDashboard },
   { name: "Chat", href: "/inbox", icon: MessageSquare },
   { name: "Clientes", href: "/customers", icon: Users },
   { name: "Campanhas", href: "/campaigns", icon: Megaphone },

@@ -13,7 +13,7 @@ export function MobileHeader({ title = "OmniDesk", rightAction }: MobileHeaderPr
   return (
     <header className="sticky top-0 z-40 bg-card/95 backdrop-blur-lg border-b border-border safe-area-top">
       <div className="flex items-center justify-between h-14 px-4">
-        <Link to="/dashboard" className="flex items-center gap-2">
+        <Link to="/home" className="flex items-center gap-2">
           <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
             <MessageSquare className="w-4 h-4 text-primary-foreground" />
           </div>
