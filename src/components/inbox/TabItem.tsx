@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import { CustomTab } from "@/hooks/useCustomTabs";
+import { motion } from "framer-motion";
 import {
   MoreHorizontal,
   Pencil,
@@ -54,27 +55,36 @@ export function TabItem({ tab, count, isActive, onClick, onEdit, onDelete }: Tab
   const IconComponent = ICON_MAP[tab.icon] || Folder;
 
   return (
-    <div
+    <motion.div
+      layout
+      whileTap={{ scale: 0.98 }}
       className={cn(
-        "flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors group",
+        "relative flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors group",
         isActive
-          ? "bg-primary/10 text-primary"
+          ? "text-primary"
           : "hover:bg-secondary text-muted-foreground hover:text-foreground"
       )}
       onClick={onClick}
     >
+      {isActive && (
+        <motion.div
+          layoutId="active-tab-bg"
+          className="absolute inset-0 bg-primary/10 rounded-lg z-0"
+          transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+        />
+      )}
       <div
-        className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+        className="relative z-10 w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-110"
         style={{ backgroundColor: `${tab.color}20` }}
       >
         <IconComponent className="w-4 h-4" style={{ color: tab.color }} />
       </div>
 
-      <div className="flex-1 min-w-0">
+      <div className="relative z-10 flex-1 min-w-0">
         <p className="text-sm font-medium truncate">{tab.name}</p>
       </div>
 
-      <span className="text-xs font-medium text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
+      <span className="relative z-10 text-xs font-medium text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
         {count}
       </span>
 

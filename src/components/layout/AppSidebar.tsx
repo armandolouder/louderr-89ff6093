@@ -14,7 +14,6 @@ import {
   Megaphone,
   TrendingUp,
   ShoppingCart,
-  Workflow,
   Rocket,
   Grid3X3,
   Mail,
@@ -26,6 +25,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface NavItem {
   name: string;
@@ -115,11 +115,25 @@ export function AppSidebar() {
                     className={cn(
                       "relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150",
                       isActive
-                        ? "bg-sidebar-accent text-sidebar-primary-foreground before:content-[''] before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[3px] before:rounded-full before:bg-primary"
+                        ? "text-sidebar-primary-foreground"
                         : "text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
                     )}
                   >
-                    <child.icon className="w-5 h-5 flex-shrink-0" />
+                    {isActive && (
+                      <motion.div
+                        layoutId="active-pill-collapsed"
+                        className="absolute inset-0 bg-sidebar-accent rounded-lg z-0"
+                        transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                      />
+                    )}
+                    {isActive && (
+                      <motion.div
+                        layoutId="active-line-collapsed"
+                        className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-full bg-primary z-10"
+                        transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                      />
+                    )}
+                    <child.icon className="w-5 h-5 flex-shrink-0 relative z-10" />
                   </Link>
                 );
               });
@@ -130,14 +144,28 @@ export function AppSidebar() {
                 <button
                   onClick={() => toggleMenu(item.name)}
                   className={cn(
-                    "relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150 w-full",
+                    "relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150 w-full group",
                     childActive
-                      ? "text-sidebar-primary-foreground bg-sidebar-accent before:content-[''] before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[3px] before:rounded-full before:bg-primary"
+                      ? "text-sidebar-primary-foreground"
                       : "text-sidebar-foreground hover:bg-sidebar-accent"
                   )}
                 >
-                  <item.icon className="w-5 h-5 flex-shrink-0" />
-                  <span className="flex-1 text-left">{item.name}</span>
+                  {childActive && (
+                    <motion.div
+                      layoutId="active-pill"
+                      className="absolute inset-0 bg-sidebar-accent rounded-lg z-0"
+                      transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                    />
+                  )}
+                  {childActive && (
+                    <motion.div
+                      layoutId="active-line"
+                      className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-full bg-primary z-10"
+                      transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                    />
+                  )}
+                  <item.icon className="w-5 h-5 flex-shrink-0 relative z-10 group-hover:scale-110 transition-transform duration-200" />
+                  <span className="flex-1 text-left relative z-10">{item.name}</span>
                   <ChevronDown
                     className={cn(
                       "w-4 h-4 transition-transform duration-200",
@@ -154,14 +182,28 @@ export function AppSidebar() {
                           key={child.href}
                           to={child.href}
                           className={cn(
-                            "relative flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-150",
+                            "relative flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-150 group/child",
                             isActive
-                              ? "bg-sidebar-accent text-sidebar-primary-foreground before:content-[''] before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[3px] before:rounded-full before:bg-primary"
+                              ? "text-sidebar-primary-foreground"
                               : "text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
                           )}
                         >
-                          <child.icon className="w-4 h-4 flex-shrink-0" />
-                          <span>{child.name}</span>
+                          {isActive && (
+                            <motion.div
+                              layoutId="active-pill-child"
+                              className="absolute inset-0 bg-sidebar-accent rounded-lg z-0"
+                              transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                            />
+                          )}
+                          {isActive && (
+                            <motion.div
+                              layoutId="active-line-child"
+                              className="absolute left-0 top-1 bottom-1 w-[3px] rounded-full bg-primary z-10"
+                              transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                            />
+                          )}
+                          <child.icon className="w-4 h-4 flex-shrink-0 relative z-10 group-hover/child:scale-110 transition-transform duration-200" />
+                          <span className="relative z-10">{child.name}</span>
                         </Link>
                       );
                     })}
@@ -198,16 +240,30 @@ export function AppSidebar() {
               key={item.name}
               to={item.href!}
               className={cn(
-                "relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150",
+                "relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150 group",
                 isActive
-                  ? "bg-sidebar-accent text-sidebar-primary-foreground before:content-[''] before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[3px] before:rounded-full before:bg-primary"
+                  ? "text-sidebar-primary-foreground"
                   : "text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
               )}
             >
-              <div className="relative flex-shrink-0">
+              {isActive && (
+                <motion.div
+                  layoutId="active-pill"
+                  className="absolute inset-0 bg-sidebar-accent rounded-lg z-0"
+                  transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                />
+              )}
+              {isActive && (
+                <motion.div
+                  layoutId="active-line"
+                  className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-full bg-primary z-10"
+                  transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                />
+              )}
+              <div className="relative flex-shrink-0 z-10 group-hover:scale-110 transition-transform duration-200">
                 <item.icon className="w-5 h-5" />
               </div>
-              {!collapsed && <span className="flex-1">{item.name}</span>}
+              {!collapsed && <span className="flex-1 relative z-10">{item.name}</span>}
             </Link>
           );
         })}
