@@ -121,6 +121,20 @@ export function useSendMessage() {
 
       // For Instagram, send via Meta Graph API
       if (channel === "instagram") {
+        // Zernio-backed conversation? route to zernio-send
+        const { data: zConv } = await supabase
+          .from("conversations")
+          .select("external_conversation_id")
+          .eq("id", conversationId)
+          .maybeSingle();
+        if (zConv?.external_conversation_id) {
+          const { data, error } = await supabase.functions.invoke("zernio-send", {
+            body: { conversationId, content, messageType: "text" },
+          });
+          if (error) throw error;
+          if (!data?.success) throw new Error(data?.error || "Falha ao enviar no Instagram (Zernio)");
+          return data;
+        }
         // Priorizar Instagram Pessoal (cookies) quando ativo
         const { data: personalCred } = await supabase
           .from("instagram_personal_credentials")
@@ -301,6 +315,20 @@ export function useSendMediaMessage() {
 
       // Instagram via Meta Graph API
       if (channel === "instagram") {
+        // Zernio-backed conversation? route to zernio-send
+        const { data: zConv } = await supabase
+          .from("conversations")
+          .select("external_conversation_id")
+          .eq("id", conversationId)
+          .maybeSingle();
+        if (zConv?.external_conversation_id) {
+          const { data, error } = await supabase.functions.invoke("zernio-send", {
+            body: { conversationId, content: caption || "", messageType: "image", mediaUrl },
+          });
+          if (error) throw error;
+          if (!data?.success) throw new Error(data?.error || "Falha ao enviar mídia no Instagram (Zernio)");
+          return data;
+        }
         const { data, error } = await supabase.functions.invoke("send-instagram", {
           body: {
             conversationId,
