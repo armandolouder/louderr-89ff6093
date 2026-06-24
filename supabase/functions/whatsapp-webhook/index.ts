@@ -116,8 +116,24 @@ async function handleEvolutionWebhook(supabase: any, payload: EvolutionPayload, 
         }
       }
 
-      const remoteJid = m.key?.remoteJid || "";
-      const phone = remoteJid.replace("@s.whatsapp.net", "").replace("@c.us", "");
+      let remoteJid = m.key?.remoteJid || "";
+      // WhatsApp LID addressing: when remoteJid is a @lid identity, the real
+      // phone number is provided in remoteJidAlt / senderPn. This happens when
+      // messages are sent through the same instance by another system.
+      if (remoteJid.includes("@lid")) {
+        const resolved = m.key?.remoteJidAlt || m.key?.senderPn || m.key?.participantAlt || "";
+        if (resolved && resolved.includes("@s.whatsapp.net")) {
+          console.log(`Resolved LID ${remoteJid} -> ${resolved}`);
+          remoteJid = resolved;
+        } else {
+          console.log(`LID without resolvable phone, skipping: ${remoteJid}`);
+          continue;
+        }
+      }
+      const phone = remoteJid
+        .replace("@s.whatsapp.net", "")
+        .replace("@c.us", "")
+        .replace("@lid", "");
       
       if (remoteJid.includes("@g.us")) {
         console.log("Skipping group message from Evolution");
