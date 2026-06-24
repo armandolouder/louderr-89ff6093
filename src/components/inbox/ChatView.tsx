@@ -422,6 +422,8 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
                         url={msg.media_url}
                         content={msg.content}
                         isAgent={msg.sender_type === "agent"}
+                        messageId={msg.id}
+                        transcription={(msg.metadata as Record<string, unknown>)?.transcription as string | undefined}
                       />
                       
                       {/* Display reactions on message */}

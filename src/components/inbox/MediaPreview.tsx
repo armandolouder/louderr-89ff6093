@@ -3,15 +3,18 @@ import { Image, FileText, Play, Volume2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LinkPreview, extractUrls } from "./LinkPreview";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
+import { AudioPlayer } from "./AudioPlayer";
 
 interface MediaPreviewProps {
   type: "image" | "audio" | "video" | "document" | "text";
   url: string | null;
   content: string;
   isAgent: boolean;
+  messageId?: string;
+  transcription?: string;
 }
 
-export function MediaPreview({ type, url, content, isAgent }: MediaPreviewProps) {
+export function MediaPreview({ type, url, content, isAgent, messageId, transcription }: MediaPreviewProps) {
   const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -121,28 +124,24 @@ export function MediaPreview({ type, url, content, isAgent }: MediaPreviewProps)
   }
 
   if (type === "audio") {
-    return (
-      <div 
-        className={cn(
-          "flex items-center gap-2 p-3 rounded-lg min-w-[200px] max-w-[280px]",
+    if (!resolvedUrl) {
+      return (
+        <div className={cn(
+          "flex items-center gap-2 p-3 rounded-lg min-w-[200px]",
           isAgent ? "bg-primary-foreground/10" : "bg-background/50"
-        )}
-      >
-        <Volume2 className="w-5 h-5 flex-shrink-0" />
-        {resolvedUrl ? (
-          <audio 
-            src={resolvedUrl} 
-            controls
-            className="flex-1 h-8"
-            preload="metadata"
-            controlsList="nodownload"
-          >
-            Seu navegador não suporta áudios.
-          </audio>
-        ) : (
+        )}>
+          <Volume2 className="w-5 h-5 flex-shrink-0" />
           <span className="text-sm text-muted-foreground">Carregando áudio...</span>
-        )}
-      </div>
+        </div>
+      );
+    }
+    return (
+      <AudioPlayer
+        url={resolvedUrl}
+        messageId={messageId}
+        initialTranscription={transcription}
+        isAgent={isAgent}
+      />
     );
   }
 
