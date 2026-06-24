@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
-import { Search, Instagram, Loader2, Archive, ShoppingBag, Inbox as InboxIcon } from "lucide-react";
+import { Search, Instagram, Loader2, Archive, ShoppingBag, Inbox as InboxIcon, CheckCheck } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ConversationItem } from "./ConversationItem";
 import { useConversations, Conversation } from "@/hooks/useConversations";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 interface ConversationListProps {
   selectedId?: string;
@@ -22,6 +24,8 @@ export function ConversationList({ selectedId, onSelect, filterTabId, showArchiv
   const [customerPhones, setCustomerPhones] = useState<Set<string> | null>(null);
   
   const { data: conversations, isLoading, error } = useConversations();
+  const queryClient = useQueryClient();
+  const [archivingAll, setArchivingAll] = useState(false);
 
   // Carrega telefones de clientes que compraram ou têm carrinho abandonado
   useEffect(() => {
