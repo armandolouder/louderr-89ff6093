@@ -117,14 +117,26 @@ async function handleMessage(event: string, payload: any) {
 
   // 2. conversation (match by external_conversation_id)
   let convId: string | undefined;
-  const { data: existingConv } = await supabase
+  // Match por contato (1 conversa por usuário do Instagram). O Zernio pode
+  // enviar IDs de conversa diferentes para o mesmo usuário; casar apenas pelo
+  // external_conversation_id gerava conversas duplicadas no Inbox.
+  const { data: existingByContact } = await supabase
     .from("conversations")
-    .select("id")
+    .select("id, external_conversation_id")
     .eq("user_id", userId)
-    .eq("external_conversation_id", conversationId)
+    .eq("contact_id", contactId)
+    .eq("channel", "instagram")
+    .order("last_message_at", { ascending: false })
     .limit(1)
     .maybeSingle();
-  convId = existingConv?.id;
+  convId = existingByContact?.id;
+  // Garante que o external_conversation_id mais recente fique salvo na conversa.
+  if (convId && existingByContact?.external_conversation_id !== conversationId) {
+    await supabase
+      .from("conversations")
+      .update({ external_conversation_id: conversationId })
+      .eq("id", convId);
+  }
   if (!convId) {
     const { data: newConv } = await supabase
       .from("conversations")
