@@ -14,13 +14,11 @@ import {
   Megaphone,
   TrendingUp,
   ShoppingCart,
-  Rocket,
   Grid3X3,
   Mail,
   Eye,
   FileText,
   Wallet,
-  ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
