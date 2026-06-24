@@ -150,7 +150,7 @@ async function handleMessage(event: string, payload: any) {
   await supabase.from("messages").insert({
     conversation_id: convId,
     content: text,
-    sender_type: isReceived ? "customer" : "agent",
+    sender_type: isReceived ? "contact" : "agent",
     message_type: mediaUrl ? mediaType : "text",
     media_url: mediaUrl,
     status: isReceived ? "received" : "sent",
