@@ -41,7 +41,8 @@ export function ConversationItem({ conversation, isActive, onClick }: Conversati
   const queryClient = useQueryClient();
   const isNewMessage = useIsConversationNew(conversation.id);
 
-  const handleArchiveToggle = async () => {
+  const handleArchiveToggle = async (e?: React.MouseEvent) => {
+    e?.stopPropagation();
     const newValue = !conversation.is_archived;
     try {
       const { error } = await supabase
