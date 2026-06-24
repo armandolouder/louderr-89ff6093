@@ -83,7 +83,17 @@ async function handleMessage(event: string, payload: any) {
   const senderName =
     pick<string>(data, "sender.name", "sender.username", "from.name", "participantName", "message.sender.name") ||
     "Instagram";
-  const senderPicture = pick<string>(data, "sender.picture", "sender.profilePicture", "participantPicture");
+  const senderUsername = pick<string>(data, "sender.username", "from.username", "message.sender.username");
+  const senderPicture = pick<string>(
+    data,
+    "sender.picture",
+    "sender.profilePicture",
+    "sender.profilePictureUrl",
+    "sender.avatarUrl",
+    "sender.avatar",
+    "participantPicture",
+    "message.sender.picture",
+  );
 
   const text =
     pickString(data, "text", "message.text", "message.body", "body", "content", "message") ?? "";
@@ -98,12 +108,33 @@ async function handleMessage(event: string, payload: any) {
   if (senderId) {
     const { data: existing } = await supabase
       .from("contacts")
-      .select("id")
+      .select("id, name, avatar_url")
       .eq("user_id", userId)
       .eq("instagram_id", senderId)
       .limit(1)
       .maybeSingle();
     contactId = existing?.id;
+    // Atualiza nome/foto de contatos já existentes (ex.: criados antes pelo
+    // Meta com nome genérico "LOUDER.ink" e sem avatar).
+    if (contactId && isReceived) {
+      const hasRealName = senderName && senderName !== "Instagram";
+      const currentNameIsGeneric =
+        !existing?.name ||
+        existing.name === "Instagram" ||
+        existing.name === "LOUDER.ink" ||
+        existing.name === senderId ||
+        existing.name?.startsWith("IG ");
+      const updates: Record<string, unknown> = {};
+      if (hasRealName && (currentNameIsGeneric || existing?.name !== senderName)) {
+        updates.name = senderName;
+      }
+      if (senderPicture && !existing?.avatar_url) {
+        updates.avatar_url = senderPicture;
+      }
+      if (Object.keys(updates).length > 0) {
+        await supabase.from("contacts").update(updates).eq("id", contactId);
+      }
+    }
   }
   if (!contactId) {
     const { data: newContact } = await supabase
