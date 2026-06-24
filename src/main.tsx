@@ -2,14 +2,16 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 
-// Remove any old Service Worker / PWA cache that may be serving stale (old) pages.
+// Remove Service Workers antigos que podem manter o painel preso em uma versão velha.
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.getRegistrations().then((registrations) => {
-    registrations.forEach((registration) => registration.unregister());
+    registrations
+      .filter((registration) => {
+        const scriptUrl = registration.active?.scriptURL || registration.installing?.scriptURL || registration.waiting?.scriptURL || "";
+        return scriptUrl.endsWith("/sw.js") || scriptUrl.endsWith("/service-worker.js");
+      })
+      .forEach((registration) => registration.unregister());
   });
-  if ("caches" in window) {
-    caches.keys().then((keys) => keys.forEach((key) => caches.delete(key)));
-  }
 }
 
 createRoot(document.getElementById("root")!).render(<App />);
