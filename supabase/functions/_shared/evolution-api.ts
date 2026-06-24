@@ -104,3 +104,32 @@
       Deno.env.get("EVOLUTION_ACTIVE_INSTANCE") || Deno.env.get("EVOLUTION_INSTANCE_NAME")
    );
  }
+
+ // Downloads (and decrypts) media from a WhatsApp message via Evolution API.
+ // Returns the decoded bytes plus mimetype/filename, or null on failure.
+ export async function getEvolutionMediaBase64(message: Record<string, any>): Promise<
+   { bytes: Uint8Array; mimetype: string; fileName: string } | null
+ > {
+   try {
+     const result = await postToEvolution("/chat/getBase64FromMediaMessage/{instance}", {
+       message,
+       convertToMp4: false,
+     });
+     if (!result.ok || !result.data?.base64) {
+       console.error(`getBase64FromMediaMessage failed [${result.status}]: ${result.raw.substring(0, 300)}`);
+       return null;
+     }
+     const base64: string = result.data.base64;
+     const binary = atob(base64);
+     const bytes = new Uint8Array(binary.length);
+     for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+     return {
+       bytes,
+       mimetype: result.data.mimetype || "application/octet-stream",
+       fileName: result.data.fileName || "media",
+     };
+   } catch (e) {
+     console.error("getEvolutionMediaBase64 error:", e);
+     return null;
+   }
+ }
