@@ -1,32 +1,47 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useCustomTabs } from "@/hooks/useCustomTabs";
 import { MessageSquareOff, ArrowLeft } from "lucide-react";
 import { ConversationList } from "@/components/inbox/ConversationList";
 import { ChatView } from "@/components/inbox/ChatView";
 import { CustomTabsSidebar } from "@/components/inbox/CustomTabsSidebar";
 import { MobileHeader } from "@/components/layout/MobileHeader";
-import { Conversation } from "@/hooks/useConversations";
+import { Conversation, useConversations } from "@/hooks/useConversations";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useNewMessageAlerts } from "@/hooks/useNewMessageAlerts";
 
+const SELECTED_CONV_KEY = "inbox:selectedConversationId";
+
 export default function Inbox() {
-  const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(
+    () => sessionStorage.getItem(SELECTED_CONV_KEY)
+  );
   const [selectedTabId, setSelectedTabId] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
   const isMobile = useIsMobile();
   const { data: tabs } = useCustomTabs();
+  const { data: conversations } = useConversations();
+
+  // Resolve the full conversation object from the persisted id so the open
+  // chat survives navigating to other pages and back.
+  const selectedConversation =
+    (conversations || []).find((c) => c.id === selectedId) ?? null;
+
+  useEffect(() => {
+    if (selectedId) sessionStorage.setItem(SELECTED_CONV_KEY, selectedId);
+    else sessionStorage.removeItem(SELECTED_CONV_KEY);
+  }, [selectedId]);
   
   // Ativa notificações de novas mensagens (som + toast + animação)
   useNewMessageAlerts();
 
   const handleSelectConversation = (conversation: Conversation) => {
-    setSelectedConversation(conversation);
+    setSelectedId(conversation.id);
   };
 
   const handleBack = () => {
-    setSelectedConversation(null);
+    setSelectedId(null);
   };
 
   // Mobile Layout
