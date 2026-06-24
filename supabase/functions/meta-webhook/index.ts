@@ -487,17 +487,11 @@ Deno.serve(async (req) => {
         });
 
         try {
-          if (Array.isArray(entry.messaging) && entry.messaging.length > 0) {
-            await handleInstagramMessaging(entry);
-          }
-          if (Array.isArray(entry.standby) && entry.standby.length > 0) {
-            // Standby = nosso app é receptor secundário. Salva a mensagem sem tentar
-            // assumir controle do thread; o envio de DMs agora é feito pela Zernio.
-            await handleInstagramMessaging({ ...entry, messaging: entry.standby });
-          }
-          if (Array.isArray(entry.changes) && entry.changes.length > 0) {
-            await handleInstagramChange(entry);
-          }
+          // O Instagram agora é tratado exclusivamente pelo webhook da Zernio
+          // (zernio-webhook). Salvar mensagens aqui também gerava conversas/mensagens
+          // duplicadas no Inbox. Mantemos apenas o log bruto em meta_webhook_events
+          // acima e ignoramos o processamento de DMs aqui.
+          // handleInstagramMessaging / handleInstagramChange desativados de propósito.
         } catch (parseErr) {
           console.error("[meta-webhook] parse error", parseErr);
         }
