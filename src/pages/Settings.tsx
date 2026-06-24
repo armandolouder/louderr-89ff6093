@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { User, Phone, Mail, LogOut, Loader2, Save, Bot, MessageSquare } from "lucide-react";
+import { User, Phone, Mail, LogOut, Loader2, Save, Bot, MessageSquare, RefreshCw } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,6 +43,7 @@ export default function Settings() {
     max_tokens: 512,
   });
   const [isSavingBot, setIsSavingBot] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
 
   useEffect(() => {
     fetchProfile();
@@ -186,6 +187,30 @@ export default function Settings() {
     } catch (error) {
       console.error("Error logging out:", error);
       toast.error("Erro ao fazer logout");
+    }
+  };
+
+  const handleClearLocalData = async () => {
+    setIsClearing(true);
+    try {
+      // Desregistrar todos os service workers
+      if ("serviceWorker" in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(registrations.map((r) => r.unregister()));
+      }
+      // Limpar todos os caches
+      if ("caches" in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map((k) => caches.delete(k)));
+      }
+      toast.success("Registros locais limpos! Recarregando...");
+      setTimeout(() => {
+        window.location.reload();
+      }, 800);
+    } catch (error) {
+      console.error("Error clearing local data:", error);
+      toast.error("Erro ao limpar registros locais");
+      setIsClearing(false);
     }
   };
 
@@ -381,6 +406,28 @@ export default function Settings() {
           <Button variant="destructive" onClick={handleLogout}>
             <LogOut className="w-4 h-4 mr-2" />
             Sair da conta
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <RefreshCw className="w-4 h-4" />
+            Manutenção do app
+          </CardTitle>
+          <CardDescription>
+            Limpe registros locais (service worker e cache do navegador) e recarregue para resolver discrepâncias e garantir que está vendo a versão mais recente.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button variant="outline" onClick={handleClearLocalData} disabled={isClearing}>
+            {isClearing ? (
+              <Loader2 className="w-4 h-4 animate-spin mr-2" />
+            ) : (
+              <RefreshCw className="w-4 h-4 mr-2" />
+            )}
+            Limpar cache e recarregar app
           </Button>
         </CardContent>
       </Card>
