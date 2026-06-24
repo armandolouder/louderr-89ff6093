@@ -331,6 +331,8 @@ export type Database = {
           channel: string
           contact_id: string
           created_at: string | null
+          external_account_id: string | null
+          external_conversation_id: string | null
           id: string
           is_archived: boolean
           last_message: string | null
@@ -347,6 +349,8 @@ export type Database = {
           channel: string
           contact_id: string
           created_at?: string | null
+          external_account_id?: string | null
+          external_conversation_id?: string | null
           id?: string
           is_archived?: boolean
           last_message?: string | null
@@ -363,6 +367,8 @@ export type Database = {
           channel?: string
           contact_id?: string
           created_at?: string | null
+          external_account_id?: string | null
+          external_conversation_id?: string | null
           id?: string
           is_archived?: boolean
           last_message?: string | null
@@ -2134,6 +2140,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      zernio_accounts: {
+        Row: {
+          account_id: string
+          connected: boolean
+          created_at: string
+          id: string
+          profile_id: string | null
+          updated_at: string
+          user_id: string
+          username: string | null
+        }
+        Insert: {
+          account_id: string
+          connected?: boolean
+          created_at?: string
+          id?: string
+          profile_id?: string | null
+          updated_at?: string
+          user_id: string
+          username?: string | null
+        }
+        Update: {
+          account_id?: string
+          connected?: boolean
+          created_at?: string
+          id?: string
+          profile_id?: string | null
+          updated_at?: string
+          user_id?: string
+          username?: string | null
+        }
+        Relationships: []
       }
     }
     Views: {
