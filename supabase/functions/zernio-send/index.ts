@@ -47,6 +47,25 @@ function inferAttachmentType(messageType: string): "image" | "video" | "audio" |
   return "file";
 }
 
+async function zernioFetch(path: string, init?: RequestInit) {
+  const resp = await fetch(`${ZERNIO_BASE}${path}`, {
+    ...init,
+    headers: {
+      Authorization: `Bearer ${ZERNIO_API_KEY}`,
+      "Content-Type": "application/json",
+      ...(init?.headers ?? {}),
+    },
+  });
+  const text = await resp.text();
+  let data: any = null;
+  try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+  return { ok: resp.ok, status: resp.status, data, text };
+}
+
+function normalize(value: unknown) {
+  return String(value ?? "").trim().toLowerCase();
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json(405, { success: false, error: "Method not allowed" });
@@ -70,14 +89,11 @@ Deno.serve(async (req) => {
     // Load conversation
     const { data: conv } = await admin
       .from("conversations")
-      .select("id, user_id, channel, external_conversation_id, external_account_id")
+      .select("id, user_id, channel, contact_id, external_conversation_id, external_account_id")
       .eq("id", conversationId)
       .maybeSingle();
     if (!conv) return json(404, { success: false, error: "Conversa não encontrada" });
     if (conv.user_id !== userId) return json(403, { success: false, error: "Sem permissão" });
-    if (!conv.external_conversation_id) {
-      return json(400, { success: false, error: "Conversa sem identificador Zernio" });
-    }
 
     // Resolve account id
     let accountId = conv.external_account_id as string | null;
@@ -93,6 +109,53 @@ Deno.serve(async (req) => {
     }
     if (!accountId) return json(400, { success: false, error: "Nenhuma conta Zernio conectada" });
 
+    let zernioConversationId = conv.external_conversation_id as string | null;
+    if (!zernioConversationId) {
+      const { data: contact } = await admin
+        .from("contacts")
+        .select("instagram_id, name")
+        .eq("id", conv.contact_id)
+        .maybeSingle();
+
+      const params = new URLSearchParams({ platform: "instagram", accountId, limit: "100" });
+      const conversationsResp = await zernioFetch(`/inbox/conversations?${params.toString()}`);
+      if (!conversationsResp.ok) {
+        console.error("[zernio-send] list conversations failed", conversationsResp.status, conversationsResp.text);
+        return json(502, { success: false, error: "Falha ao localizar conversa na Zernio", details: conversationsResp.data });
+      }
+
+      const conversations: any[] = Array.isArray(conversationsResp.data?.data)
+        ? conversationsResp.data.data
+        : Array.isArray(conversationsResp.data?.conversations)
+          ? conversationsResp.data.conversations
+          : [];
+      const contactInstagramId = normalize(contact?.instagram_id);
+      const contactName = normalize(contact?.name);
+      const matched = conversations.find((item) => {
+        const participantId = normalize(item.participantId ?? item.participant_id ?? item.senderId ?? item.contactId);
+        const participantName = normalize(item.participantName ?? item.participant_name ?? item.name);
+        return (contactInstagramId && participantId === contactInstagramId) ||
+          (contactName && participantName && participantName === contactName);
+      });
+
+      if (!matched?.id) {
+        return json(400, {
+          success: false,
+          error: "Esta conversa antiga ainda não foi vinculada à Zernio. Sincronize os DMs pela Zernio ou aguarde a próxima mensagem do cliente para criar o vínculo novo.",
+        });
+      }
+
+      zernioConversationId = String(matched.id);
+      await admin
+        .from("conversations")
+        .update({
+          external_conversation_id: zernioConversationId,
+          external_account_id: accountId,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", conv.id);
+    }
+
     // Build payload
     const payload: Record<string, unknown> = { accountId };
     if (content) payload.message = content;
@@ -103,24 +166,15 @@ Deno.serve(async (req) => {
       payload.attachmentType = inferAttachmentType(messageType);
     }
 
-    const resp = await fetch(
-      `${ZERNIO_BASE}/inbox/conversations/${encodeURIComponent(conv.external_conversation_id)}/messages`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${ZERNIO_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      },
+    const sendResp = await zernioFetch(
+      `/inbox/conversations/${encodeURIComponent(zernioConversationId)}/messages`,
+      { method: "POST", body: JSON.stringify(payload) },
     );
-    const respText = await resp.text();
-    let respData: any = null;
-    try { respData = respText ? JSON.parse(respText) : null; } catch { respData = respText; }
+    const respData = sendResp.data;
 
-    if (!resp.ok) {
-      console.error("[zernio-send] failed", resp.status, respText);
-      return json(502, { success: false, error: `Falha ao enviar (${resp.status})`, details: respData });
+    if (!sendResp.ok) {
+      console.error("[zernio-send] failed", sendResp.status, sendResp.text);
+      return json(502, { success: false, error: `Falha ao enviar (${sendResp.status})`, details: respData });
     }
 
     const platformMessageId =
