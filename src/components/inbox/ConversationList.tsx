@@ -197,6 +197,19 @@ export function ConversationList({ selectedId, onSelect, filterTabId, showArchiv
             </Button>
           )}
         </div>
+
+        {(channelFilter === "instagram" || channelFilter === "whatsapp") && !showArchived && filteredConversations.length > 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleArchiveAll}
+            disabled={archivingAll}
+            className="h-8 px-3 gap-1.5 border-border text-muted-foreground w-full"
+          >
+            {archivingAll ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCheck className="w-3.5 h-3.5" />}
+            Fechar todos ({filteredConversations.length})
+          </Button>
+        )}
       </div>
       
       <div className="flex-1 overflow-auto">
