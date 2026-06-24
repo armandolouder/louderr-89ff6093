@@ -68,6 +68,26 @@ export function ConversationList({ selectedId, onSelect, filterTabId, showArchiv
   });
 
   const archivedCount = (conversations || []).filter(c => c.is_archived).length;
+
+  const handleArchiveAll = async () => {
+    const ids = filteredConversations.map((c) => c.id);
+    if (ids.length === 0) return;
+    if (!confirm(`Fechar (arquivar) ${ids.length} conversa(s)?`)) return;
+    setArchivingAll(true);
+    try {
+      const { error } = await supabase
+        .from("conversations")
+        .update({ is_archived: true })
+        .in("id", ids);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ["conversations"] });
+      toast.success(`${ids.length} conversa(s) arquivada(s)`);
+    } catch {
+      toast.error("Erro ao arquivar conversas");
+    } finally {
+      setArchivingAll(false);
+    }
+  };
   // Conta apenas as não lidas que passam nos mesmos filtros visíveis (canal/aba/busca)
   const unreadCount = (conversations || []).filter((conv) => {
     if (conv.is_archived) return false;
