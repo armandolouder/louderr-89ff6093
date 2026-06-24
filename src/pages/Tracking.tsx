@@ -181,7 +181,7 @@ export default function Tracking() {
     }
   };
 
-  const pixelScript = `<!-- OmniDesk Tracking Pixel -->
+  const pixelScript = `<!-- LOUDER.ink Tracking Pixel -->
 <script>
 (function(){
   var ENDPOINT="${SUPABASE_URL}/functions/v1/track-pageview";
