@@ -27,6 +27,17 @@ function pick<T = any>(obj: any, ...keys: string[]): T | undefined {
   return undefined;
 }
 
+// Like pick, but only returns values that are actual strings.
+// Prevents storing an entire nested object as the message content
+// when a key like "message" holds the full message object.
+function pickString(obj: any, ...keys: string[]): string | undefined {
+  for (const k of keys) {
+    const v = k.split(".").reduce((o: any, p) => (o == null ? o : o[p]), obj);
+    if (typeof v === "string" && v.length > 0) return v;
+  }
+  return undefined;
+}
+
 async function resolveOwner(accountId?: string): Promise<string | null> {
   if (accountId) {
     const { data } = await supabase
@@ -75,7 +86,7 @@ async function handleMessage(event: string, payload: any) {
   const senderPicture = pick<string>(data, "sender.picture", "sender.profilePicture", "participantPicture");
 
   const text =
-    pick<string>(data, "text", "message", "message.text", "content") ?? "";
+    pickString(data, "text", "message.text", "message.body", "body", "content", "message") ?? "";
   const attachments = pick<any[]>(data, "attachments", "message.attachments") ?? [];
   const firstAtt = attachments[0];
   const mediaUrl = firstAtt ? (firstAtt.url ?? firstAtt.payload?.url ?? null) : null;
