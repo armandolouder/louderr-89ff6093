@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { MessageSquare, Brain, Loader2, ShoppingBag, Mail } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { IntegrationSidebar, type IntegrationId } from "@/components/api/IntegrationSidebar";
-import { UazapiConfig } from "@/components/api/UazapiConfig";
+import { EvolutionConfig } from "@/components/api/EvolutionConfig";
 import { GroqConfig } from "@/components/api/GroqConfig";
 import { NuvemshopConfig } from "@/components/api/NuvemshopConfig";
 import { BrevoConfig } from "@/components/api/BrevoConfig";
@@ -39,7 +39,7 @@ interface BrevoStatus {
 
 export default function Api() {
   const [activeIntegration, setActiveIntegration] = useState<IntegrationId>(() => {
-    return (localStorage.getItem("active_integration_id") as IntegrationId) || "uazapi";
+    return (localStorage.getItem("active_integration_id") as IntegrationId) || "evolution";
   });
    const [instanceStatus, setInstanceStatus] = useState<InstanceStatus | null>(() => {
      const saved = localStorage.getItem("evolution_config_cache");
@@ -137,11 +137,11 @@ export default function Api() {
 
   const integrations = [
     {
-      id: "uazapi" as IntegrationId,
-      name: "WhatsApp (UAZAPI)",
+      id: "evolution" as IntegrationId,
+      name: "WhatsApp (Evolution API)",
       description: "Envio e recebimento de mensagens",
       icon: <MessageSquare className="w-5 h-5" />,
-      connected: (instanceStatus?.connected && instanceStatus?.provider !== "evolution") ?? false,
+      connected: instanceStatus?.connected ?? false,
     },
     {
       id: "groq" as IntegrationId,
@@ -182,8 +182,8 @@ export default function Api() {
         integrations={integrations}
       />
       
-      {activeIntegration === "uazapi" && (
-        <UazapiConfig status={instanceStatus} onStatusChange={setInstanceStatus} />
+      {activeIntegration === "evolution" && (
+        <EvolutionConfig status={instanceStatus} onStatusChange={setInstanceStatus} />
       )}
       
       {activeIntegration === "groq" && (
