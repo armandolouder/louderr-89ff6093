@@ -156,6 +156,8 @@ Deno.serve(async (req) => {
         .eq("id", conv.id);
     }
 
+    const resolvedConversationId = zernioConversationId;
+
     // Build payload
     const payload: Record<string, unknown> = { accountId };
     if (content) payload.message = content;
@@ -167,7 +169,7 @@ Deno.serve(async (req) => {
     }
 
     const sendResp = await zernioFetch(
-      `/inbox/conversations/${encodeURIComponent(zernioConversationId)}/messages`,
+      `/inbox/conversations/${encodeURIComponent(resolvedConversationId)}/messages`,
       { method: "POST", body: JSON.stringify(payload) },
     );
     const respData = sendResp.data;
