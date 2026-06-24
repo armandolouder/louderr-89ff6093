@@ -9,7 +9,6 @@ import { ReactionPicker } from "./ReactionPicker";
 import { MessageActions } from "./MessageActions";
 import { QuickResponsePicker } from "./QuickResponsePicker";
 import { QuickResponseManager } from "./QuickResponseManager";
-import { InstagramHandoverDialog } from "./InstagramHandoverDialog";
 import { Conversation } from "@/hooks/useConversations";
 import { useMessages, useSendMessage, useSendMediaMessage } from "@/hooks/useMessages";
 import { QuickResponse } from "@/hooks/useQuickResponses";
@@ -36,7 +35,6 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
   const [pastedImage, setPastedImage] = useState<{ file: File; preview: string } | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showScrollDown, setShowScrollDown] = useState(false);
-  const [handoverError, setHandoverError] = useState<string | null>(null);
   const [isSyncingIg, setIsSyncingIg] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -208,11 +206,7 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
         },
         onError: (error: any) => {
           console.error("Error sending media:", error);
-          if (error?.requires_handover_setup) {
-            setHandoverError(error.message);
-          } else {
-            toast.error(error?.message || "Erro ao enviar imagem");
-          }
+          toast.error(error?.message || "Erro ao enviar imagem");
         }
       });
       return;
@@ -228,11 +222,7 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
         onSuccess: () => setMessage(""),
         onError: (error: any) => {
           console.error("Error sending message:", error);
-          if (error?.requires_handover_setup) {
-            setHandoverError(error.message);
-          } else {
-            toast.error(error?.message || "Erro ao enviar mensagem");
-          }
+          toast.error(error?.message || "Erro ao enviar mensagem");
         },
       });
     }
@@ -267,11 +257,6 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
 
   return (
     <div className="flex flex-col h-full bg-background overflow-hidden">
-      <InstagramHandoverDialog
-        open={!!handoverError}
-        onOpenChange={(o) => !o && setHandoverError(null)}
-        errorMessage={handoverError ?? undefined}
-      />
       {/* Header - Hidden on mobile since Inbox.tsx provides it */}
       {!isMobile && (
         <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-card flex-shrink-0">
