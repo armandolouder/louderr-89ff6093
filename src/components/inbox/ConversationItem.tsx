@@ -1,3 +1,4 @@
+import type { MouseEvent } from "react";
 import { cn } from "@/lib/utils";
 import { ChannelBadge } from "./ChannelBadge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -41,7 +42,8 @@ export function ConversationItem({ conversation, isActive, onClick }: Conversati
   const queryClient = useQueryClient();
   const isNewMessage = useIsConversationNew(conversation.id);
 
-  const handleArchiveToggle = async () => {
+  const handleArchiveToggle = async (e?: MouseEvent) => {
+    e?.stopPropagation();
     const newValue = !conversation.is_archived;
     try {
       const { error } = await supabase
@@ -157,6 +159,20 @@ export function ConversationItem({ conversation, isActive, onClick }: Conversati
             {conversation.unread_count}
           </span>
         )}
+
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+          onClick={handleArchiveToggle}
+          title={conversation.is_archived ? "Desarquivar" : "Arquivar"}
+        >
+          {conversation.is_archived ? (
+            <ArchiveRestore className="h-4 w-4" />
+          ) : (
+            <Archive className="h-4 w-4" />
+          )}
+        </Button>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

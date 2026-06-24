@@ -184,6 +184,7 @@ async function handleEvolutionWebhook(supabase: any, payload: EvolutionPayload, 
         last_message: content.substring(0, 100),
         last_message_at: new Date().toISOString(),
         unread_count: (conversation.unread_count || 0) + 1,
+        is_archived: false,
         status: conversation.status === "finalizado" ? "novo" : conversation.status
       }).eq("id", conversation.id);
     }
@@ -302,6 +303,7 @@ serve(async (req) => {
           last_message: content.substring(0, 100),
           last_message_at: new Date().toISOString(),
           unread_count: (convCurrent?.unread_count || 0) + 1,
+          is_archived: false,
         }).eq("id", conv?.id);
       }
       return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });

@@ -224,6 +224,8 @@ async function handleMessage(event: string, payload: any) {
   if (isReceived) {
     const { data: cur } = await supabase.from("conversations").select("unread_count").eq("id", convId).maybeSingle();
     update.unread_count = (cur?.unread_count ?? 0) + 1;
+    // Reabre a conversa: se estava arquivada, volta para a lista ao receber nova mensagem.
+    update.is_archived = false;
   }
   await supabase.from("conversations").update(update).eq("id", convId);
 }

@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
-import { Search, Instagram, Loader2, Archive, ShoppingBag, Inbox as InboxIcon } from "lucide-react";
+import { Search, Instagram, Loader2, Archive, ShoppingBag, Inbox as InboxIcon, CheckCheck } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ConversationItem } from "./ConversationItem";
 import { useConversations, Conversation } from "@/hooks/useConversations";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 interface ConversationListProps {
   selectedId?: string;
@@ -22,6 +24,8 @@ export function ConversationList({ selectedId, onSelect, filterTabId, showArchiv
   const [customerPhones, setCustomerPhones] = useState<Set<string> | null>(null);
   
   const { data: conversations, isLoading, error } = useConversations();
+  const queryClient = useQueryClient();
+  const [archivingAll, setArchivingAll] = useState(false);
 
   // Carrega telefones de clientes que compraram ou têm carrinho abandonado
   useEffect(() => {
@@ -64,6 +68,26 @@ export function ConversationList({ selectedId, onSelect, filterTabId, showArchiv
   });
 
   const archivedCount = (conversations || []).filter(c => c.is_archived).length;
+
+  const handleArchiveAll = async () => {
+    const ids = filteredConversations.map((c) => c.id);
+    if (ids.length === 0) return;
+    if (!confirm(`Fechar (arquivar) ${ids.length} conversa(s)?`)) return;
+    setArchivingAll(true);
+    try {
+      const { error } = await supabase
+        .from("conversations")
+        .update({ is_archived: true })
+        .in("id", ids);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ["conversations"] });
+      toast.success(`${ids.length} conversa(s) arquivada(s)`);
+    } catch {
+      toast.error("Erro ao arquivar conversas");
+    } finally {
+      setArchivingAll(false);
+    }
+  };
   // Conta apenas as não lidas que passam nos mesmos filtros visíveis (canal/aba/busca)
   const unreadCount = (conversations || []).filter((conv) => {
     if (conv.is_archived) return false;
@@ -173,6 +197,19 @@ export function ConversationList({ selectedId, onSelect, filterTabId, showArchiv
             </Button>
           )}
         </div>
+
+        {(channelFilter === "instagram" || channelFilter === "whatsapp") && !showArchived && filteredConversations.length > 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleArchiveAll}
+            disabled={archivingAll}
+            className="h-8 px-3 gap-1.5 border-border text-muted-foreground w-full"
+          >
+            {archivingAll ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCheck className="w-3.5 h-3.5" />}
+            Fechar todos ({filteredConversations.length})
+          </Button>
+        )}
       </div>
       
       <div className="flex-1 overflow-auto">
