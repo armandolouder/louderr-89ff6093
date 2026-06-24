@@ -9,7 +9,8 @@ const corsHeaders = {
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
-const GRAPH = "https://graph.facebook.com/v22.0";
+const ZERNIO_API_KEY = Deno.env.get("ZERNIO_API_KEY");
+const ZERNIO_BASE = "https://zernio.com/api/v1";
 
 const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
@@ -48,6 +49,25 @@ function inferAttachmentType(messageType: string): "image" | "video" | "audio" |
   if (messageType === "video") return "video";
   if (messageType === "audio") return "audio";
   return "file";
+}
+
+async function zernioFetch(path: string, init?: RequestInit) {
+  const resp = await fetch(`${ZERNIO_BASE}${path}`, {
+    ...init,
+    headers: {
+      Authorization: `Bearer ${ZERNIO_API_KEY}`,
+      "Content-Type": "application/json",
+      ...(init?.headers ?? {}),
+    },
+  });
+  const text = await resp.text();
+  let data: any = null;
+  try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+  return { ok: resp.ok, status: resp.status, data, text };
+}
+
+function normalize(value: unknown) {
+  return String(value ?? "").trim().toLowerCase();
 }
 
 Deno.serve(async (req) => {
