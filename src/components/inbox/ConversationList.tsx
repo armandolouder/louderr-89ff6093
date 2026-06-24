@@ -63,7 +63,9 @@ export function ConversationList({ selectedId, onSelect, filterTabId, showArchiv
         : filterTabId === "__waiting__"
           ? (conv.unread_count || 0) > 0
           : (conv as any).tab_id === filterTabId;
-    const matchesUnread = !unreadOnly || (conv.unread_count || 0) > 0;
+    // "Abertas": mantém a conversa na lista mesmo após ser lida.
+    // Só sai da lista quando for arquivada (fechada) pelo ícone de fechar.
+    const matchesUnread = !unreadOnly || !conv.is_archived;
     return matchesArchived && matchesSearch && matchesChannel && matchesTab && matchesUnread;
   });
 

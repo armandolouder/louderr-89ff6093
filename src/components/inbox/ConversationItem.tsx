@@ -5,7 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Conversation } from "@/hooks/useConversations";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { MoreHorizontal, FolderInput, FolderX, Archive, ArchiveRestore, Trash2 } from "lucide-react";
+import { MoreHorizontal, FolderInput, FolderX, Archive, ArchiveRestore, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -163,14 +163,19 @@ export function ConversationItem({ conversation, isActive, onClick }: Conversati
         <Button
           variant="ghost"
           size="icon"
-          className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+          className={cn(
+            "h-7 w-7 transition-colors",
+            conversation.is_archived
+              ? "text-muted-foreground hover:text-foreground"
+              : "text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+          )}
           onClick={handleArchiveToggle}
-          title={conversation.is_archived ? "Desarquivar" : "Arquivar"}
+          title={conversation.is_archived ? "Reabrir conversa" : "Fechar conversa"}
         >
           {conversation.is_archived ? (
             <ArchiveRestore className="h-4 w-4" />
           ) : (
-            <Archive className="h-4 w-4" />
+            <X className="h-4 w-4" />
           )}
         </Button>
 
