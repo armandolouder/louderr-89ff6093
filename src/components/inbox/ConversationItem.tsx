@@ -1,3 +1,4 @@
+import type { MouseEvent } from "react";
 import { cn } from "@/lib/utils";
 import { ChannelBadge } from "./ChannelBadge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -41,7 +42,7 @@ export function ConversationItem({ conversation, isActive, onClick }: Conversati
   const queryClient = useQueryClient();
   const isNewMessage = useIsConversationNew(conversation.id);
 
-  const handleArchiveToggle = async (e?: React.MouseEvent) => {
+  const handleArchiveToggle = async (e?: MouseEvent) => {
     e?.stopPropagation();
     const newValue = !conversation.is_archived;
     try {
