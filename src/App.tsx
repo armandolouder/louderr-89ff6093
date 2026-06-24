@@ -16,7 +16,6 @@ const Settings = lazy(() => import("./pages/Settings"));
 const Api = lazy(() => import("./pages/Api"));
 const SalesDashboard = lazy(() => import("./pages/SalesDashboard"));
 const AbandonedCheckouts = lazy(() => import("./pages/AbandonedCheckouts"));
-const RecoveryDashboard = lazy(() => import("./pages/RecoveryDashboard"));
 const Automations = lazy(() => import("./pages/Automations"));
 const RFMMatrixPage = lazy(() => import("./pages/RFMMatrix"));
 const EmailMarketing = lazy(() => import("./pages/EmailMarketing"));
@@ -54,7 +53,6 @@ const App = () => (
               <Route path="/apis" element={<Api />} />
               <Route path="/sales" element={<SalesDashboard />} />
               <Route path="/abandoned-checkouts" element={<AbandonedCheckouts />} />
-              <Route path="/recovery" element={<RecoveryDashboard />} />
               <Route path="/automations" element={<Automations />} />
               <Route path="/email-marketing" element={<EmailMarketing />} />
               <Route path="/tracking" element={<Tracking />} />

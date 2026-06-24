@@ -14,13 +14,11 @@ import {
   Megaphone,
   TrendingUp,
   ShoppingCart,
-  Rocket,
   Grid3X3,
   Mail,
   Eye,
   FileText,
   Wallet,
-  ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -38,7 +36,6 @@ interface NavItem {
 const navigation: NavItem[] = [
   { name: "Resumo Geral", href: "/home", icon: LayoutDashboard },
   { name: "Atendimentos", href: "/inbox", icon: MessageSquare },
-  { name: "ManyChat", href: "https://app.manychat.com/fb476276/chat/", icon: ExternalLink, external: true },
   { name: "Painel de Vendas", href: "/sales", icon: TrendingUp },
   { name: "Despesas", href: "/expenses", icon: Wallet },
   { name: "Clientes", href: "/customers", icon: Users },
@@ -54,7 +51,6 @@ const navigation: NavItem[] = [
     ],
   },
   { name: "Carrinhos", href: "/abandoned-checkouts", icon: ShoppingCart },
-  { name: "Recovery Engine", href: "/recovery", icon: Rocket },
   { name: "Rastreamento", href: "/tracking", icon: Eye },
   { name: "Bot", href: "/bot", icon: Bot },
   { name: "APIs", href: "/apis", icon: Zap },
