@@ -25,10 +25,10 @@
  function getCredentials() {
    const serverUrl = Deno.env.get("EVOLUTION_API_URL");
    const apiKey = Deno.env.get("EVOLUTION_API_KEY");
-   const instance = Deno.env.get("EVOLUTION_INSTANCE_NAME");
+    const instance = Deno.env.get("EVOLUTION_ACTIVE_INSTANCE") || Deno.env.get("EVOLUTION_INSTANCE_NAME");
    
    if (!serverUrl || !apiKey || !instance) {
-     throw new Error("Evolution API credentials not configured (EVOLUTION_API_URL, EVOLUTION_API_KEY, EVOLUTION_INSTANCE_NAME)");
+      throw new Error("Evolution API credentials not configured (EVOLUTION_API_URL, EVOLUTION_API_KEY, EVOLUTION_ACTIVE_INSTANCE/EVOLUTION_INSTANCE_NAME)");
    }
    
    return { 
@@ -101,6 +101,6 @@
    return Boolean(
      Deno.env.get("EVOLUTION_API_URL") && 
      Deno.env.get("EVOLUTION_API_KEY") && 
-     Deno.env.get("EVOLUTION_INSTANCE_NAME")
+      Deno.env.get("EVOLUTION_ACTIVE_INSTANCE") || Deno.env.get("EVOLUTION_INSTANCE_NAME")
    );
  }
