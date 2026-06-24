@@ -39,7 +39,7 @@
       if (isEvolution) {
         const EVOLUTION_API_URL = body.evolution_url || Deno.env.get("EVOLUTION_API_URL");
         const EVOLUTION_API_KEY = body.evolution_key || Deno.env.get("EVOLUTION_API_KEY");
-        const EVOLUTION_INSTANCE = body.evolution_instance || Deno.env.get("EVOLUTION_INSTANCE_NAME");
+        const EVOLUTION_INSTANCE = body.evolution_instance || Deno.env.get("EVOLUTION_ACTIVE_INSTANCE") || Deno.env.get("EVOLUTION_INSTANCE_NAME");
  
         console.log(`Evolution Config - URL: ${EVOLUTION_API_URL}, Instance: ${EVOLUTION_INSTANCE}`);
 
