@@ -85,7 +85,7 @@ export function AppSidebar() {
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
               <MessageSquare className="w-4 h-4 text-primary-foreground" />
             </div>
-            <span className="text-lg font-semibold text-sidebar-foreground">OmniDesk</span>
+            <span className="text-lg font-semibold text-sidebar-foreground">LOUDER.ink</span>
           </Link>
         )}
         <Button

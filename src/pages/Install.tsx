@@ -64,7 +64,7 @@ export default function Install() {
             </div>
             <CardTitle className="text-2xl">App Instalado!</CardTitle>
             <CardDescription>
-              O OmniDesk já está instalado no seu dispositivo
+              O painel LOUDER.ink já está instalado no seu dispositivo
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -84,7 +84,7 @@ export default function Install() {
           <div className="mx-auto w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center mb-4 shadow-glow">
             <Smartphone className="w-10 h-10 text-primary-foreground" />
           </div>
-          <CardTitle className="text-2xl">Instale o OmniDesk</CardTitle>
+          <CardTitle className="text-2xl">Instale o painel LOUDER.ink</CardTitle>
           <CardDescription>
             Tenha acesso rápido ao app direto da tela inicial do seu celular
           </CardDescription>
