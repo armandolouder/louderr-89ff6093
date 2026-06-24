@@ -279,6 +279,13 @@ export function AppSidebar() {
           <LogOut className="w-5 h-5 flex-shrink-0" />
           {!collapsed && <span>Sair</span>}
         </button>
+        {!collapsed && (
+          <div className="px-3 pt-2 text-[10px] leading-tight text-muted-foreground/70 select-text">
+            <span className="font-medium">v{__BUILD_DATE__.slice(0, 10).replace(/-/g, ".")}</span>
+            <br />
+            <span>Deploy: {new Date(__BUILD_DATE__).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}</span>
+          </div>
+        )}
       </div>
     </aside>
   );
