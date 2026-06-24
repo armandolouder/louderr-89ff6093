@@ -93,6 +93,25 @@ export function useMessages(conversationId: string | null) {
   return query;
 }
 
+async function shouldRouteInstagramThroughZernio(conversationId: string) {
+  const { data: conv } = await supabase
+    .from("conversations")
+    .select("external_conversation_id")
+    .eq("id", conversationId)
+    .maybeSingle();
+
+  if (conv?.external_conversation_id) return true;
+
+  const { data: account } = await supabase
+    .from("zernio_accounts")
+    .select("id")
+    .eq("connected", true)
+    .limit(1)
+    .maybeSingle();
+
+  return !!account;
+}
+
 export function useSendMessage() {
   const queryClient = useQueryClient();
 
@@ -119,15 +138,10 @@ export function useSendMessage() {
         return data.message;
       }
 
-      // For Instagram, send via Meta Graph API
+      // Instagram DM: Zernio é o fluxo atual; não usamos mais o envio direto Meta/handover.
       if (channel === "instagram") {
-        // Zernio-backed conversation? route to zernio-send
-        const { data: zConv } = await supabase
-          .from("conversations")
-          .select("external_conversation_id")
-          .eq("id", conversationId)
-          .maybeSingle();
-        if (zConv?.external_conversation_id) {
+        // Instagram DM agora usa Zernio quando houver conta conectada, inclusive em conversas antigas.
+        if (await shouldRouteInstagramThroughZernio(conversationId)) {
           const { data, error } = await supabase.functions.invoke("zernio-send", {
             body: { conversationId, content, messageType: "text" },
           });
@@ -146,17 +160,7 @@ export function useSendMessage() {
           // Reusa o branch instagram-personal logo abaixo
           channel = "instagram-personal";
         } else {
-        const { data, error } = await supabase.functions.invoke("send-instagram", {
-          body: { conversationId, content, messageType: "text" },
-        });
-        if (error) throw error;
-        if (!data?.success) {
-          const err: any = new Error(data?.error || "Falha ao enviar no Instagram");
-          err.requires_handover_setup = !!data?.requires_handover_setup || !!data?.requires_business_config;
-          err.meta = data?.meta;
-          throw err;
-        }
-        return data.message;
+          throw new Error("Instagram DM precisa estar conectado via Zernio. A API Meta antiga foi desativada neste painel.");
         }
       }
 
@@ -313,15 +317,10 @@ export function useSendMediaMessage() {
         return data.message;
       }
 
-      // Instagram via Meta Graph API
+      // Instagram DM: Zernio é o fluxo atual; não usamos mais o envio direto Meta/handover.
       if (channel === "instagram") {
-        // Zernio-backed conversation? route to zernio-send
-        const { data: zConv } = await supabase
-          .from("conversations")
-          .select("external_conversation_id")
-          .eq("id", conversationId)
-          .maybeSingle();
-        if (zConv?.external_conversation_id) {
+        // Instagram DM agora usa Zernio quando houver conta conectada, inclusive em conversas antigas.
+        if (await shouldRouteInstagramThroughZernio(conversationId)) {
           const { data, error } = await supabase.functions.invoke("zernio-send", {
             body: { conversationId, content: caption || "", messageType: "image", mediaUrl },
           });
@@ -329,22 +328,8 @@ export function useSendMediaMessage() {
           if (!data?.success) throw new Error(data?.error || "Falha ao enviar mídia no Instagram (Zernio)");
           return data;
         }
-        const { data, error } = await supabase.functions.invoke("send-instagram", {
-          body: {
-            conversationId,
-            content: caption || "",
-            messageType: "image",
-            mediaUrl,
-          },
-        });
-        if (error) throw error;
-        if (!data?.success) {
-          const err: any = new Error(data?.error || "Falha ao enviar mídia no Instagram");
-          err.requires_handover_setup = !!data?.requires_handover_setup || !!data?.requires_business_config;
-          err.meta = data?.meta;
-          throw err;
-        }
-        return data.message;
+
+        throw new Error("Instagram DM precisa estar conectado via Zernio. A API Meta antiga foi desativada neste painel.");
       }
 
       // Fallback: save directly to database
