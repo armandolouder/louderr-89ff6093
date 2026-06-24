@@ -159,6 +159,20 @@ export function ConversationItem({ conversation, isActive, onClick }: Conversati
           </span>
         )}
 
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+          onClick={handleArchiveToggle}
+          title={conversation.is_archived ? "Desarquivar" : "Arquivar"}
+        >
+          {conversation.is_archived ? (
+            <ArchiveRestore className="h-4 w-4" />
+          ) : (
+            <Archive className="h-4 w-4" />
+          )}
+        </Button>
+
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
