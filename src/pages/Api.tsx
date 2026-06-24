@@ -1,14 +1,11 @@
 import { useState, useEffect } from "react";
-import { MessageSquare, Brain, Loader2, ShoppingBag, Mail, Instagram } from "lucide-react";
+import { MessageSquare, Brain, Loader2, ShoppingBag, Mail } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { IntegrationSidebar, type IntegrationId } from "@/components/api/IntegrationSidebar";
 import { UazapiConfig } from "@/components/api/UazapiConfig";
-import { EvolutionConfig } from "@/components/api/EvolutionConfig";
 import { GroqConfig } from "@/components/api/GroqConfig";
 import { NuvemshopConfig } from "@/components/api/NuvemshopConfig";
 import { BrevoConfig } from "@/components/api/BrevoConfig";
-import { MetaConfig } from "@/components/api/MetaConfig";
-import { InstagramPersonalConfig } from "@/components/api/InstagramPersonalConfig";
 
 interface InstanceStatus {
   connected: boolean;
@@ -147,13 +144,6 @@ export default function Api() {
       connected: (instanceStatus?.connected && instanceStatus?.provider !== "evolution") ?? false,
     },
     {
-      id: "evolution" as IntegrationId,
-      name: "WhatsApp (Evolution)",
-      description: "API Avançada v2",
-      icon: <MessageSquare className="w-5 h-5" />,
-      connected: (instanceStatus?.connected && instanceStatus?.provider === "evolution") ?? false,
-    },
-    {
       id: "groq" as IntegrationId,
       name: "Groq Cloud AI",
       description: "Automação inteligente",
@@ -173,20 +163,6 @@ export default function Api() {
       description: "E-mails de recuperação",
       icon: <Mail className="w-5 h-5" />,
       connected: brevoStatus?.connected ?? false,
-    },
-    {
-      id: "meta" as IntegrationId,
-      name: "Meta",
-      description: "Instagram & Messenger DMs",
-      icon: <Instagram className="w-5 h-5" />,
-      connected: false,
-    },
-    {
-      id: "instagram-personal" as IntegrationId,
-      name: "Instagram Pessoal",
-      description: "DMs via cookie da sua conta",
-      icon: <Instagram className="w-5 h-5" />,
-      connected: false,
     },
   ];
 
@@ -210,10 +186,6 @@ export default function Api() {
         <UazapiConfig status={instanceStatus} onStatusChange={setInstanceStatus} />
       )}
       
-      {activeIntegration === "evolution" && (
-        <EvolutionConfig status={instanceStatus} onStatusChange={setInstanceStatus} />
-      )}
-      
       {activeIntegration === "groq" && (
         <GroqConfig status={groqStatus} onStatusChange={setGroqStatus} />
       )}
@@ -225,10 +197,6 @@ export default function Api() {
       {activeIntegration === "brevo" && (
         <BrevoConfig status={brevoStatus} onStatusChange={setBrevoStatus} />
       )}
-
-      {activeIntegration === "meta" && <MetaConfig />}
-
-      {activeIntegration === "instagram-personal" && <InstagramPersonalConfig />}
     </div>
   );
 }
