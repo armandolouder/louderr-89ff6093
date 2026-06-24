@@ -84,7 +84,7 @@ async function handleMessage(event: string, payload: any) {
     pick<string>(data, "sender.name", "sender.username", "from.name", "participantName", "message.sender.name") ||
     "Instagram";
   const senderUsername = pick<string>(data, "sender.username", "from.username", "message.sender.username");
-  const senderPicture = pick<string>(
+  const rawPicture = pick<string>(
     data,
     "sender.picture",
     "sender.profilePicture",
@@ -94,6 +94,10 @@ async function handleMessage(event: string, payload: any) {
     "participantPicture",
     "message.sender.picture",
   );
+  // O Zernio normalmente envia a foto como null. Quando não houver foto direta,
+  // construímos a partir do username (mesmo padrão dos contatos já resolvidos).
+  const senderPicture =
+    rawPicture || (senderUsername ? `https://www.instagram.com/${senderUsername}/media/?size=l` : undefined);
 
   const text =
     pickString(data, "text", "message.text", "message.body", "body", "content", "message") ?? "";
