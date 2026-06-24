@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { sendWhatsAppText, hasWhatsAppCredentials } from "../_shared/whatsapp.ts";
+import { getEvolutionMediaBase64 } from "../_shared/evolution-api.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -173,6 +174,28 @@ async function handleEvolutionWebhook(supabase: any, payload: EvolutionPayload, 
 
       if (!conversation) continue;
 
+      // Download media (audio/image/video/document) so it can be played/viewed in the inbox
+      let mediaUrl: string | null = null;
+      if (messageType !== "text") {
+        const media = await getEvolutionMediaBase64(m);
+        if (media) {
+          const extMap: Record<string, string> = {
+            audio: "ogg", image: "jpg", video: "mp4", document: "bin",
+          };
+          const mimeExt = media.mimetype.split("/")[1]?.split(";")[0];
+          const ext = mimeExt || extMap[messageType] || "bin";
+          const path = `${ownerUserId}/${conversation.id}/${m.key?.id || crypto.randomUUID()}.${ext}`;
+          const { error: uploadError } = await supabase.storage
+            .from("whatsapp-media")
+            .upload(path, media.bytes, { contentType: media.mimetype, upsert: true });
+          if (uploadError) {
+            console.error("Media upload failed:", uploadError.message);
+          } else {
+            mediaUrl = `whatsapp-media:${path}`;
+          }
+        }
+      }
+
        await supabase.from("messages").insert({
          conversation_id: conversation.id,
          content,
@@ -181,6 +204,7 @@ async function handleEvolutionWebhook(supabase: any, payload: EvolutionPayload, 
           status: isFromMe ? "sent" : "received",
          user_id: ownerUserId,
          evolution_message_id: m.key?.id,
+          media_url: mediaUrl,
           metadata: { evolution_message_id: m.key?.id, evolution_raw: m, source: isFromMe ? "phone_sync" : "webhook" }
        });
 
