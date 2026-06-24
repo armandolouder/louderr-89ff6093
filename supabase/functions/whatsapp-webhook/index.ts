@@ -303,6 +303,7 @@ serve(async (req) => {
           last_message: content.substring(0, 100),
           last_message_at: new Date().toISOString(),
           unread_count: (convCurrent?.unread_count || 0) + 1,
+          is_archived: false,
         }).eq("id", conv?.id);
       }
       return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
