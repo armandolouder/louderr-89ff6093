@@ -84,7 +84,15 @@ serve(async (req) => {
 
     if (!result.ok) {
       console.error("WhatsApp API error:", result.raw);
-      throw new Error(`Failed to send message via WhatsApp API: ${result.status} - ${result.raw}`);
+      const friendlyError = result.status === 401
+        ? "A Evolution API recusou a chave configurada no backend. Atualize o secret EVOLUTION_API_KEY com a API Key correta dessa instância."
+        : `Falha ao enviar mensagem pelo WhatsApp (${result.status}).`;
+
+      return jsonResponse({
+        success: false,
+        error: friendlyError,
+        details: result.raw,
+      });
     }
     const apiResponseData = result.data;
 
@@ -154,6 +162,6 @@ serve(async (req) => {
      return jsonResponse({ success: true, message, apiResponseData });
   } catch (error) {
     console.error("Error sending WhatsApp message:", error);
-    return jsonResponse({ success: false, error: (error as Error).message }, { status: 500 });
+    return jsonResponse({ success: false, error: (error as Error).message });
   }
 });

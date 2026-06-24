@@ -116,18 +116,6 @@ async function handleEvolutionWebhook(supabase: any, payload: EvolutionPayload, 
         }
       }
 
-      // If it's from me and wasn't found in the database, it might be a message sent from another device (phone)
-      // or we just didn't finish the local insert yet.
-      // If we want to support showing messages sent from the phone, we should process it.
-      // BUT, to avoid the race condition duplicate, we only proceed if it's NOT from me, 
-      // OR if we explicitly want to support multi-device sync.
-      // For now, let's keep skipping "fromMe" if not found, to avoid the agent message appearing as a contact message
-      // during the race condition.
-      if (isFromMe) {
-        console.log(`Skipping message from instance (fromMe: true): ${messageId}`);
-        continue;
-      }
-
       const remoteJid = m.key?.remoteJid || "";
       const phone = remoteJid.replace("@s.whatsapp.net", "").replace("@c.us", "");
       
@@ -172,18 +160,18 @@ async function handleEvolutionWebhook(supabase: any, payload: EvolutionPayload, 
        await supabase.from("messages").insert({
          conversation_id: conversation.id,
          content,
-         sender_type: "contact",
+          sender_type: isFromMe ? "agent" : "contact",
          message_type: messageType,
-         status: "received",
+          status: isFromMe ? "sent" : "received",
          user_id: ownerUserId,
          evolution_message_id: m.key?.id,
-         metadata: { evolution_message_id: m.key?.id, evolution_raw: m }
+          metadata: { evolution_message_id: m.key?.id, evolution_raw: m, source: isFromMe ? "phone_sync" : "webhook" }
        });
 
       await supabase.from("conversations").update({
         last_message: content.substring(0, 100),
         last_message_at: new Date().toISOString(),
-        unread_count: (conversation.unread_count || 0) + 1,
+         unread_count: isFromMe ? (conversation.unread_count || 0) : (conversation.unread_count || 0) + 1,
         is_archived: false,
         status: conversation.status === "finalizado" ? "novo" : conversation.status
       }).eq("id", conversation.id);
@@ -287,22 +275,24 @@ serve(async (req) => {
           conv = newConv;
         }
 
+         const isFromMe = msg.fromMe === true || String(msg.fromMe) === "true";
+
          await supabase.from("messages").insert({
            conversation_id: conv?.id,
            content,
-           sender_type: "contact",
+            sender_type: isFromMe ? "agent" : "contact",
            message_type: "text",
-           status: "received",
+            status: isFromMe ? "sent" : "received",
            user_id: ownerUserId,
            whatsapp_message_id: msg.messageid,
-           metadata: { whatsapp_message_id: msg.messageid }
+            metadata: { whatsapp_message_id: msg.messageid, source: isFromMe ? "phone_sync" : "webhook" }
          });
 
         const { data: convCurrent } = await supabase.from("conversations").select("unread_count").eq("id", conv?.id).maybeSingle();
         await supabase.from("conversations").update({
           last_message: content.substring(0, 100),
           last_message_at: new Date().toISOString(),
-          unread_count: (convCurrent?.unread_count || 0) + 1,
+           unread_count: isFromMe ? (convCurrent?.unread_count || 0) : (convCurrent?.unread_count || 0) + 1,
           is_archived: false,
         }).eq("id", conv?.id);
       }
