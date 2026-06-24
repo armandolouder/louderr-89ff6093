@@ -281,9 +281,9 @@ export function AppSidebar() {
         </button>
         {!collapsed && (
           <div className="px-3 pt-2 text-[10px] leading-tight text-muted-foreground/70 select-text">
-            <span className="font-medium">v{__BUILD_DATE__.slice(0, 10).replace(/-/g, ".")}</span>
+            <span className="font-medium">v{String(import.meta.env.VITE_BUILD_DATE ?? new Date().toISOString()).slice(0, 10).replace(/-/g, ".")}</span>
             <br />
-            <span>Deploy: {new Date(__BUILD_DATE__).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}</span>
+            <span>Deploy: {new Date(String(import.meta.env.VITE_BUILD_DATE ?? new Date().toISOString())).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}</span>
           </div>
         )}
       </div>
