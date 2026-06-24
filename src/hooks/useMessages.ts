@@ -93,6 +93,25 @@ export function useMessages(conversationId: string | null) {
   return query;
 }
 
+async function shouldRouteInstagramThroughZernio(conversationId: string) {
+  const { data: conv } = await supabase
+    .from("conversations")
+    .select("external_conversation_id")
+    .eq("id", conversationId)
+    .maybeSingle();
+
+  if (conv?.external_conversation_id) return true;
+
+  const { data: account } = await supabase
+    .from("zernio_accounts")
+    .select("id")
+    .eq("connected", true)
+    .limit(1)
+    .maybeSingle();
+
+  return !!account;
+}
+
 export function useSendMessage() {
   const queryClient = useQueryClient();
 
@@ -121,13 +140,8 @@ export function useSendMessage() {
 
       // For Instagram, send via Meta Graph API
       if (channel === "instagram") {
-        // Zernio-backed conversation? route to zernio-send
-        const { data: zConv } = await supabase
-          .from("conversations")
-          .select("external_conversation_id")
-          .eq("id", conversationId)
-          .maybeSingle();
-        if (zConv?.external_conversation_id) {
+        // Instagram DM agora usa Zernio quando houver conta conectada, inclusive em conversas antigas.
+        if (await shouldRouteInstagramThroughZernio(conversationId)) {
           const { data, error } = await supabase.functions.invoke("zernio-send", {
             body: { conversationId, content, messageType: "text" },
           });
@@ -315,13 +329,8 @@ export function useSendMediaMessage() {
 
       // Instagram via Meta Graph API
       if (channel === "instagram") {
-        // Zernio-backed conversation? route to zernio-send
-        const { data: zConv } = await supabase
-          .from("conversations")
-          .select("external_conversation_id")
-          .eq("id", conversationId)
-          .maybeSingle();
-        if (zConv?.external_conversation_id) {
+        // Instagram DM agora usa Zernio quando houver conta conectada, inclusive em conversas antigas.
+        if (await shouldRouteInstagramThroughZernio(conversationId)) {
           const { data, error } = await supabase.functions.invoke("zernio-send", {
             body: { conversationId, content: caption || "", messageType: "image", mediaUrl },
           });
