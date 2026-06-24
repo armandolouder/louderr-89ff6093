@@ -84,7 +84,7 @@ export function AudioPlayer({ url, messageId, initialTranscription, isAgent }: A
   };
 
   return (
-    <div className="flex flex-col gap-2 min-w-[240px] max-w-[300px]">
+    <div className="flex flex-col gap-2 w-[230px] max-w-full">
       <div className="flex items-center gap-3">
         <button
           onClick={toggle}
