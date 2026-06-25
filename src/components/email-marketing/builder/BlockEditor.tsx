@@ -50,6 +50,9 @@ export function BlockEditor({ block, onChange }: BlockEditorProps) {
     height: "Altura",
     columns: "Colunas",
     borderLeftColor: "Cor borda",
+    nameColor: "Cor do nome",
+    priceColor: "Cor do preço",
+    oldPriceColor: "Cor preço antigo",
   };
 
   return (

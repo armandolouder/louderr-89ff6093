@@ -67,10 +67,10 @@ function BlockPreview({ block }: { block: EmailBlock }) {
                   <img src={p.image} alt={p.name} style={{ width: "100%", display: "block", objectFit: "cover" }} />
                 </div>
                 <div style={{ padding: "8px 4px" }}>
-                  <p style={{ margin: "0 0 4px", fontWeight: 700, fontSize: "12px", color: "#111", textTransform: "uppercase", lineHeight: 1.3 }}>{p.name}</p>
+                  <p style={{ margin: "0 0 4px", fontWeight: 700, fontSize: "12px", color: s.nameColor || "#111", textTransform: "uppercase", lineHeight: 1.3 }}>{p.name}</p>
                   <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                    {p.oldPrice && <span style={{ fontSize: "12px", color: "#999", textDecoration: "line-through" }}>{p.oldPrice}</span>}
-                    <span style={{ fontSize: "13px", fontWeight: 700, color: "#000" }}>{p.price}</span>
+                    {p.oldPrice && <span style={{ fontSize: "12px", color: s.oldPriceColor || "#999", textDecoration: "line-through" }}>{p.oldPrice}</span>}
+                    <span style={{ fontSize: "13px", fontWeight: 700, color: s.priceColor || "#000" }}>{p.price}</span>
                   </div>
                 </div>
               </div>

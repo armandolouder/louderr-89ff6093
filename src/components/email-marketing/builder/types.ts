@@ -101,6 +101,9 @@ export const BLOCK_DEFAULTS: Record<BlockType, () => Omit<EmailBlock, "id">> = {
       padding: "10px",
       columns: "2",
       gap: "8px",
+      nameColor: "#111111",
+      priceColor: "#000000",
+      oldPriceColor: "#999999",
     },
   }),
   divider: () => ({

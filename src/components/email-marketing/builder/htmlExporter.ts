@@ -42,9 +42,9 @@ function renderBlock(block: EmailBlock): string {
                 <img src="${p.image}" alt="${p.name}" style="width:100%;display:block;" />
               </div>
               <div style="padding:8px 4px;">
-                <p style="margin:0 0 4px;font-weight:700;font-size:12px;color:#111;text-transform:uppercase;line-height:1.3;">${escapeHtml(p.name)}</p>
-                ${p.oldPrice ? `<span style="font-size:12px;color:#999;text-decoration:line-through;margin-right:6px;">${p.oldPrice}</span>` : ""}
-                <span style="font-size:13px;font-weight:700;color:#000;">${p.price}</span>
+                <p style="margin:0 0 4px;font-weight:700;font-size:12px;color:${s.nameColor || "#111"};text-transform:uppercase;line-height:1.3;">${escapeHtml(p.name)}</p>
+                ${p.oldPrice ? `<span style="font-size:12px;color:${s.oldPriceColor || "#999"};text-decoration:line-through;margin-right:6px;">${p.oldPrice}</span>` : ""}
+                <span style="font-size:13px;font-weight:700;color:${s.priceColor || "#000"};">${p.price}</span>
               </div>
             </a>
           </td>`
