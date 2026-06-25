@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LOUDER.ink — Limpar cache</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background: #0a0a0a;
+        color: #f5f5f5;
+        font-family: Arial, sans-serif;
+      }
+      main {
+        width: min(520px, calc(100vw - 32px));
+        border: 1px solid #333;
+        padding: 32px;
+      }
+      h1 { margin: 0 0 12px; font-size: 28px; }
+      p { margin: 0 0 24px; color: #cfcfcf; line-height: 1.5; }
+      button, a {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 44px;
+        padding: 0 18px;
+        border: 1px solid #f5f5f5;
+        background: #f5f5f5;
+        color: #0a0a0a;
+        text-decoration: none;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      small { display: block; margin-top: 18px; color: #8b8b8b; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>LOUDER.ink</h1>
+      <p id="status">Limpando versão antiga presa no navegador...</p>
+      <button id="retry" type="button">Limpar novamente</button>
+      <small>Se a página não abrir, feche esta aba e abra o painel novamente.</small>
+    </main>
+    <script>
+      async function reset() {
+        const status = document.getElementById("status");
+        status.textContent = "Limpando versão antiga presa no navegador...";
+        try {
+          if ("serviceWorker" in navigator) {
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            await Promise.allSettled(registrations.map((registration) => registration.unregister()));
+          }
+          if ("caches" in window) {
+            const cacheNames = await caches.keys();
+            await Promise.allSettled(cacheNames.map((name) => caches.delete(name)));
+          }
+          status.textContent = "Cache limpo. Redirecionando...";
+          setTimeout(() => window.location.replace("/"), 500);
+        } catch (error) {
+          status.textContent = "Não consegui limpar automaticamente. Tente em uma janela anônima.";
+        }
+      }
+      document.getElementById("retry").addEventListener("click", reset);
+      reset();
+    </script>
+  </body>
+</html>
