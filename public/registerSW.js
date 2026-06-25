@@ -11,14 +11,16 @@
     if ("caches" in window) {
       const cacheNames = await caches.keys();
       const appCacheNames = cacheNames.filter((name) =>
-        /workbox|precache|runtime|googleAnalytics|vite|pwa|louder/i.test(name),
+        /workbox|precache|runtime|googleAnalytics|vite|pwa|louder|app-shell|start-url|offline|pages|static|assets/i.test(name),
       );
       await Promise.allSettled(appCacheNames.map((name) => caches.delete(name)));
     }
   } finally {
     if (!sessionStorage.getItem("louder-register-sw-cleaned")) {
       sessionStorage.setItem("louder-register-sw-cleaned", "1");
-      window.location.reload();
+      const url = new URL(window.location.href);
+      url.searchParams.set("cache-reset", Date.now().toString());
+      window.location.replace(url.toString());
     }
   }
 })();
