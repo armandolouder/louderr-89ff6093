@@ -102,7 +102,9 @@ export function ConversationList({ selectedId, onSelect, filterTabId, showArchiv
     const matchesSearch = conv.contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (conv.last_message?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
     let matchesChannel = true;
-    if (channelFilter === "customers") {
+    if (unreadOnly) {
+      matchesChannel = true;
+    } else if (channelFilter === "customers") {
       if (!customerPhones) matchesChannel = false;
       else {
         const k = (conv.contact.phone || "").replace(/\D/g, "").slice(-10);
