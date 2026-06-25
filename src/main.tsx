@@ -2,6 +2,12 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 
+if (new URLSearchParams(window.location.search).has("cache-reset")) {
+  const url = new URL(window.location.href);
+  url.searchParams.delete("cache-reset");
+  window.history.replaceState({}, "", url.pathname + url.search + url.hash);
+}
+
 // Remove Service Workers antigos e TODO cache que prende o painel numa versão velha.
 if ("serviceWorker" in navigator) {
   const resetKey = "louder-cache-reset-2026-06-25";
