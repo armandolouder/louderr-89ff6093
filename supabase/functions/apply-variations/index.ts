@@ -48,6 +48,15 @@ function variantValuesSignature(values: any[] | null | undefined): string {
     .join("|");
 }
 
+function canonicalVariantSignature(values: any[] | null | undefined): string {
+  return (values || [])
+    .map((value) => {
+      const raw = typeof value === "string" ? value : value?.pt || value?.name?.pt || value?.name || "";
+      return String(raw).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+    })
+    .join("|");
+}
+
 function makeVariantValues(v: { color: string | null; mat: string | null; size: any }, anyColor: boolean, anyMaterial: boolean): { pt: string }[] {
   const values: { pt: string }[] = [];
   if (anyColor) values.push({ pt: v.color ?? "—" });
@@ -202,10 +211,24 @@ Deno.serve(async (req) => {
     const oldVariants: any[] = await fetchCurrentVariants();
     const oldIds: number[] = oldVariants.map((v) => v.id);
 
-    // A Nuvemshop não permite um produto sem nenhuma variante. Mantemos a 1ª
-    // antiga e a apagamos por último, depois de criar as novas.
-    const keepLastId = oldIds.length > 0 ? oldIds[0] : null;
-    const deleteFirstIds = oldIds.slice(1);
+    const targetBySignature = new Map(
+      allVariants.map((variant) => [canonicalVariantSignature(makeVariantValues(variant, anyColor, anyMaterial)), variant]),
+    );
+    const reusableOldBySignature = new Map<string, any>();
+    const obsoleteOldIds: number[] = [];
+    for (const oldVariant of oldVariants) {
+      const signature = canonicalVariantSignature(oldVariant.values);
+      if (targetBySignature.has(signature) && !reusableOldBySignature.has(signature)) {
+        reusableOldBySignature.set(signature, oldVariant);
+      } else if (oldVariant?.id) {
+        obsoleteOldIds.push(oldVariant.id);
+      }
+    }
+
+    // A Nuvemshop não permite um produto sem nenhuma variante. Mantemos uma
+    // antiga como placeholder somente se não houver nenhuma reutilizável.
+    const placeholderId = reusableOldBySignature.size === 0 && obsoleteOldIds.length > 0 ? obsoleteOldIds.shift()! : null;
+    const deleteFirstIds = obsoleteOldIds;
     for (const id of deleteFirstIds) {
       const deleteRes = await fetch(`${API}/${storeId}/products/${nsProductId}/variants/${id}`, {
         method: "DELETE",
@@ -227,14 +250,39 @@ Deno.serve(async (req) => {
     const errors: string[] = [];
     const variantsToCreate = [...allVariants];
 
-    if (keepLastId != null && variantsToCreate.length > 0) {
+    // Primeiro atualiza/reaproveita qualquer variante antiga que já tenha a
+    // combinação final desejada. Isso evita recriar uma combinação que a API
+    // ainda considera existente e elimina o erro 422 de repetição.
+    for (let i = variantsToCreate.length - 1; i >= 0; i--) {
+      const variant = variantsToCreate[i];
+      const signature = canonicalVariantSignature(makeVariantValues(variant, anyColor, anyMaterial));
+      const reusable = reusableOldBySignature.get(signature);
+      if (!reusable?.id) continue;
+
+      const payload: any = makeVariantPayload(variant, anyColor, anyMaterial);
+      const updateReusableRes = await fetch(`${API}/${storeId}/products/${nsProductId}/variants/${reusable.id}`, {
+        method: "PUT",
+        headers: nsHeaders(accessToken),
+        body: JSON.stringify(payload),
+      });
+      if (updateReusableRes.ok) {
+        reusedExisting++;
+        variantsToCreate.splice(i, 1);
+      } else {
+        const errText = await updateReusableRes.text();
+        console.warn("apply-variations: falha ao reaproveitar variante antiga", signature, updateReusableRes.status, errText);
+      }
+      await new Promise((res) => setTimeout(res, 120));
+    }
+
+    if (placeholderId != null && variantsToCreate.length > 0) {
       // Reaproveita a variação antiga mantida, mas SEMPRE como a 1ª combinação
       // da ordem desejada (para a sequência exibida na loja ficar correta).
       const [variantForPlaceholder] = variantsToCreate.splice(0, 1);
       const payload: any = makeVariantPayload(variantForPlaceholder, anyColor, anyMaterial);
       const values = payload.values;
 
-      const updateRes = await fetch(`${API}/${storeId}/products/${nsProductId}/variants/${keepLastId}`, {
+      const updateRes = await fetch(`${API}/${storeId}/products/${nsProductId}/variants/${placeholderId}`, {
         method: "PUT",
         headers: nsHeaders(accessToken),
         body: JSON.stringify(payload),
@@ -256,14 +304,14 @@ Deno.serve(async (req) => {
     let existingBySignature = new Map<string, any>();
     const refreshExistingSignatures = async () => {
       const current = await fetchCurrentVariants();
-      existingBySignature = new Map(current.map((variant) => [variantValuesSignature(variant.values), variant]));
+      existingBySignature = new Map(current.map((variant) => [canonicalVariantSignature(variant.values), variant]));
     };
     await refreshExistingSignatures();
 
     for (const v of variantsToCreate) {
       const payload: any = makeVariantPayload(v, anyColor, anyMaterial);
       const values = payload.values;
-      const signature = variantValuesSignature(values);
+      const signature = canonicalVariantSignature(values);
 
       const existing = existingBySignature.get(signature);
       if (existing?.id) {
@@ -330,7 +378,7 @@ Deno.serve(async (req) => {
     const productUrl: string | null = (prod as any)?.raw?.canonical_url || null;
 
     return new Response(
-      JSON.stringify({ success: true, created: applied, deleted: oldIds.length - reusedPlaceholder, product_url: productUrl, errors: errors.slice(0, 5) }),
+      JSON.stringify({ success: true, created: applied, deleted: oldIds.length - reusedPlaceholder - reusedExisting, product_url: productUrl, errors: errors.slice(0, 5) }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (error: any) {
