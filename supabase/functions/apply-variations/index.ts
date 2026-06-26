@@ -39,6 +39,15 @@ function priceStr(n: number | null | undefined): string | null {
   return Number(n).toFixed(2);
 }
 
+function variantValuesSignature(values: any[] | null | undefined): string {
+  return (values || [])
+    .map((value) => {
+      if (typeof value === "string") return value;
+      return value?.pt || value?.name?.pt || value?.name || "";
+    })
+    .join("|");
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -160,10 +169,54 @@ Deno.serve(async (req) => {
       await new Promise((res) => setTimeout(res, 100));
     }
 
-    // 3) Cria as novas variações (união de todos os modelos selecionados)
+    // 3) Cria as novas variações (união de todos os modelos selecionados).
+    //    Para evitar "Variants cannot be repeated", reaproveitamos a última
+    //    variação antiga mantida como placeholder: atualizamos ela para a 1ª
+    //    combinação desejada e criamos apenas as demais.
     let created = 0;
+    let reusedPlaceholder = 0;
     const errors: string[] = [];
-    for (const v of allVariants) {
+    const variantsToCreate = [...allVariants];
+
+    if (keepLastId != null && variantsToCreate.length > 0) {
+      const placeholderVariant = oldVariants.find((v) => v.id === keepLastId);
+      const placeholderSig = variantValuesSignature(placeholderVariant?.values);
+      const matchingIndex = variantsToCreate.findIndex((v) => {
+        const parts: string[] = [];
+        if (anyColor) parts.push(v.color ?? "—");
+        if (anyMaterial) parts.push(v.mat ?? "—");
+        parts.push(v.size.tamanho);
+        return parts.join("|") === placeholderSig;
+      });
+      const [variantForPlaceholder] = variantsToCreate.splice(matchingIndex >= 0 ? matchingIndex : 0, 1);
+      const values: { pt: string }[] = [];
+      if (anyColor) values.push({ pt: variantForPlaceholder.color ?? "—" });
+      if (anyMaterial) values.push({ pt: variantForPlaceholder.mat ?? "—" });
+      values.push({ pt: variantForPlaceholder.size.tamanho });
+
+      const payload: any = {
+        values,
+        price: priceStr(variantForPlaceholder.size.preco),
+        promotional_price: priceStr(variantForPlaceholder.size.preco_promocional),
+        stock_management: false,
+      };
+
+      const updateRes = await fetch(`${API}/${storeId}/products/${nsProductId}/variants/${keepLastId}`, {
+        method: "PUT",
+        headers: nsHeaders(accessToken),
+        body: JSON.stringify(payload),
+      });
+      if (updateRes.ok) {
+        reusedPlaceholder = 1;
+      } else {
+        const errText = await updateRes.text();
+        console.error("apply-variations: falha ao atualizar placeholder", values.map((x) => x.pt).join("/"), updateRes.status, errText);
+        errors.push(`${values.map((x) => x.pt).join("/")}: ${updateRes.status} ${errText}`);
+      }
+      await new Promise((res) => setTimeout(res, 120));
+    }
+
+    for (const v of variantsToCreate) {
       const values: { pt: string }[] = [];
       // Mantém a ordem dos atributos (Cor, Malha, Tamanho)
       if (anyColor) values.push({ pt: v.color ?? "—" });
@@ -192,31 +245,24 @@ Deno.serve(async (req) => {
       await new Promise((res) => setTimeout(res, 120));
     }
 
-    console.log("apply-variations: criadas=", created, "de", allVariants.length, "erros=", errors.length);
+    const applied = created + reusedPlaceholder;
+    console.log("apply-variations: aplicadas=", applied, "criadas=", created, "reaproveitadas=", reusedPlaceholder, "de", allVariants.length, "erros=", errors.length);
 
-    if (created === 0) {
+    if (applied === 0) {
       throw new Error("Nenhuma variação criada. " + errors.slice(0, 3).join(" | "));
-    }
-
-    // 4) Apaga a última variação antiga que foi mantida como placeholder
-    if (keepLastId != null) {
-      await fetch(`${API}/${storeId}/products/${nsProductId}/variants/${keepLastId}`, {
-        method: "DELETE",
-        headers: nsHeaders(accessToken),
-      });
     }
 
     // 5) Atualiza o catálogo local
     await supabase.from("catalog_variants").delete().eq("product_id", productUuid);
     await supabase
       .from("catalog_products")
-      .update({ variant_count: created })
+      .update({ variant_count: applied })
       .eq("id", productUuid);
 
     const productUrl: string | null = (prod as any)?.raw?.canonical_url || null;
 
     return new Response(
-      JSON.stringify({ success: true, created, deleted: oldIds.length, product_url: productUrl, errors: errors.slice(0, 5) }),
+      JSON.stringify({ success: true, created: applied, deleted: oldIds.length - reusedPlaceholder, product_url: productUrl, errors: errors.slice(0, 5) }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (error: any) {
