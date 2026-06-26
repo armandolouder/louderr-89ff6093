@@ -114,7 +114,7 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
     setShowEmojiPicker(false);
   };
   
-  const { data: messages, isLoading } = useMessages(conversation.id);
+  const { data: messages, isLoading, fetchOlder, hasMore, isFetchingOlder } = useMessages(conversation.id);
   const sendMessage = useSendMessage();
   const sendMediaMessage = useSendMediaMessage();
 
@@ -270,16 +270,17 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
     }, 50);
   };
 
-  // Auto-scroll to bottom when messages load or change
+  // Auto-scroll to bottom apenas quando troca de conversa ou chega mensagem nova no fim.
+  // Não rola quando mensagens antigas são prependadas via paginação.
+  const lastMessageId = messages?.[messages.length - 1]?.id;
   useEffect(() => {
     if (!messages?.length) return;
-    // Use longer delay on conversation switch to wait for render
-    const delay = 100;
     const timer = setTimeout(() => {
       messagesEndRef.current?.scrollIntoView({ behavior: "instant" as ScrollBehavior });
-    }, delay);
+    }, 100);
     return () => clearTimeout(timer);
-  }, [messages, conversation.id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversation.id, lastMessageId]);
 
   // Detect scroll position to show/hide scroll-down button
   const handleScroll = () => {
@@ -287,6 +288,17 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
     if (!container) return;
     const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
     setShowScrollDown(distanceFromBottom > 150);
+
+    // Carrega mensagens antigas ao chegar perto do topo, preservando a posição de scroll.
+    if (container.scrollTop < 80 && hasMore && !isFetchingOlder) {
+      const previousHeight = container.scrollHeight;
+      fetchOlder().then(() => {
+        requestAnimationFrame(() => {
+          const el = messagesContainerRef.current;
+          if (el) el.scrollTop = el.scrollHeight - previousHeight;
+        });
+      });
+    }
   };
 
   return (
@@ -367,6 +379,11 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
       {/* Messages */}
       <div className="relative flex-1 overflow-hidden">
         <div ref={messagesContainerRef} onScroll={handleScroll} className={cn("h-full overflow-y-auto overflow-x-hidden space-y-4", isMobile ? "p-3" : "p-6")}>
+        {isFetchingOlder && (
+          <div className="flex items-center justify-center py-2">
+            <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+          </div>
+        )}
         {isLoading ? (
           <div className="flex items-center justify-center h-full">
             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />

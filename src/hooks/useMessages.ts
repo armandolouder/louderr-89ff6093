@@ -1,6 +1,6 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 
  export interface Message {
    id: string;
@@ -17,49 +17,58 @@ import { useEffect } from "react";
    created_at: string;
  }
 
+const PAGE_SIZE = 30;
+
+function deduplicate(data: Message[]): Message[] {
+  return data.reduce((acc: Message[], current) => {
+    const isDuplicate = acc.some((msg) => {
+      const sameEvolutionId = current.evolution_message_id && msg.evolution_message_id === current.evolution_message_id;
+      const sameWhatsappId = current.whatsapp_message_id && msg.whatsapp_message_id === current.whatsapp_message_id;
+      if (sameEvolutionId || sameWhatsappId) return true;
+      const timeDiff = Math.abs(new Date(current.created_at).getTime() - new Date(msg.created_at).getTime());
+      const sameContent = msg.content === current.content;
+      return sameContent && timeDiff < 5000;
+    });
+    if (!isDuplicate) acc.push(current);
+    return acc;
+  }, []);
+}
+
 export function useMessages(conversationId: string | null) {
   const queryClient = useQueryClient();
 
-  const query = useQuery({
+  const query = useInfiniteQuery({
     queryKey: ["messages", conversationId],
-    queryFn: async () => {
-      if (!conversationId) return [];
-      
+    initialPageParam: 0,
+    queryFn: async ({ pageParam }) => {
+      if (!conversationId) return [] as Message[];
+
+      // Busca do mais recente para o mais antigo, em páginas.
+      const from = (pageParam as number) * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+
       const { data, error } = await supabase
         .from("messages")
         .select("*")
         .eq("conversation_id", conversationId)
-        .order("created_at", { ascending: true });
+        .order("created_at", { ascending: false })
+        .range(from, to);
 
-       if (error) throw error;
-       
-       // Deduplication logic for the UI
-        const deduplicated = (data as Message[]).reduce((acc: Message[], current) => {
-          const isDuplicate = acc.some(msg => {
-            // Check by external ID
-            const sameEvolutionId = current.evolution_message_id && msg.evolution_message_id === current.evolution_message_id;
-            const sameWhatsappId = current.whatsapp_message_id && msg.whatsapp_message_id === current.whatsapp_message_id;
-            
-            if (sameEvolutionId || sameWhatsappId) return true;
-            
-            // Fallback check by content and proximity (within 5 seconds)
-            const timeDiff = Math.abs(new Date(current.created_at).getTime() - new Date(msg.created_at).getTime());
-            const sameContent = msg.content === current.content;
-            
-            // If content and time match, it's likely a duplicate regardless of sender_type
-            return sameContent && timeDiff < 5000;
-          });
-  
-          if (!isDuplicate) {
-            acc.push(current);
-          }
-          return acc;
-        }, []);
- 
-       return deduplicated;
+      if (error) throw error;
+      return (data as Message[]) ?? [];
     },
+    getNextPageParam: (lastPage, allPages) =>
+      lastPage.length === PAGE_SIZE ? allPages.length : undefined,
     enabled: !!conversationId,
   });
+
+  // Achata as páginas (cada uma é descendente) numa lista ascendente e deduplicada.
+  const messages = useMemo(() => {
+    const pages = query.data?.pages ?? [];
+    const flat = pages.flat();
+    flat.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    return deduplicate(flat);
+  }, [query.data]);
 
   // Realtime subscription
   useEffect(() => {
@@ -87,7 +96,13 @@ export function useMessages(conversationId: string | null) {
     };
   }, [conversationId, queryClient]);
 
-  return query;
+  return {
+    data: messages,
+    isLoading: query.isLoading,
+    fetchOlder: query.fetchNextPage,
+    hasMore: query.hasNextPage,
+    isFetchingOlder: query.isFetchingNextPage,
+  };
 }
 
 async function shouldRouteInstagramThroughZernio(conversationId: string) {
