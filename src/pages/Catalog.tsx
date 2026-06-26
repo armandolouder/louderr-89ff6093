@@ -88,6 +88,13 @@ export default function Catalog() {
   const [genLoading, setGenLoading] = useState(false);
   const [savingContent, setSavingContent] = useState(false);
 
+  // Persiste os ticks de "atualizado" para não sumirem ao sair da página.
+  useEffect(() => {
+    const done: Record<string, "done"> = {};
+    for (const [k, v] of Object.entries(applyStatus)) if (v === "done") done[k] = "done";
+    try { localStorage.setItem("catalog_apply_status", JSON.stringify(done)); } catch { /* noop */ }
+  }, [applyStatus]);
+
   const fetchProducts = useCallback(async () => {
     setLoading(true);
     try {
