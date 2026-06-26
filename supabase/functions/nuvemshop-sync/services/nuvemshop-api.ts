@@ -1,12 +1,13 @@
  import { SyncOrdersParams } from "../utils/params.ts";
+ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+ import { getNuvemshopCredentials } from "../../_shared/nuvemshop.ts";
  
  export async function fetchOrdersFromNuvemshop(params: SyncOrdersParams) {
-   const accessToken = Deno.env.get("NUVEMSHOP_ACCESS_TOKEN")?.trim();
-   const storeId = Deno.env.get("NUVEMSHOP_STORE_ID");
- 
-   if (!accessToken || !storeId) {
-     throw new Error("NUVEMSHOP_ACCESS_TOKEN ou NUVEMSHOP_STORE_ID não configurados");
-   }
+   const supabase = createClient(
+     Deno.env.get("SUPABASE_URL")!,
+     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+   );
+   const { accessToken, storeId } = await getNuvemshopCredentials(supabase);
  
    const { page, perPage, sinceId, createdAtMin, createdAtMax, customerIds, q } = params;
    const apiBaseUrl = "https://api.tiendanube.com/v1";
