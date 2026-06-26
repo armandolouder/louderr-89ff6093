@@ -38,6 +38,7 @@ interface VariationModelOption {
   cores: number;
   malhas: number;
   tamanhos: number;
+  malhaNames: string[];
 }
 
 interface ProductImageContent {
@@ -143,14 +144,17 @@ export default function Catalog() {
     setAiContent(null);
     const { data } = await (supabase as any)
       .from("variation_models")
-      .select("id, nome, variation_colors(count), variation_materials(count), variation_sizes(count)")
+      .select("id, nome, variation_colors(count), variation_materials(nome_malha), variation_sizes(count)")
       .order("created_at", { ascending: false });
     const mapped: VariationModelOption[] = (data || []).map((m: any) => ({
       id: m.id,
       nome: m.nome,
       cores: m.variation_colors?.[0]?.count ?? 0,
-      malhas: m.variation_materials?.[0]?.count ?? 0,
+      malhas: Array.isArray(m.variation_materials) ? m.variation_materials.length : 0,
       tamanhos: m.variation_sizes?.[0]?.count ?? 0,
+      malhaNames: Array.isArray(m.variation_materials)
+        ? m.variation_materials.map((x: any) => x?.nome_malha).filter(Boolean)
+        : [],
     }));
     setVmodels(mapped);
     if (mapped.length === 1) setChosenModels([mapped[0].id]);
@@ -167,8 +171,15 @@ export default function Catalog() {
   const normTxt = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
   const filteredModels = vmodels.filter((m) => {
     const nome = normTxt(m.nome);
+    const malhasTxt = (m.malhaNames || []).map(normTxt);
     if (modelSearch.trim() && !nome.includes(normTxt(modelSearch))) return false;
-    if (malhaFilter && !nome.includes(malhaFilter)) return false;
+    if (malhaFilter) {
+      const f = normTxt(malhaFilter);
+      const matchMalha = malhasTxt.some(
+        (x) => x.includes(f) || f.includes(x),
+      );
+      if (!matchMalha && !nome.includes(f)) return false;
+    }
     return true;
   });
   const toggleAllFiltered = () => {
