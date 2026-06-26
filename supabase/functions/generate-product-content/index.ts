@@ -75,11 +75,20 @@ Quantidade de fotos: ${images.length}`;
     try { parsed = JSON.parse(rawContent); } catch { parsed = {}; }
 
     const altArr: string[] = Array.isArray(parsed.images_alt) ? parsed.images_alt : [];
+    const SUFFIX = " I LOUDER.ink";
+    const enforceSeoTitle = (title: string): string => {
+      let base = (title || (prod as any).name || "").trim();
+      // remove sufixo existente (variações) para não duplicar
+      base = base.replace(/\s*[I|]\s*LOUDER\.ink\s*$/i, "").trim();
+      const maxBase = 60 - SUFFIX.length;
+      if (base.length > maxBase) base = base.slice(0, maxBase).trim();
+      return `${base}${SUFFIX}`;
+    };
     const suggestion = {
       name: parsed.name || (prod as any).name || "",
       description: parsed.description || (prod as any).description || "",
       tags: parsed.tags || currentTags || "",
-      seo_title: parsed.seo_title || "",
+      seo_title: enforceSeoTitle(parsed.seo_title || ""),
       seo_description: parsed.seo_description || "",
       handle: parsed.handle || (prod as any).handle || "",
       images: images.map((img: any, i: number) => ({
