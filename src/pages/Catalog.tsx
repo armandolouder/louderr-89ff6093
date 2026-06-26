@@ -226,21 +226,25 @@ export default function Catalog() {
     })();
   };
 
-  const hideProduct = async () => {
+  const toggleVisibility = async (publish: boolean) => {
     if (!selected) return;
     const product = selected;
     setHiding(true);
     try {
       const { data, error } = await supabase.functions.invoke("toggle-product-visibility", {
-        body: { product_id: product.id, published: false },
+        body: { product_id: product.id, published: publish },
       });
       if (error) throw error;
-      if (data?.success === false) throw new Error(data.error || "Erro ao ocultar produto");
-      toast.success(`"${product.name}" não será mais exibido na loja.`);
-      setSelected(null);
+      if (data?.success === false) throw new Error(data.error || "Erro ao atualizar produto");
+      toast.success(
+        publish
+          ? `"${product.name}" voltou a ser exibido na loja.`
+          : `"${product.name}" não será mais exibido na loja.`,
+      );
+      setSelected({ ...product, status: publish ? "active" : "draft" });
       fetchProducts();
     } catch (err: any) {
-      toast.error(err.message || "Erro ao ocultar produto");
+      toast.error(err.message || "Erro ao atualizar produto");
     } finally {
       setHiding(false);
     }
