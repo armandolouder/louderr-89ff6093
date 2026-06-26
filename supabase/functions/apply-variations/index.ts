@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
     // Produto local -> id da Nuvemshop
     const { data: prod, error: prodErr } = await supabase
       .from("catalog_products")
-      .select("id, nuvemshop_product_id, name")
+      .select("id, nuvemshop_product_id, name, raw")
       .eq("id", productUuid)
       .single();
     if (prodErr || !prod) throw new Error("Produto não encontrado");
@@ -174,8 +174,10 @@ Deno.serve(async (req) => {
       .update({ variant_count: created })
       .eq("id", productUuid);
 
+    const productUrl: string | null = (prod as any)?.raw?.canonical_url || null;
+
     return new Response(
-      JSON.stringify({ success: true, created, deleted: oldIds.length, errors: errors.slice(0, 5) }),
+      JSON.stringify({ success: true, created, deleted: oldIds.length, product_url: productUrl, errors: errors.slice(0, 5) }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (error: any) {
