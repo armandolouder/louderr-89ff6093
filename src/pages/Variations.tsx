@@ -359,28 +359,63 @@ export default function Variations() {
               <Label className="flex items-center gap-1">
                 <Palette className="w-4 h-4" /> Cores
               </Label>
-              <div className="flex flex-wrap gap-2">
-                {Array.from(new Set([...DEFAULT_COLORS, ...colors])).map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => toggleItem(colors, setColors, c)}
-                    className={
-                      "px-3 py-1.5 text-xs border transition-colors " +
-                      (colors.includes(c)
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "bg-background text-foreground border-border hover:bg-accent")
-                    }
-                  >
-                    {c}
-                  </button>
-                ))}
+              {colors.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {colors.map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => toggleItem(colors, setColors, c)}
+                      title={isRecognized(c) ? "Cor reconhecida pela Nuvemshop" : "Cor não reconhecida — vai aparecer cinza na loja"}
+                      className="inline-flex items-center gap-1.5 px-2 py-1 text-xs border border-primary bg-primary/10"
+                    >
+                      <span
+                        className="w-3.5 h-3.5 border border-border"
+                        style={{ background: colorHex(c) }}
+                      />
+                      {c}
+                      {!isRecognized(c) && <span className="text-destructive">⚠</span>}
+                      <X className="w-3 h-3 opacity-60" />
+                    </button>
+                  ))}
+                </div>
+              )}
+              <p className="text-[11px] text-muted-foreground">
+                Escolha cores da paleta oficial da Nuvemshop para a bolinha aparecer com o RGB correto na loja.
+              </p>
+              <div className="max-h-44 overflow-y-auto border border-border p-2 grid grid-cols-2 sm:grid-cols-3 gap-1">
+                {NUVEM_COLORS.map((nc) => {
+                  const selected = colors.some((c) => findNuvemColor(c)?.nome === nc.nome);
+                  return (
+                    <button
+                      key={nc.nome}
+                      type="button"
+                      onClick={() =>
+                        selected
+                          ? setColors(colors.filter((c) => findNuvemColor(c)?.nome !== nc.nome))
+                          : setColors([...colors, nc.nome])
+                      }
+                      className={
+                        "inline-flex items-center gap-1.5 px-1.5 py-1 text-xs border transition-colors text-left " +
+                        (selected
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-background text-foreground border-border hover:bg-accent")
+                      }
+                    >
+                      <span
+                        className="w-3.5 h-3.5 shrink-0 border border-border"
+                        style={{ background: nc.hex }}
+                      />
+                      <span className="truncate">{nc.nome}</span>
+                    </button>
+                  );
+                })}
               </div>
               <div className="flex gap-2">
                 <Input
                   value={newColor}
                   onChange={(e) => setNewColor(e.target.value)}
-                  placeholder="Adicionar cor"
+                  placeholder="Cor personalizada (pode aparecer cinza na loja)"
                   onKeyDown={(e) =>
                     e.key === "Enter" &&
                     (e.preventDefault(), addCustom(newColor, colors, setColors, () => setNewColor("")))
