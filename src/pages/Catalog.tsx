@@ -178,11 +178,7 @@ export default function Catalog() {
       const matchMalha = malhasTxt.some(
         (x) => x.includes(f) || f.includes(x),
       );
-      // fallback: também tenta casar com o nome do modelo (prefixos como "OVER")
-      const matchNome =
-        nome.includes(f) || f.startsWith(nome) ||
-        malhasTxt.some((x) => x && f.startsWith(x.slice(0, 4)));
-      if (!matchMalha && !matchNome) return false;
+      if (!matchMalha && !nome.includes(f)) return false;
     }
     return true;
   });
