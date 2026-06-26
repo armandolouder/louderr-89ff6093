@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
-import { Download, Loader2, RefreshCw, Package, ShoppingBag, Image as ImageIcon, Layers, Sparkles, AlertTriangle, Check, ExternalLink } from "lucide-react";
+import { Download, Loader2, RefreshCw, Package, ShoppingBag, Image as ImageIcon, Layers, Sparkles, AlertTriangle, Check, ExternalLink, Search, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -43,6 +44,10 @@ export default function Catalog() {
   const [syncing, setSyncing] = useState(false);
   const [progress, setProgress] = useState({ synced: 0, page: 0, status: "" });
   const [total, setTotal] = useState(0);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 24;
   const [selected, setSelected] = useState<CatalogProduct | null>(null);
   const [vmodels, setVmodels] = useState<VariationModelOption[]>([]);
   const [chosenModels, setChosenModels] = useState<string[]>([]);
@@ -52,11 +57,17 @@ export default function Catalog() {
   const fetchProducts = useCallback(async () => {
     setLoading(true);
     try {
-      const { data, error, count } = await (supabase as any)
+      const from = page * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+      let query = (supabase as any)
         .from("catalog_products")
         .select("id, nuvemshop_product_id, name, category, status, image_count, variant_count, product_url:raw->>canonical_url, catalog_images(image_url, position)", { count: "exact" })
         .order("name", { ascending: true })
-        .limit(200);
+        .range(from, to);
+      if (debouncedSearch.trim()) {
+        query = query.ilike("name", `%${debouncedSearch.trim()}%`);
+      }
+      const { data, error, count } = await query;
       if (error) throw error;
       setProducts(data || []);
       setTotal(count || 0);
@@ -65,9 +76,20 @@ export default function Catalog() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [page, debouncedSearch]);
 
   useEffect(() => { fetchProducts(); }, [fetchProducts]);
+
+  // Debounce da busca
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(0);
+    }, 350);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const openProduct = async (p: CatalogProduct) => {
     setSelected(p);
@@ -235,8 +257,21 @@ export default function Catalog() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Produtos importados</CardTitle>
-          <CardDescription>{total} produtos no banco local</CardDescription>
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <CardTitle className="text-base">Produtos importados</CardTitle>
+              <CardDescription>{total} produtos encontrados</CardDescription>
+            </div>
+            <div className="relative w-full sm:w-72">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Buscar camiseta por nome..."
+                className="pl-9"
+              />
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -308,6 +343,32 @@ export default function Catalog() {
           )}
         </CardContent>
       </Card>
+
+      {total > PAGE_SIZE && (
+        <div className="flex items-center justify-between gap-4">
+          <p className="text-xs text-muted-foreground">
+            Página {page + 1} de {totalPages}
+          </p>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              disabled={page === 0 || loading}
+            >
+              <ChevronLeft className="w-4 h-4 mr-1" /> Anterior
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+              disabled={page >= totalPages - 1 || loading}
+            >
+              Próxima <ChevronRight className="w-4 h-4 ml-1" />
+            </Button>
+          </div>
+        </div>
+      )}
         </TabsContent>
 
         <TabsContent value="analysis" className="mt-4">
