@@ -118,6 +118,10 @@ Deno.serve(async (req) => {
     const allVariants = Array.from(variantMap.values());
     if (allVariants.length === 0) throw new Error("Os modelos não possuem tamanhos ativos");
 
+    console.log("apply-variations: modelos=", modelIds.length, "variantes geradas=", allVariants.length);
+    console.log("apply-variations: assinaturas=", Array.from(variantMap.keys()).join(" ; "));
+    console.log("apply-variations: anyColor=", anyColor, "anyMaterial=", anyMaterial);
+
     // Atributos = união das dimensões usadas por qualquer modelo
     const attributes: { pt: string }[] = [];
     if (anyColor) attributes.push({ pt: "Cor" });
