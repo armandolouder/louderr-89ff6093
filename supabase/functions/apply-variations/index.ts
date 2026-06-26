@@ -4,6 +4,28 @@ import { getNuvemshopCredentials, NUVEMSHOP_USER_AGENT } from "../_shared/nuvems
 
 const API = "https://api.tiendanube.com/v1";
 
+// Nomes de cores reconhecidos pela Nuvemshop (pinta a bolinha automaticamente).
+const NUVEM_COLOR_NAMES = [
+  "Preto","Preto fosco","Chumbo","Grafite","Cinza escuro","Cinza","Cinza claro","Prata","Platina","Cimento","Taupe","Fumê","Gelo","Off white","Branco",
+  "Azul escuro","Azul marinho","Azul royal","Azul bic","Azul","Azul céu","Azul claro","Azul bebê","Azul petróleo","Azul piscina","Azul Tiffany","Azul turquesa","Ciano","Azul jeans","Jeans escuro","Jeans claro",
+  "Verde escuro","Verde bandeira","Verde","Verde claro","Verde militar","Verde musgo","Verde oliva","Verde bebê","Verde água","Verde neon","Verde limão","Pêra",
+  "Marrom escuro","Chocolate","Marrom","Marrom claro","Castanho","Café","Madeira","Caramelo","Cobre","Siena","Tabaco","Avelã","Champagne","Nude","Natural","Bege","Areia","Pérola","Creme","Marfim","Dourado ou Ouro","Âmbar","Mostarda","Mel","Milho","Palha","Cáqui","Amarelo","Amarelo limão","Amarelo neon",
+  "Indigo","Uva ou Violeta","Roxo","Lilás","Lavanda","Framboesa","Rose gold","Rosa escuro","Rosa antigo","Rosa","Rose","Rosa bebê","Rosa chiclete","Rosa neon","Pink","Melancia","Fúcsia ou Magenta",
+  "Vinho","Bordô","Vermelho escuro","Vermelho","Tomate","Cereja","Morango","Grená","Marsala","Mogno","Terra","Goiaba","Salmão","Coral","Ferrugem ou Telha","Bronze","Tangerina","Laranja","Laranja neon","Pêssego",
+];
+const ALIASES: Record<string, string> = {
+  "preta": "Preto", "branca": "Branco", "vermelha": "Vermelho", "amarela": "Amarelo",
+  "cinza chumbo": "Chumbo", "marinho": "Azul marinho", "rosa pink": "Pink",
+};
+const norm = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+const COLOR_BY_NORM = new Map(NUVEM_COLOR_NAMES.map((n) => [norm(n), n]));
+function normalizeColorName(name: string): string {
+  const n = norm(name);
+  if (COLOR_BY_NORM.has(n)) return COLOR_BY_NORM.get(n)!;
+  if (ALIASES[n]) return ALIASES[n];
+  return name;
+}
+
 function nsHeaders(token: string) {
   return {
     "Authentication": `bearer ${token}`,
@@ -50,7 +72,10 @@ Deno.serve(async (req) => {
       supabase.from("variation_sizes").select("tamanho, preco, preco_promocional, ativo, position").eq("variation_model_id", modelId).order("position", { ascending: true }),
     ]);
 
-    const colors: string[] = (colorsData || []).map((c: any) => c.nome_cor).filter(Boolean);
+    const colors: string[] = (colorsData || [])
+      .map((c: any) => c.nome_cor)
+      .filter(Boolean)
+      .map((c: string) => normalizeColorName(c));
     const materials: string[] = (matsData || []).map((m: any) => m.nome_malha).filter(Boolean);
     const sizes = (sizesData || []).filter((s: any) => s.ativo && s.tamanho);
 
