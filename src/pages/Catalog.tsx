@@ -171,8 +171,19 @@ export default function Catalog() {
   const normTxt = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
   const filteredModels = vmodels.filter((m) => {
     const nome = normTxt(m.nome);
+    const malhasTxt = (m.malhaNames || []).map(normTxt);
     if (modelSearch.trim() && !nome.includes(normTxt(modelSearch))) return false;
-    if (malhaFilter && !nome.includes(malhaFilter)) return false;
+    if (malhaFilter) {
+      const f = normTxt(malhaFilter);
+      const matchMalha = malhasTxt.some(
+        (x) => x.includes(f) || f.includes(x),
+      );
+      // fallback: também tenta casar com o nome do modelo (prefixos como "OVER")
+      const matchNome =
+        nome.includes(f) || f.startsWith(nome) ||
+        malhasTxt.some((x) => x && f.startsWith(x.slice(0, 4)));
+      if (!matchMalha && !matchNome) return false;
+    }
     return true;
   });
   const toggleAllFiltered = () => {
