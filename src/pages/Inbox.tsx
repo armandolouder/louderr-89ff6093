@@ -85,6 +85,22 @@ export default function Inbox() {
                   {selectedConversation.contact.phone || selectedConversation.channel}
                 </p>
               </div>
+              {selectedConversation.channel === "whatsapp" && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => fetchWhatsappPhoto(selectedConversation.contact_id)}
+                  disabled={isFetchingPhoto}
+                  aria-label="Puxar foto do WhatsApp"
+                  className="text-muted-foreground flex-shrink-0"
+                >
+                  {isFetchingPhoto ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <ImageDown className="w-5 h-5" />
+                  )}
+                </Button>
+              )}
             </div>
           </header>
         ) : (
