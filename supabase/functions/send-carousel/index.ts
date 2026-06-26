@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { sendEvolutionText, sendEvolutionMedia, hasEvolutionCredentials } from "../_shared/evolution-api.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -43,11 +44,8 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    const UAZAPI_SERVER_URL = Deno.env.get("UAZAPI_SERVER_URL");
-    const UAZAPI_INSTANCE_TOKEN = Deno.env.get("UAZAPI_INSTANCE_TOKEN");
-
-    if (!UAZAPI_SERVER_URL || !UAZAPI_INSTANCE_TOKEN) {
-      throw new Error("UAZAPI credentials not configured");
+    if (!hasEvolutionCredentials()) {
+      throw new Error("Evolution API credentials not configured");
     }
 
     const { number, text, carousel }: SendCarouselRequest = await req.json();
@@ -58,67 +56,45 @@ serve(async (req) => {
 
     const formattedPhone = number.replace(/\D/g, "");
 
-    // Build choices array for UAZAPI /send/menu carousel format
-    // Format: each card is built with [Title\nBody], {imageUrl}, and button entries
-    const choices: string[] = [];
+    // Evolution API has no native carousel, so we send an intro text
+    // followed by each card as an image (with caption) or text message.
+    const results: any[] = [];
+
+    if (text) {
+      results.push((await sendEvolutionText(formattedPhone, text)).data);
+      await new Promise((r) => setTimeout(r, 1000));
+    }
 
     for (const card of carousel) {
-      // Card text: [Header\nBody\nFooter]
-      let cardText = card.header || "";
-      if (card.body) cardText += `\n${card.body}`;
-      if (card.footer) cardText += `\n${card.footer}`;
-      choices.push(`[${cardText}]`);
+      let caption = card.header || "";
+      if (card.body) caption += `\n${card.body}`;
+      if (card.footer) caption += `\n${card.footer}`;
+      // Append buttons that carry URLs as plain links
+      const links = card.buttons
+        .filter((b) => b.type === "url" && b.url)
+        .map((b) => `${b.title}: ${b.url}`);
+      if (links.length) caption += `\n\n${links.join("\n")}`;
 
-      // Card image
+      let res;
       if (card.image) {
-        choices.push(`{${card.image}}`);
+        res = await sendEvolutionMedia({
+          phone: formattedPhone,
+          mediaType: "image",
+          fileUrl: card.image,
+          caption,
+        });
+      } else {
+        res = await sendEvolutionText(formattedPhone, caption);
       }
-
-      // Buttons: "Title|url" or "Title" for reply
-      for (const btn of card.buttons) {
-        if (btn.type === "url" && btn.url) {
-          choices.push(`${btn.title}|${btn.url}`);
-        } else {
-          choices.push(btn.title);
-        }
+      results.push(res.data);
+      if (!res.ok) {
+        throw new Error(`Evolution error [${res.status}]: ${res.raw}`);
       }
-    }
-
-    const requestBody = {
-      number: formattedPhone,
-      type: "carousel",
-      text: text || "",
-      choices,
-    };
-
-    console.log("Sending carousel via /send/menu to:", formattedPhone);
-    console.log("Payload:", JSON.stringify(requestBody));
-
-    const uazapiResponse = await fetch(`${UAZAPI_SERVER_URL}/send/menu`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "token": UAZAPI_INSTANCE_TOKEN,
-      },
-      body: JSON.stringify(requestBody),
-    });
-
-    const responseText = await uazapiResponse.text();
-    console.log("UAZAPI carousel response:", uazapiResponse.status, responseText);
-
-    let responseData;
-    try {
-      responseData = JSON.parse(responseText);
-    } catch {
-      responseData = { raw: responseText };
-    }
-
-    if (!uazapiResponse.ok) {
-      throw new Error(`UAZAPI error [${uazapiResponse.status}]: ${responseText}`);
+      await new Promise((r) => setTimeout(r, 1000));
     }
 
     return new Response(
-      JSON.stringify({ success: true, data: responseData }),
+      JSON.stringify({ success: true, data: results }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
