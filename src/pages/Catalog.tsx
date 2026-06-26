@@ -463,7 +463,16 @@ export default function Catalog() {
             )}
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              onClick={hideProduct}
+              disabled={hiding}
+              className="sm:mr-auto text-destructive hover:text-destructive border-destructive/40"
+            >
+              {hiding ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <EyeOff className="w-4 h-4 mr-2" />}
+              Não exibir na loja
+            </Button>
             <Button variant="outline" onClick={() => setSelected(null)}>
               Cancelar
             </Button>
