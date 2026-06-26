@@ -113,7 +113,12 @@ export default function Catalog() {
         if (data?.product_url) {
           setProducts((prev) => prev.map((p) => (p.id === product.id ? { ...p, product_url: data.product_url } : p)));
         }
-        toast.success(`"${product.name}": ${data.created} variações aplicadas!`);
+        const errCount = Array.isArray(data?.errors) ? data.errors.length : 0;
+        if (errCount > 0) {
+          toast.warning(`"${product.name}": ${data.created} aplicadas, ${errCount} falharam. ${(data.errors || []).slice(0, 2).join(" | ")}`);
+        } else {
+          toast.success(`"${product.name}": ${data.created} variações aplicadas!`);
+        }
         fetchProducts();
         // Remove o check verde após alguns segundos
         setTimeout(() => {
