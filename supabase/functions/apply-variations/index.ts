@@ -135,7 +135,21 @@ Deno.serve(async (req) => {
       const idx = MATERIAL_ORDER.indexOf(norm);
       return idx === -1 ? MATERIAL_ORDER.length : idx;
     };
-    allVariants.sort((a, b) => matRank(a.mat) - matRank(b.mat));
+    // Ordem padrão fixa dos tamanhos
+    const SIZE_ORDER = ["P", "M", "G", "GG", "XG", "G1", "G2", "G3"];
+    const sizeRank = (s: string | null): number => {
+      if (!s) return SIZE_ORDER.length + 1;
+      const norm = String(s).toUpperCase().trim();
+      const idx = SIZE_ORDER.indexOf(norm);
+      return idx === -1 ? SIZE_ORDER.length : idx;
+    };
+    // Ordena por: malha -> tamanho -> cor (a ordem em que enviamos define a
+    // ordem exibida na Nuvemshop)
+    allVariants.sort((a, b) =>
+      matRank(a.mat) - matRank(b.mat) ||
+      sizeRank(a.size?.tamanho) - sizeRank(b.size?.tamanho) ||
+      String(a.color ?? "").localeCompare(String(b.color ?? ""))
+    );
 
     console.log("apply-variations: modelos=", modelIds.length, "variantes geradas=", allVariants.length);
     console.log("apply-variations: assinaturas=", Array.from(variantMap.keys()).join(" ; "));
