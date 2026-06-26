@@ -497,89 +497,176 @@ export default function Catalog() {
       </Tabs>
 
       <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
-        <DialogContent className="max-w-md max-h-[90vh] flex flex-col gap-0 p-0">
-          <DialogHeader className="p-6 pb-4 shrink-0">
+        <DialogContent className="max-w-lg max-h-[90vh] flex flex-col gap-0 p-0">
+          <DialogHeader className="p-6 pb-3 shrink-0">
             <DialogTitle className="line-clamp-2">{selected?.name || "Produto"}</DialogTitle>
-            <DialogDescription>
-              Selecione um ou mais modelos de variações para aplicar a este produto na Nuvemshop.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 px-6 overflow-y-auto flex-1 min-h-0">
             {selected?.product_url && (
               <a
                 href={selected.product_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
+                className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline pt-1"
               >
                 <ExternalLink className="w-3.5 h-3.5" /> Ver camiseta na loja online
               </a>
             )}
-            <div className="flex items-start gap-2 border border-destructive/40 bg-destructive/10 p-3 text-xs text-foreground">
-              <AlertTriangle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
-              <span>
-                Ao aplicar, <strong>todas as variações atuais deste produto serão apagadas</strong> e
-                substituídas pela mescla dos modelos selecionados.
-              </span>
-            </div>
+          </DialogHeader>
 
-            {vmodels.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">
-                Nenhum modelo cadastrado. Crie em Catálogo → Variações.
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {vmodels.map((m) => (
-                  <button
-                    key={m.id}
-                    type="button"
-                    onClick={() => toggleModel(m.id)}
-                    className={
-                      "w-full text-left border p-3 transition-colors flex items-center gap-3 " +
-                      (chosenModels.includes(m.id)
-                        ? "border-primary bg-primary/10"
-                        : "border-border hover:bg-accent")
-                    }
-                  >
-                    <span
-                      className={
-                        "shrink-0 w-4 h-4 border flex items-center justify-center " +
-                        (chosenModels.includes(m.id) ? "bg-primary border-primary" : "border-muted-foreground/40")
-                      }
-                    >
-                      {chosenModels.includes(m.id) && <Check className="w-3 h-3 text-primary-foreground" />}
-                    </span>
-                    <span className="flex-1">
-                      <span className="block text-sm font-medium uppercase">{m.nome}</span>
-                      <span className="block text-xs text-muted-foreground">
-                        {m.cores} cores · {m.malhas} malhas · {m.tamanhos} tamanhos
-                      </span>
-                    </span>
-                  </button>
-                ))}
+          <Tabs defaultValue="variations" className="flex flex-col flex-1 min-h-0">
+            <TabsList className="mx-6 grid grid-cols-2 shrink-0">
+              <TabsTrigger value="variations">Variações</TabsTrigger>
+              <TabsTrigger value="content">Conteúdo &amp; SEO</TabsTrigger>
+            </TabsList>
+
+            {/* ABA VARIAÇÕES */}
+            <TabsContent value="variations" className="flex flex-col flex-1 min-h-0 mt-0">
+              <div className="space-y-4 px-6 py-4 overflow-y-auto flex-1 min-h-0">
+                <div className="flex items-start gap-2 border border-destructive/40 bg-destructive/10 p-3 text-xs text-foreground">
+                  <AlertTriangle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+                  <span>
+                    Ao aplicar, <strong>todas as variações atuais deste produto serão apagadas</strong> e
+                    substituídas pela mescla dos modelos selecionados.
+                  </span>
+                </div>
+                {vmodels.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    Nenhum modelo cadastrado. Crie em Catálogo → Variações.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {vmodels.map((m) => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => toggleModel(m.id)}
+                        className={
+                          "w-full text-left border p-3 transition-colors flex items-center gap-3 " +
+                          (chosenModels.includes(m.id)
+                            ? "border-primary bg-primary/10"
+                            : "border-border hover:bg-accent")
+                        }
+                      >
+                        <span
+                          className={
+                            "shrink-0 w-4 h-4 border flex items-center justify-center " +
+                            (chosenModels.includes(m.id) ? "bg-primary border-primary" : "border-muted-foreground/40")
+                          }
+                        >
+                          {chosenModels.includes(m.id) && <Check className="w-3 h-3 text-primary-foreground" />}
+                        </span>
+                        <span className="flex-1">
+                          <span className="block text-sm font-medium uppercase">{m.nome}</span>
+                          <span className="block text-xs text-muted-foreground">
+                            {m.cores} cores · {m.malhas} malhas · {m.tamanhos} tamanhos
+                          </span>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+              <DialogFooter className="flex-col sm:flex-row gap-2 p-6 pt-4 border-t border-border shrink-0">
+                <Button
+                  variant="outline"
+                  onClick={hideProduct}
+                  disabled={hiding}
+                  className="sm:mr-auto text-destructive hover:text-destructive border-destructive/40"
+                >
+                  {hiding ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <EyeOff className="w-4 h-4 mr-2" />}
+                  Não exibir na loja
+                </Button>
+                <Button variant="outline" onClick={() => setSelected(null)}>
+                  Cancelar
+                </Button>
+                <Button onClick={applyVariations} disabled={chosenModels.length === 0}>
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  Apagar e aplicar {chosenModels.length > 1 ? `(${chosenModels.length} modelos)` : "variações"}
+                </Button>
+              </DialogFooter>
+            </TabsContent>
 
-          <DialogFooter className="flex-col sm:flex-row gap-2 p-6 pt-4 border-t border-border shrink-0">
-            <Button
-              variant="outline"
-              onClick={hideProduct}
-              disabled={hiding}
-              className="sm:mr-auto text-destructive hover:text-destructive border-destructive/40"
-            >
-              {hiding ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <EyeOff className="w-4 h-4 mr-2" />}
-              Não exibir na loja
-            </Button>
-            <Button variant="outline" onClick={() => setSelected(null)}>
-              Cancelar
-            </Button>
-            <Button onClick={applyVariations} disabled={chosenModels.length === 0}>
-              <Sparkles className="w-4 h-4 mr-2" />
-              Apagar e aplicar {chosenModels.length > 1 ? `(${chosenModels.length} modelos)` : "variações"}
-            </Button>
-          </DialogFooter>
+            {/* ABA CONTEÚDO & SEO (IA) */}
+            <TabsContent value="content" className="flex flex-col flex-1 min-h-0 mt-0">
+              <div className="space-y-4 px-6 py-4 overflow-y-auto flex-1 min-h-0">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs text-muted-foreground">
+                    Use a IA (Groq) para gerar conteúdo otimizado. Revise antes de salvar.
+                  </p>
+                  <Button size="sm" variant="secondary" onClick={generateContent} disabled={genLoading}>
+                    {genLoading ? <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" /> : <Wand2 className="w-3.5 h-3.5 mr-2" />}
+                    Gerar com IA
+                  </Button>
+                </div>
+
+                {!aiContent ? (
+                  <p className="text-sm text-muted-foreground text-center py-8">
+                    Clique em <strong>Gerar com IA</strong> para criar sugestões de nome, descrição, tags, SEO, URL e textos das fotos.
+                  </p>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Nome</Label>
+                      <Input value={aiContent.name} onChange={(e) => updateField("name", e.target.value)} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Descrição (HTML)</Label>
+                      <Textarea rows={6} value={aiContent.description} onChange={(e) => updateField("description", e.target.value)} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Tags (separadas por vírgula)</Label>
+                      <Input value={aiContent.tags} onChange={(e) => updateField("tags", e.target.value)} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Título SEO ({aiContent.seo_title.length}/60)</Label>
+                      <Input value={aiContent.seo_title} onChange={(e) => updateField("seo_title", e.target.value)} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Descrição SEO ({aiContent.seo_description.length}/155)</Label>
+                      <Textarea rows={2} value={aiContent.seo_description} onChange={(e) => updateField("seo_description", e.target.value)} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">URL do produto (handle)</Label>
+                      <Input value={aiContent.handle} onChange={(e) => updateField("handle", e.target.value)} />
+                    </div>
+
+                    {aiContent.images.length > 0 && (
+                      <div className="space-y-2">
+                        <Label className="text-xs">Fotos — texto alternativo e ordem</Label>
+                        {aiContent.images.map((img, i) => (
+                          <div key={img.id} className="flex items-start gap-2 border border-border p-2">
+                            <img src={img.image_url} alt="" className="w-12 h-12 object-cover shrink-0" />
+                            <Input
+                              value={img.alt}
+                              onChange={(e) => updateAlt(i, e.target.value)}
+                              placeholder="Texto alternativo da foto"
+                              className="flex-1 h-9 text-xs"
+                            />
+                            <div className="flex flex-col gap-1 shrink-0">
+                              <Button type="button" variant="outline" size="icon" className="h-4 w-7" onClick={() => moveImage(i, -1)} disabled={i === 0}>
+                                <ArrowUp className="w-3 h-3" />
+                              </Button>
+                              <Button type="button" variant="outline" size="icon" className="h-4 w-7" onClick={() => moveImage(i, 1)} disabled={i === aiContent.images.length - 1}>
+                                <ArrowDown className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+              <DialogFooter className="flex-col sm:flex-row gap-2 p-6 pt-4 border-t border-border shrink-0">
+                <Button variant="outline" onClick={() => setSelected(null)}>
+                  Cancelar
+                </Button>
+                <Button onClick={saveContent} disabled={!aiContent || savingContent}>
+                  {savingContent ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                  Salvar na Nuvemshop
+                </Button>
+              </DialogFooter>
+            </TabsContent>
+          </Tabs>
         </DialogContent>
       </Dialog>
     </div>
