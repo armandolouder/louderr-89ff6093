@@ -21,6 +21,7 @@ const EmailMarketing = lazy(() => import("./pages/EmailMarketing"));
 const Tracking = lazy(() => import("./pages/Tracking"));
 const Journeys = lazy(() => import("./pages/Journeys"));
 const Expenses = lazy(() => import("./pages/Expenses"));
+const Catalog = lazy(() => import("./pages/Catalog"));
 const Auth = lazy(() => import("./pages/Auth"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Install = lazy(() => import("./pages/Install"));
@@ -63,6 +64,7 @@ const App = () => (
               <Route path="/tracking" element={<Tracking />} />
               <Route path="/journeys" element={<Journeys />} />
               <Route path="/expenses" element={<Expenses />} />
+              <Route path="/catalog" element={<Catalog />} />
               <Route path="/settings" element={<Settings />} />
             </Route>
             <Route path="*" element={<NotFound />} />

@@ -19,6 +19,7 @@ import {
   Eye,
   FileText,
   Wallet,
+  PackageSearch,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -51,6 +52,7 @@ const navigation: NavItem[] = [
     ],
   },
   { name: "Carrinhos", href: "/abandoned-checkouts", icon: ShoppingCart },
+  { name: "Auditor de Catálogo", href: "/catalog", icon: PackageSearch },
   { name: "Rastreamento", href: "/tracking", icon: Eye },
   { name: "Bot", href: "/bot", icon: Bot },
   { name: "APIs", href: "/apis", icon: Zap },
