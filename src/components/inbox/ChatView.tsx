@@ -64,6 +64,26 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
     }
   };
 
+  const [isFetchingPhoto, setIsFetchingPhoto] = useState(false);
+
+  const fetchWhatsappPhoto = async () => {
+    setIsFetchingPhoto(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("fetch-whatsapp-photo", {
+        body: { contactId: conversation.contact_id },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || "Falha ao buscar foto");
+      await queryClient.invalidateQueries({ queryKey: ["conversations"] });
+      toast.success("Foto do WhatsApp atualizada");
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e?.message || "Erro ao buscar foto do WhatsApp");
+    } finally {
+      setIsFetchingPhoto(false);
+    }
+  };
+
   const EMOJI_LIST = ["😀", "😂", "🥰", "😍", "🤩", "😎", "🤔", "😅", "👍", "👏", "🔥", "❤️", "💯", "🎉", "✅", "⭐"];
 
   const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
