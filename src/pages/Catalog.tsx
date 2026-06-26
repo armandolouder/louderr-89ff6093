@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
-import { Download, Loader2, RefreshCw, Package, ShoppingBag, Image as ImageIcon, Layers, Sparkles, AlertTriangle, Check, ExternalLink } from "lucide-react";
+import { Download, Loader2, RefreshCw, Package, ShoppingBag, Image as ImageIcon, Layers, Sparkles, AlertTriangle, Check, ExternalLink, Search, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -43,6 +44,10 @@ export default function Catalog() {
   const [syncing, setSyncing] = useState(false);
   const [progress, setProgress] = useState({ synced: 0, page: 0, status: "" });
   const [total, setTotal] = useState(0);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 24;
   const [selected, setSelected] = useState<CatalogProduct | null>(null);
   const [vmodels, setVmodels] = useState<VariationModelOption[]>([]);
   const [chosenModels, setChosenModels] = useState<string[]>([]);
@@ -52,11 +57,17 @@ export default function Catalog() {
   const fetchProducts = useCallback(async () => {
     setLoading(true);
     try {
-      const { data, error, count } = await (supabase as any)
+      const from = page * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+      let query = (supabase as any)
         .from("catalog_products")
         .select("id, nuvemshop_product_id, name, category, status, image_count, variant_count, product_url:raw->>canonical_url, catalog_images(image_url, position)", { count: "exact" })
         .order("name", { ascending: true })
-        .limit(200);
+        .range(from, to);
+      if (debouncedSearch.trim()) {
+        query = query.ilike("name", `%${debouncedSearch.trim()}%`);
+      }
+      const { data, error, count } = await query;
       if (error) throw error;
       setProducts(data || []);
       setTotal(count || 0);
@@ -65,9 +76,20 @@ export default function Catalog() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [page, debouncedSearch]);
 
   useEffect(() => { fetchProducts(); }, [fetchProducts]);
+
+  // Debounce da busca
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(0);
+    }, 350);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const openProduct = async (p: CatalogProduct) => {
     setSelected(p);
