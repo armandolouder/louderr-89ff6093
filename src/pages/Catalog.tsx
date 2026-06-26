@@ -398,15 +398,15 @@ export default function Catalog() {
       </Tabs>
 
       <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
+        <DialogContent className="max-w-md max-h-[90vh] flex flex-col gap-0 p-0">
+          <DialogHeader className="p-6 pb-4 shrink-0">
             <DialogTitle className="line-clamp-2">{selected?.name || "Produto"}</DialogTitle>
             <DialogDescription>
               Selecione um ou mais modelos de variações para aplicar a este produto na Nuvemshop.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="space-y-4 px-6 overflow-y-auto flex-1 min-h-0">
             {selected?.product_url && (
               <a
                 href={selected.product_url}
@@ -463,7 +463,7 @@ export default function Catalog() {
             )}
           </div>
 
-          <DialogFooter className="flex-col sm:flex-row gap-2">
+          <DialogFooter className="flex-col sm:flex-row gap-2 p-6 pt-4 border-t border-border shrink-0">
             <Button
               variant="outline"
               onClick={hideProduct}
