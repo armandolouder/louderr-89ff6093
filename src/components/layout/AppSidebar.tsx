@@ -20,6 +20,7 @@ import {
   FileText,
   Wallet,
   PackageSearch,
+  Layers,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -52,7 +53,14 @@ const navigation: NavItem[] = [
     ],
   },
   { name: "Carrinhos", href: "/abandoned-checkouts", icon: ShoppingCart },
-  { name: "Auditor de Catálogo", href: "/catalog", icon: PackageSearch },
+  {
+    name: "Catálogo",
+    icon: PackageSearch,
+    children: [
+      { name: "Auditor de Catálogo", href: "/catalog", icon: PackageSearch },
+      { name: "Variações", href: "/variations", icon: Layers },
+    ],
+  },
   { name: "Rastreamento", href: "/tracking", icon: Eye },
   { name: "Bot", href: "/bot", icon: Bot },
   { name: "APIs", href: "/apis", icon: Zap },

@@ -2240,6 +2240,135 @@ export type Database = {
         }
         Relationships: []
       }
+      variation_colors: {
+        Row: {
+          created_at: string
+          id: string
+          nome_cor: string
+          user_id: string | null
+          variation_model_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nome_cor: string
+          user_id?: string | null
+          variation_model_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nome_cor?: string
+          user_id?: string | null
+          variation_model_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "variation_colors_variation_model_id_fkey"
+            columns: ["variation_model_id"]
+            isOneToOne: false
+            referencedRelation: "variation_models"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      variation_materials: {
+        Row: {
+          created_at: string
+          id: string
+          nome_malha: string
+          user_id: string | null
+          variation_model_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nome_malha: string
+          user_id?: string | null
+          variation_model_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nome_malha?: string
+          user_id?: string | null
+          variation_model_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "variation_materials_variation_model_id_fkey"
+            columns: ["variation_model_id"]
+            isOneToOne: false
+            referencedRelation: "variation_models"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      variation_models: {
+        Row: {
+          created_at: string
+          id: string
+          nome: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nome: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nome?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      variation_sizes: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          id: string
+          position: number
+          preco: number | null
+          tamanho: string
+          user_id: string | null
+          variation_model_id: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          position?: number
+          preco?: number | null
+          tamanho: string
+          user_id?: string | null
+          variation_model_id: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          position?: number
+          preco?: number | null
+          tamanho?: string
+          user_id?: string | null
+          variation_model_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "variation_sizes_variation_model_id_fkey"
+            columns: ["variation_model_id"]
+            isOneToOne: false
+            referencedRelation: "variation_models"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       whatsapp_queue: {
         Row: {
           attempts: number | null
