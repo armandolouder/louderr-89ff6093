@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, ClipboardEvent, ChangeEvent } from "react";
-import { Send, Paperclip, Smile, MoreVertical, Phone, User, Loader2, Sparkles, MessageSquareText, X, Image as ImageIcon, ArrowDown, RefreshCw } from "lucide-react";
+import { Send, Paperclip, Smile, MoreVertical, Phone, User, Loader2, Sparkles, MessageSquareText, X, Image as ImageIcon, ArrowDown, RefreshCw, ImageDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
