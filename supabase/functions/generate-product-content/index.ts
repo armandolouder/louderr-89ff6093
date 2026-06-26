@@ -90,7 +90,8 @@ Quantidade de fotos: ${images.length}`;
     const altArr: string[] = Array.isArray(parsed.images_alt) ? parsed.images_alt : [];
     const SUFFIX = " I LOUDER.ink";
     const enforceSeoTitle = (title: string): string => {
-      let base = (title || (prod as any).name || "").trim();
+      // Sempre usa o NOME COMPLETO do produto como base do Título SEO.
+      let base = ((prod as any).name || title || "").trim();
       // remove sufixo existente (variações) para não duplicar
       base = base.replace(/\s*[I|]\s*LOUDER\.ink\s*$/i, "").trim();
       const maxBase = 60 - SUFFIX.length;
