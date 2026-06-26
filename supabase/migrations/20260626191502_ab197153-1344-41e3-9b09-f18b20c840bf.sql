@@ -1,0 +1,1 @@
+ALTER TABLE public.variation_sizes ADD COLUMN IF NOT EXISTS preco_promocional numeric;

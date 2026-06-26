@@ -31,6 +31,7 @@ interface SizeRow {
   id?: string;
   tamanho: string;
   preco: string;
+  precoPromocional: string;
   ativo: boolean;
 }
 
@@ -39,20 +40,20 @@ interface VariationModel {
   nome: string;
   colors: string[];
   materials: string[];
-  sizes: { tamanho: string; preco: number | null; ativo: boolean }[];
+  sizes: { tamanho: string; preco: number | null; precoPromocional: number | null; ativo: boolean }[];
 }
 
 const DEFAULT_COLORS = ["Preta", "Branca", "Azul Marinho", "Cinza", "Vermelha", "Verde"];
 const DEFAULT_MATERIALS = ["Unissex", "Babylook", "Egípcia", "Oversized", "Manga Longa", "Moletom"];
 const DEFAULT_SIZES: SizeRow[] = [
-  { tamanho: "P", preco: "99,90", ativo: true },
-  { tamanho: "M", preco: "99,90", ativo: true },
-  { tamanho: "G", preco: "99,90", ativo: true },
-  { tamanho: "GG", preco: "109,90", ativo: true },
-  { tamanho: "XG", preco: "109,90", ativo: true },
-  { tamanho: "G1", preco: "119,90", ativo: false },
-  { tamanho: "G2", preco: "129,90", ativo: false },
-  { tamanho: "G3", preco: "139,90", ativo: false },
+  { tamanho: "P", preco: "129,90", precoPromocional: "99,90", ativo: true },
+  { tamanho: "M", preco: "129,90", precoPromocional: "99,90", ativo: true },
+  { tamanho: "G", preco: "129,90", precoPromocional: "99,90", ativo: true },
+  { tamanho: "GG", preco: "139,90", precoPromocional: "109,90", ativo: true },
+  { tamanho: "XG", preco: "139,90", precoPromocional: "109,90", ativo: true },
+  { tamanho: "G1", preco: "149,90", precoPromocional: "119,90", ativo: false },
+  { tamanho: "G2", preco: "159,90", precoPromocional: "129,90", ativo: false },
+  { tamanho: "G3", preco: "169,90", precoPromocional: "139,90", ativo: false },
 ];
 
 const parsePrice = (v: string): number | null => {
@@ -85,7 +86,7 @@ export default function Variations() {
       const { data, error } = await (supabase as any)
         .from("variation_models")
         .select(
-          "id, nome, variation_colors(nome_cor), variation_materials(nome_malha), variation_sizes(tamanho, preco, ativo, position)"
+          "id, nome, variation_colors(nome_cor), variation_materials(nome_malha), variation_sizes(tamanho, preco, preco_promocional, ativo, position)"
         )
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -97,7 +98,7 @@ export default function Variations() {
           materials: (m.variation_materials || []).map((c: any) => c.nome_malha),
           sizes: (m.variation_sizes || [])
             .sort((a: any, b: any) => (a.position || 0) - (b.position || 0))
-            .map((s: any) => ({ tamanho: s.tamanho, preco: s.preco, ativo: s.ativo })),
+            .map((s: any) => ({ tamanho: s.tamanho, preco: s.preco, precoPromocional: s.preco_promocional, ativo: s.ativo })),
         }))
       );
     } catch (err: any) {
@@ -129,7 +130,7 @@ export default function Variations() {
     setMaterials([...m.materials]);
     setSizes(
       m.sizes.length
-        ? m.sizes.map((s) => ({ tamanho: s.tamanho, preco: formatPrice(s.preco), ativo: s.ativo }))
+        ? m.sizes.map((s) => ({ tamanho: s.tamanho, preco: formatPrice(s.preco), precoPromocional: formatPrice(s.precoPromocional), ativo: s.ativo }))
         : DEFAULT_SIZES.map((s) => ({ ...s }))
     );
     setNewColor("");
@@ -151,7 +152,7 @@ export default function Variations() {
   const updateSize = (idx: number, patch: Partial<SizeRow>) => {
     setSizes((prev) => prev.map((s, i) => (i === idx ? { ...s, ...patch } : s)));
   };
-  const addSizeRow = () => setSizes((prev) => [...prev, { tamanho: "", preco: "", ativo: true }]);
+  const addSizeRow = () => setSizes((prev) => [...prev, { tamanho: "", preco: "", precoPromocional: "", ativo: true }]);
   const removeSizeRow = (idx: number) => setSizes((prev) => prev.filter((_, i) => i !== idx));
 
   const handleSave = async () => {
@@ -207,6 +208,7 @@ export default function Variations() {
               variation_model_id: modelId,
               tamanho: s.tamanho.trim(),
               preco: parsePrice(s.preco),
+              preco_promocional: parsePrice(s.precoPromocional),
               ativo: s.ativo,
               position: i,
             }))
@@ -319,7 +321,9 @@ export default function Variations() {
                           variant={s.ativo ? "default" : "outline"}
                           className="text-[10px]"
                         >
-                          {s.tamanho} · {formatPrice(s.preco)}
+                          {s.tamanho} · {s.precoPromocional != null
+                            ? `${formatPrice(s.precoPromocional)} (de ${formatPrice(s.preco)})`
+                            : formatPrice(s.preco)}
                         </Badge>
                       ))}
                     </div>
@@ -440,19 +444,20 @@ export default function Variations() {
             {/* Tamanhos */}
             <div className="space-y-2">
               <Label className="flex items-center gap-1">
-                <Ruler className="w-4 h-4" /> Tamanhos (o preço pertence ao tamanho)
+                <Ruler className="w-4 h-4" /> Tamanhos (preços por tamanho)
               </Label>
               <div className="border border-border">
-                <div className="grid grid-cols-[1fr_1fr_auto_auto] gap-2 px-3 py-2 bg-muted text-xs font-medium text-muted-foreground">
+                <div className="grid grid-cols-[1fr_1fr_1fr_auto_auto] gap-2 px-3 py-2 bg-muted text-xs font-medium text-muted-foreground">
                   <span>Tamanho</span>
-                  <span>Preço</span>
+                  <span>Preço de venda</span>
+                  <span>Preço promocional</span>
                   <span>Ativo</span>
                   <span></span>
                 </div>
                 {sizes.map((s, idx) => (
                   <div
                     key={idx}
-                    className="grid grid-cols-[1fr_1fr_auto_auto] gap-2 px-3 py-2 items-center border-t border-border"
+                    className="grid grid-cols-[1fr_1fr_1fr_auto_auto] gap-2 px-3 py-2 items-center border-t border-border"
                   >
                     <Input
                       value={s.tamanho}
@@ -463,6 +468,12 @@ export default function Variations() {
                     <Input
                       value={s.preco}
                       onChange={(e) => updateSize(idx, { preco: e.target.value })}
+                      placeholder="129,90"
+                      className="h-8"
+                    />
+                    <Input
+                      value={s.precoPromocional}
+                      onChange={(e) => updateSize(idx, { precoPromocional: e.target.value })}
                       placeholder="99,90"
                       className="h-8"
                     />
