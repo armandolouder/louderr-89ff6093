@@ -2335,6 +2335,7 @@ export type Database = {
           id: string
           position: number
           preco: number | null
+          preco_promocional: number | null
           tamanho: string
           user_id: string | null
           variation_model_id: string
@@ -2345,6 +2346,7 @@ export type Database = {
           id?: string
           position?: number
           preco?: number | null
+          preco_promocional?: number | null
           tamanho: string
           user_id?: string | null
           variation_model_id: string
@@ -2355,6 +2357,7 @@ export type Database = {
           id?: string
           position?: number
           preco?: number | null
+          preco_promocional?: number | null
           tamanho?: string
           user_id?: string | null
           variation_model_id?: string
