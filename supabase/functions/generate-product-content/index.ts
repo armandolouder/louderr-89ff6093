@@ -97,11 +97,12 @@ Quantidade de fotos: ${images.length}`;
       if (base.length > maxBase) base = base.slice(0, maxBase).trim();
       return `${base}${SUFFIX}`;
     };
+    const finalSeoTitle = enforceSeoTitle(parsed.seo_title || "");
     const suggestion = {
-      name: parsed.name || (prod as any).name || "",
+      name: finalSeoTitle,
       description: parsed.description || (prod as any).description || "",
       tags: parsed.tags || currentTags || "",
-      seo_title: enforceSeoTitle(parsed.seo_title || ""),
+      seo_title: finalSeoTitle,
       seo_description: parsed.seo_description || "",
       images: images.map((img: any, i: number) => ({
         id: img.id,
