@@ -35,7 +35,9 @@ export function useConversations() {
   const query = useQuery({
     queryKey: ["conversations"],
     queryFn: async () => {
-      // Buscar conversas com contato e última mensagem
+      // Buscar conversas com contato e APENAS a última mensagem (não todas).
+      // Limitar o recurso aninhado evita carregar o histórico completo de cada
+      // conversa só para descobrir o remetente da última mensagem.
       const { data: conversations, error } = await supabase
         .from("conversations")
         .select(`
@@ -43,21 +45,16 @@ export function useConversations() {
           contact:contacts(*),
           messages(sender_type, created_at)
         `)
-        .order("last_message_at", { ascending: false, nullsFirst: false });
+        .order("last_message_at", { ascending: false, nullsFirst: false })
+        .order("created_at", { ascending: false, referencedTable: "messages" })
+        .limit(1, { referencedTable: "messages" });
 
       if (error) throw error;
       if (!conversations) return [];
 
-      // Processar para extrair o sender_type da última mensagem
+      // A última mensagem já vem como primeiro (e único) item do array.
       const conversationsWithLastSender = conversations.map((conv) => {
-        const messages = conv.messages || [];
-        // Ordenar mensagens por data e pegar a mais recente
-        const sortedMessages = [...messages].sort(
-          (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        );
-        const lastMessage = sortedMessages[0];
-
-        // Remover o array de messages do objeto final
+        const lastMessage = (conv.messages || [])[0];
         const { messages: _, ...convWithoutMessages } = conv;
 
         return {
@@ -77,10 +74,10 @@ export function useConversations() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "conversations" },
-        (payload) => {
-          console.log("Realtime conversation update:", payload);
+        () => {
+          // invalidateQueries já dispara o refetch da query ativa;
+          // chamar refetchQueries em seguida duplicava a requisição.
           queryClient.invalidateQueries({ queryKey: ["conversations"] });
-          queryClient.refetchQueries({ queryKey: ["conversations"] });
         }
       )
       .subscribe();
