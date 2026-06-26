@@ -59,7 +59,6 @@ Deno.serve(async (req) => {
       await supabase.from("catalog_products").update({
         name: content.name ?? (prod as any).name,
         description: content.description,
-        handle: content.handle,
         raw: { ...((prod as any).raw || {}), tags: content.tags },
       }).eq("id", productUuid);
     }
