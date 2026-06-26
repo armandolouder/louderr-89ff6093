@@ -2309,6 +2309,7 @@ export type Database = {
           created_at: string
           id: string
           nome: string
+          position: number
           updated_at: string
           user_id: string | null
         }
@@ -2316,6 +2317,7 @@ export type Database = {
           created_at?: string
           id?: string
           nome: string
+          position?: number
           updated_at?: string
           user_id?: string | null
         }
@@ -2323,6 +2325,7 @@ export type Database = {
           created_at?: string
           id?: string
           nome?: string
+          position?: number
           updated_at?: string
           user_id?: string | null
         }

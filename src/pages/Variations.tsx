@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Plus, Trash2, Loader2, Save, Palette, Shirt, Ruler, Pencil, X } from "lucide-react";
+import { Plus, Trash2, Loader2, Save, Palette, Shirt, Ruler, Pencil, X, LayoutGrid, List, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -39,6 +39,7 @@ interface SizeRow {
 interface VariationModel {
   id: string;
   nome: string;
+  position: number;
   colors: string[];
   materials: string[];
   sizes: { tamanho: string; preco: number | null; precoPromocional: number | null; ativo: boolean }[];
@@ -70,6 +71,15 @@ export default function Variations() {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<"block" | "list">(
+    () => (localStorage.getItem("variations_view_mode") as "block" | "list") || "block"
+  );
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
+
+  useEffect(() => {
+    localStorage.setItem("variations_view_mode", viewMode);
+  }, [viewMode]);
 
   // form state
   const [editId, setEditId] = useState<string | null>(null);
@@ -86,14 +96,16 @@ export default function Variations() {
       const { data, error } = await (supabase as any)
         .from("variation_models")
         .select(
-          "id, nome, variation_colors(nome_cor), variation_materials(nome_malha), variation_sizes(tamanho, preco, preco_promocional, ativo, position)"
+          "id, nome, position, variation_colors(nome_cor), variation_materials(nome_malha), variation_sizes(tamanho, preco, preco_promocional, ativo, position)"
         )
+        .order("position", { ascending: true })
         .order("created_at", { ascending: false });
       if (error) throw error;
       setModels(
         (data || []).map((m: any) => ({
           id: m.id,
           nome: m.nome,
+          position: m.position ?? 0,
           colors: (m.variation_colors || []).map((c: any) => c.nome_cor),
           materials: (m.variation_materials || []).map((c: any) => c.nome_malha),
           sizes: (m.variation_sizes || [])
@@ -242,6 +254,39 @@ export default function Variations() {
     }
   };
 
+  const persistOrder = async (ordered: VariationModel[]) => {
+    try {
+      await Promise.all(
+        ordered.map((m, i) =>
+          (supabase as any).from("variation_models").update({ position: i }).eq("id", m.id)
+        )
+      );
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao salvar ordem");
+      fetchModels();
+    }
+  };
+
+  const handleDrop = (targetId: string) => {
+    if (!dragId || dragId === targetId) {
+      setDragId(null);
+      setOverId(null);
+      return;
+    }
+    setModels((prev) => {
+      const list = [...prev];
+      const from = list.findIndex((m) => m.id === dragId);
+      const to = list.findIndex((m) => m.id === targetId);
+      if (from === -1 || to === -1) return prev;
+      const [moved] = list.splice(from, 1);
+      list.splice(to, 0, moved);
+      persistOrder(list);
+      return list;
+    });
+    setDragId(null);
+    setOverId(null);
+  };
+
   return (
     <div className="flex-1 overflow-y-auto p-6 space-y-6">
       <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -251,9 +296,39 @@ export default function Variations() {
             Cadastre as opções que serão utilizadas nos produtos da Nuvemshop.
           </p>
         </div>
-        <Button onClick={openNew}>
-          <Plus className="w-4 h-4 mr-2" /> Novo Modelo
-        </Button>
+        <div className="flex items-center gap-2">
+          <div className="flex border border-border">
+            <button
+              type="button"
+              onClick={() => setViewMode("block")}
+              className={
+                "flex items-center gap-1.5 px-3 py-2 text-xs transition-colors " +
+                (viewMode === "block"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-background text-muted-foreground hover:bg-accent")
+              }
+              title="Modo bloco"
+            >
+              <LayoutGrid className="w-4 h-4" /> Blocos
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("list")}
+              className={
+                "flex items-center gap-1.5 px-3 py-2 text-xs transition-colors border-l border-border " +
+                (viewMode === "list"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-background text-muted-foreground hover:bg-accent")
+              }
+              title="Modo lista"
+            >
+              <List className="w-4 h-4" /> Lista
+            </button>
+          </div>
+          <Button onClick={openNew}>
+            <Plus className="w-4 h-4 mr-2" /> Novo Modelo
+          </Button>
+        </div>
       </div>
 
       {loading ? (
@@ -264,16 +339,31 @@ export default function Variations() {
         <div className="text-center py-16 text-muted-foreground text-sm">
           Nenhum modelo cadastrado. Clique em "Novo Modelo" para começar.
         </div>
-      ) : (
+      ) : viewMode === "block" ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {models.map((m) => (
-            <Card key={m.id}>
+            <Card
+              key={m.id}
+              draggable
+              onDragStart={() => setDragId(m.id)}
+              onDragEnd={() => { setDragId(null); setOverId(null); }}
+              onDragOver={(e) => { e.preventDefault(); setOverId(m.id); }}
+              onDrop={() => handleDrop(m.id)}
+              className={
+                "transition-all cursor-grab active:cursor-grabbing " +
+                (dragId === m.id ? "opacity-40 " : "") +
+                (overId === m.id && dragId !== m.id ? "ring-2 ring-primary " : "")
+              }
+            >
               <CardHeader className="flex-row items-start justify-between gap-2 space-y-0">
-                <div>
-                  <CardTitle className="text-base uppercase">{m.nome}</CardTitle>
-                  <CardDescription>
-                    {m.colors.length} cores · {m.materials.length} malhas · {m.sizes.length} tamanhos
-                  </CardDescription>
+                <div className="flex items-start gap-2">
+                  <GripVertical className="w-4 h-4 text-muted-foreground mt-1 shrink-0" />
+                  <div>
+                    <CardTitle className="text-base uppercase">{m.nome}</CardTitle>
+                    <CardDescription>
+                      {m.colors.length} cores · {m.materials.length} malhas · {m.sizes.length} tamanhos
+                    </CardDescription>
+                  </div>
                 </div>
                 <div className="flex gap-1">
                   <Button variant="ghost" size="icon" onClick={() => openEdit(m)}>
@@ -337,6 +427,48 @@ export default function Variations() {
                 )}
               </CardContent>
             </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="flex flex-col border border-border divide-y divide-border">
+          {models.map((m) => (
+            <div
+              key={m.id}
+              draggable
+              onDragStart={() => setDragId(m.id)}
+              onDragEnd={() => { setDragId(null); setOverId(null); }}
+              onDragOver={(e) => { e.preventDefault(); setOverId(m.id); }}
+              onDrop={() => handleDrop(m.id)}
+              className={
+                "flex items-center gap-3 px-3 py-2.5 bg-card transition-all cursor-grab active:cursor-grabbing " +
+                (dragId === m.id ? "opacity-40 " : "") +
+                (overId === m.id && dragId !== m.id ? "ring-2 ring-inset ring-primary " : "hover:bg-accent/40 ")
+              }
+            >
+              <GripVertical className="w-4 h-4 text-muted-foreground shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium uppercase truncate">{m.nome}</p>
+                <p className="text-xs text-muted-foreground">
+                  {m.colors.length} cores · {m.materials.length} malhas · {m.sizes.length} tamanhos
+                </p>
+              </div>
+              <div className="hidden sm:flex flex-wrap gap-1 max-w-[40%] justify-end">
+                {m.colors.slice(0, 4).map((c) => (
+                  <Badge key={c} variant="secondary" className="text-[10px] gap-1">
+                    <span className="w-2.5 h-2.5 border border-border" style={{ background: colorHex(c) }} />
+                    {c}
+                  </Badge>
+                ))}
+              </div>
+              <div className="flex gap-1 shrink-0">
+                <Button variant="ghost" size="icon" onClick={() => openEdit(m)}>
+                  <Pencil className="w-4 h-4" />
+                </Button>
+                <Button variant="ghost" size="icon" onClick={() => setDeleteId(m.id)}>
+                  <Trash2 className="w-4 h-4 text-destructive" />
+                </Button>
+              </div>
+            </div>
           ))}
         </div>
       )}
