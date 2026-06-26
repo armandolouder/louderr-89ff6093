@@ -68,3 +68,6 @@ verify_jwt = false
 
 [functions.fetch-whatsapp-photo]
 verify_jwt = true
+
+[functions.apply-variations]
+verify_jwt = false
