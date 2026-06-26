@@ -127,6 +127,16 @@ Deno.serve(async (req) => {
     const allVariants = Array.from(variantMap.values());
     if (allVariants.length === 0) throw new Error("Os modelos não possuem tamanhos ativos");
 
+    // Ordem padrão fixa das malhas (sempre nesta sequência ao atualizar)
+    const MATERIAL_ORDER = ["UNISSEX", "BABYLOOK", "EGIPCIA", "OVERSIZED", "MANGA LONGA", "MOLETOM"];
+    const matRank = (m: string | null): number => {
+      if (!m) return MATERIAL_ORDER.length + 1;
+      const norm = m.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
+      const idx = MATERIAL_ORDER.indexOf(norm);
+      return idx === -1 ? MATERIAL_ORDER.length : idx;
+    };
+    allVariants.sort((a, b) => matRank(a.mat) - matRank(b.mat));
+
     console.log("apply-variations: modelos=", modelIds.length, "variantes geradas=", allVariants.length);
     console.log("apply-variations: assinaturas=", Array.from(variantMap.keys()).join(" ; "));
     console.log("apply-variations: anyColor=", anyColor, "anyMaterial=", anyMaterial);
