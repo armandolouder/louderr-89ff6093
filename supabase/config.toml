@@ -74,3 +74,9 @@ verify_jwt = false
 
 [functions.toggle-product-visibility]
 verify_jwt = false
+
+[functions.generate-product-content]
+verify_jwt = false
+
+[functions.update-product-content]
+verify_jwt = false
