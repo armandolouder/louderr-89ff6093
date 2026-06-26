@@ -71,3 +71,6 @@ verify_jwt = true
 
 [functions.apply-variations]
 verify_jwt = false
+
+[functions.toggle-product-visibility]
+verify_jwt = false
