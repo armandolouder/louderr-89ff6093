@@ -4,16 +4,16 @@ const corsHeaders = {
 }
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
+import { getNuvemshopCredentials } from '../_shared/nuvemshop.ts'
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   try {
-    const token = Deno.env.get('NUVEMSHOP_ACCESS_TOKEN')!
-    const storeId = Deno.env.get('NUVEMSHOP_STORE_ID')!
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     )
+    const { accessToken: token, storeId } = await getNuvemshopCredentials(supabase)
 
     const url = new URL(req.url)
     const limit = parseInt(url.searchParams.get('limit') || '100')

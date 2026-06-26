@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getNuvemshopCredentials } from "../_shared/nuvemshop.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,13 +13,13 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const NUVEMSHOP_ACCESS_TOKEN = Deno.env.get("NUVEMSHOP_ACCESS_TOKEN");
-    const NUVEMSHOP_STORE_ID = Deno.env.get("NUVEMSHOP_STORE_ID");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
-
-    if (!NUVEMSHOP_ACCESS_TOKEN || !NUVEMSHOP_STORE_ID) {
-      throw new Error("Nuvemshop credentials not configured");
-    }
+    const supabase = createClient(
+      SUPABASE_URL!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
+    const { accessToken: NUVEMSHOP_ACCESS_TOKEN, storeId: NUVEMSHOP_STORE_ID } =
+      await getNuvemshopCredentials(supabase);
 
     let body: any = {};
     try { body = await req.json(); } catch { body = {}; }

@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getNuvemshopCredentials } from "../_shared/nuvemshop.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -14,17 +15,17 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const accessToken = Deno.env.get("NUVEMSHOP_ACCESS_TOKEN");
-    const storeId = Deno.env.get("NUVEMSHOP_STORE_ID");
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
-    if (!accessToken || !storeId) {
+    let accessToken: string, storeId: string;
+    try {
+      ({ accessToken, storeId } = await getNuvemshopCredentials(supabase));
+    } catch (e) {
       return new Response(
-        JSON.stringify({ error: "NUVEMSHOP_ACCESS_TOKEN ou NUVEMSHOP_STORE_ID não configurados" }),
+        JSON.stringify({ error: (e as Error).message }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-
-    const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Resolve owner user_id for multi-tenant data isolation
     const { data: ownerData } = await supabase.rpc("get_webhook_owner_user_id");

@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getNuvemshopCredentials } from "../_shared/nuvemshop.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -20,8 +21,15 @@ Deno.serve(async (req) => {
     const { data: ownerData } = await supabase.rpc("get_webhook_owner_user_id");
     const ownerUserId = ownerData as string | null;
 
-    const NUVEMSHOP_ACCESS_TOKEN = Deno.env.get("NUVEMSHOP_ACCESS_TOKEN");
-    const NUVEMSHOP_STORE_ID = Deno.env.get("NUVEMSHOP_STORE_ID");
+    let NUVEMSHOP_ACCESS_TOKEN: string | undefined;
+    let NUVEMSHOP_STORE_ID: string | undefined;
+    try {
+      const creds = await getNuvemshopCredentials(supabase);
+      NUVEMSHOP_ACCESS_TOKEN = creds.accessToken;
+      NUVEMSHOP_STORE_ID = creds.storeId;
+    } catch (_e) {
+      // sem credenciais: segue com payload mínimo do webhook
+    }
 
     const body = await req.json();
     console.log("Nuvemshop webhook received:", JSON.stringify(body));
