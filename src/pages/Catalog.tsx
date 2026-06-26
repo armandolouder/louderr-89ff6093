@@ -248,8 +248,27 @@ export default function Catalog() {
                   <div
                     key={p.id}
                     onClick={() => openProduct(p)}
-                    className="border border-border overflow-hidden bg-card cursor-pointer hover:border-primary transition-colors"
+                    className="relative border border-border overflow-hidden bg-card cursor-pointer hover:border-primary transition-colors"
                   >
+                    {applyStatus[p.id] && (
+                      <div className="absolute top-2 right-2 z-10">
+                        {applyStatus[p.id] === "applying" && (
+                          <span className="flex items-center justify-center w-7 h-7 rounded-full bg-primary text-primary-foreground shadow">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          </span>
+                        )}
+                        {applyStatus[p.id] === "done" && (
+                          <span className="flex items-center justify-center w-7 h-7 rounded-full bg-green-600 text-white shadow">
+                            <Check className="w-4 h-4" />
+                          </span>
+                        )}
+                        {applyStatus[p.id] === "error" && (
+                          <span className="flex items-center justify-center w-7 h-7 rounded-full bg-destructive text-destructive-foreground shadow">
+                            <AlertTriangle className="w-4 h-4" />
+                          </span>
+                        )}
+                      </div>
+                    )}
                     <div className="aspect-square bg-secondary/30 flex items-center justify-center overflow-hidden">
                       {img ? (
                         <img src={img.image_url} alt={p.name || "Produto"} className="w-full h-full object-cover" loading="lazy" />
@@ -265,6 +284,17 @@ export default function Catalog() {
                         <Badge variant="secondary" className="text-[10px]">{p.image_count} fotos</Badge>
                         {p.status && <Badge variant="outline" className="text-[10px]">{p.status}</Badge>}
                       </div>
+                      {p.product_url && (
+                        <a
+                          href={p.product_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="inline-flex items-center gap-1 pt-1 text-[11px] text-primary hover:underline"
+                        >
+                          <ExternalLink className="w-3 h-3" /> Ver na loja
+                        </a>
+                      )}
                     </div>
                   </div>
                 );
@@ -285,16 +315,26 @@ export default function Catalog() {
           <DialogHeader>
             <DialogTitle className="line-clamp-2">{selected?.name || "Produto"}</DialogTitle>
             <DialogDescription>
-              Aplique um modelo de variações cadastrado a este produto na Nuvemshop.
+              Selecione um ou mais modelos de variações para aplicar a este produto na Nuvemshop.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
+            {selected?.product_url && (
+              <a
+                href={selected.product_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
+              >
+                <ExternalLink className="w-3.5 h-3.5" /> Ver camiseta na loja online
+              </a>
+            )}
             <div className="flex items-start gap-2 border border-destructive/40 bg-destructive/10 p-3 text-xs text-foreground">
               <AlertTriangle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
               <span>
                 Ao aplicar, <strong>todas as variações atuais deste produto serão apagadas</strong> e
-                substituídas pelas variações do modelo selecionado.
+                substituídas pela mescla dos modelos selecionados.
               </span>
             </div>
 
@@ -308,18 +348,28 @@ export default function Catalog() {
                   <button
                     key={m.id}
                     type="button"
-                    onClick={() => setChosenModel(m.id)}
+                    onClick={() => toggleModel(m.id)}
                     className={
-                      "w-full text-left border p-3 transition-colors " +
-                      (chosenModel === m.id
+                      "w-full text-left border p-3 transition-colors flex items-center gap-3 " +
+                      (chosenModels.includes(m.id)
                         ? "border-primary bg-primary/10"
                         : "border-border hover:bg-accent")
                     }
                   >
-                    <p className="text-sm font-medium uppercase">{m.nome}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {m.cores} cores · {m.malhas} malhas · {m.tamanhos} tamanhos
-                    </p>
+                    <span
+                      className={
+                        "shrink-0 w-4 h-4 border flex items-center justify-center " +
+                        (chosenModels.includes(m.id) ? "bg-primary border-primary" : "border-muted-foreground/40")
+                      }
+                    >
+                      {chosenModels.includes(m.id) && <Check className="w-3 h-3 text-primary-foreground" />}
+                    </span>
+                    <span className="flex-1">
+                      <span className="block text-sm font-medium uppercase">{m.nome}</span>
+                      <span className="block text-xs text-muted-foreground">
+                        {m.cores} cores · {m.malhas} malhas · {m.tamanhos} tamanhos
+                      </span>
+                    </span>
                   </button>
                 ))}
               </div>
@@ -327,16 +377,12 @@ export default function Catalog() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setSelected(null)} disabled={applying}>
+            <Button variant="outline" onClick={() => setSelected(null)}>
               Cancelar
             </Button>
-            <Button onClick={applyVariations} disabled={applying || !chosenModel}>
-              {applying ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <Sparkles className="w-4 h-4 mr-2" />
-              )}
-              Apagar e aplicar variações
+            <Button onClick={applyVariations} disabled={chosenModels.length === 0}>
+              <Sparkles className="w-4 h-4 mr-2" />
+              Apagar e aplicar {chosenModels.length > 1 ? `(${chosenModels.length} modelos)` : "variações"}
             </Button>
           </DialogFooter>
         </DialogContent>
