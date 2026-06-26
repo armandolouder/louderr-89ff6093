@@ -567,8 +567,56 @@ export default function Catalog() {
                     Nenhum modelo cadastrado. Crie em Catálogo → Variações.
                   </p>
                 ) : (
-                  <div className="space-y-2">
-                    {vmodels.map((m) => (
+                  <div className="space-y-3">
+                    {/* Busca + chips de filtro rápido por malha */}
+                    <div className="relative">
+                      <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        value={modelSearch}
+                        onChange={(e) => setModelSearch(e.target.value)}
+                        placeholder="Buscar modelo (cor ou malha)..."
+                        className="pl-9"
+                      />
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {MALHA_CHIPS.map((chip) => (
+                        <button
+                          key={chip}
+                          type="button"
+                          onClick={() => setMalhaFilter((prev) => (prev === chip ? null : chip))}
+                          className={
+                            "px-3 py-1 text-xs font-medium border transition-colors " +
+                            (malhaFilter === chip
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : "border-border hover:bg-accent")
+                          }
+                        >
+                          {chip}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>
+                        {filteredModels.length} modelo(s) · {chosenModels.length} selecionado(s)
+                      </span>
+                      <button
+                        type="button"
+                        onClick={toggleAllFiltered}
+                        disabled={filteredModels.length === 0}
+                        className="underline hover:text-foreground disabled:opacity-40"
+                      >
+                        {filteredModels.length > 0 && filteredModels.every((m) => chosenModels.includes(m.id))
+                          ? "Limpar seleção"
+                          : "Selecionar todos"}
+                      </button>
+                    </div>
+                    {filteredModels.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-4">
+                        Nenhum modelo encontrado com esse filtro.
+                      </p>
+                    ) : (
+                    <div className="space-y-2">
+                    {filteredModels.map((m) => (
                       <button
                         key={m.id}
                         type="button"
@@ -596,6 +644,8 @@ export default function Catalog() {
                         </span>
                       </button>
                     ))}
+                    </div>
+                    )}
                   </div>
                 )}
               </div>
