@@ -208,6 +208,7 @@ export default function Variations() {
               variation_model_id: modelId,
               tamanho: s.tamanho.trim(),
               preco: parsePrice(s.preco),
+              preco_promocional: parsePrice(s.precoPromocional),
               ativo: s.ativo,
               position: i,
             }))
