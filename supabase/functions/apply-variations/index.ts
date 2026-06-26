@@ -51,33 +51,47 @@ Deno.serve(async (req) => {
 
     const body = await req.json();
     const productUuid: string | undefined = body?.product_id;
-    const modelId: string | undefined = body?.model_id;
-    if (!productUuid || !modelId) {
-      throw new Error("product_id e model_id são obrigatórios");
+    // Aceita um único model_id (legado) ou vários model_ids
+    const modelIds: string[] = Array.isArray(body?.model_ids)
+      ? body.model_ids.filter(Boolean)
+      : body?.model_id
+        ? [body.model_id]
+        : [];
+    if (!productUuid || modelIds.length === 0) {
+      throw new Error("product_id e model_ids são obrigatórios");
     }
 
     // Produto local -> id da Nuvemshop
     const { data: prod, error: prodErr } = await supabase
       .from("catalog_products")
-      .select("id, nuvemshop_product_id, name")
+      .select("id, nuvemshop_product_id, name, raw")
       .eq("id", productUuid)
       .single();
     if (prodErr || !prod) throw new Error("Produto não encontrado");
     const nsProductId = prod.nuvemshop_product_id;
 
-    // Modelo de variação
+    // Modelos de variação (mescla de vários modelos selecionados)
     const [{ data: colorsData }, { data: matsData }, { data: sizesData }] = await Promise.all([
-      supabase.from("variation_colors").select("nome_cor").eq("variation_model_id", modelId),
-      supabase.from("variation_materials").select("nome_malha").eq("variation_model_id", modelId),
-      supabase.from("variation_sizes").select("tamanho, preco, preco_promocional, ativo, position").eq("variation_model_id", modelId).order("position", { ascending: true }),
+      supabase.from("variation_colors").select("nome_cor").in("variation_model_id", modelIds),
+      supabase.from("variation_materials").select("nome_malha").in("variation_model_id", modelIds),
+      supabase.from("variation_sizes").select("tamanho, preco, preco_promocional, ativo, position").in("variation_model_id", modelIds).order("position", { ascending: true }),
     ]);
 
-    const colors: string[] = (colorsData || [])
-      .map((c: any) => c.nome_cor)
-      .filter(Boolean)
-      .map((c: string) => normalizeColorName(c));
-    const materials: string[] = (matsData || []).map((m: any) => m.nome_malha).filter(Boolean);
-    const sizes = (sizesData || []).filter((s: any) => s.ativo && s.tamanho);
+    // Dedup mantendo ordem
+    const dedup = (arr: string[]) => Array.from(new Set(arr));
+    const colors: string[] = dedup(
+      (colorsData || [])
+        .map((c: any) => c.nome_cor)
+        .filter(Boolean)
+        .map((c: string) => normalizeColorName(c)),
+    );
+    const materials: string[] = dedup((matsData || []).map((m: any) => m.nome_malha).filter(Boolean));
+    // Tamanhos únicos por nome (primeira ocorrência define preço)
+    const sizeMap = new Map<string, any>();
+    for (const s of (sizesData || [])) {
+      if (s.ativo && s.tamanho && !sizeMap.has(s.tamanho)) sizeMap.set(s.tamanho, s);
+    }
+    const sizes = Array.from(sizeMap.values());
 
     if (sizes.length === 0) throw new Error("O modelo não possui tamanhos ativos");
 
@@ -160,8 +174,10 @@ Deno.serve(async (req) => {
       .update({ variant_count: created })
       .eq("id", productUuid);
 
+    const productUrl: string | null = (prod as any)?.raw?.canonical_url || null;
+
     return new Response(
-      JSON.stringify({ success: true, created, deleted: oldIds.length, errors: errors.slice(0, 5) }),
+      JSON.stringify({ success: true, created, deleted: oldIds.length, product_url: productUrl, errors: errors.slice(0, 5) }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (error: any) {

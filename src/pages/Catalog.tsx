@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Download, Loader2, RefreshCw, Package, ShoppingBag, Image as ImageIcon, Layers, Sparkles, AlertTriangle } from "lucide-react";
+import { Download, Loader2, RefreshCw, Package, ShoppingBag, Image as ImageIcon, Layers, Sparkles, AlertTriangle, Check, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -26,6 +26,7 @@ interface CatalogProduct {
   image_count: number;
   variant_count: number;
   catalog_images?: { image_url: string; position: number | null }[];
+  product_url?: string | null;
 }
 
 interface VariationModelOption {
@@ -44,15 +45,16 @@ export default function Catalog() {
   const [total, setTotal] = useState(0);
   const [selected, setSelected] = useState<CatalogProduct | null>(null);
   const [vmodels, setVmodels] = useState<VariationModelOption[]>([]);
-  const [chosenModel, setChosenModel] = useState<string | null>(null);
-  const [applying, setApplying] = useState(false);
+  const [chosenModels, setChosenModels] = useState<string[]>([]);
+  // Status de aplicação por produto (continua em segundo plano mesmo com o modal fechado)
+  const [applyStatus, setApplyStatus] = useState<Record<string, "applying" | "done" | "error">>({});
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);
     try {
       const { data, error, count } = await (supabase as any)
         .from("catalog_products")
-        .select("id, nuvemshop_product_id, name, category, status, image_count, variant_count, catalog_images(image_url, position)", { count: "exact" })
+        .select("id, nuvemshop_product_id, name, category, status, image_count, variant_count, product_url:raw->>canonical_url, catalog_images(image_url, position)", { count: "exact" })
         .order("name", { ascending: true })
         .limit(200);
       if (error) throw error;
@@ -69,7 +71,7 @@ export default function Catalog() {
 
   const openProduct = async (p: CatalogProduct) => {
     setSelected(p);
-    setChosenModel(null);
+    setChosenModels([]);
     const { data } = await (supabase as any)
       .from("variation_models")
       .select("id, nome, variation_colors(count), variation_materials(count), variation_sizes(count)")
@@ -82,26 +84,50 @@ export default function Catalog() {
       tamanhos: m.variation_sizes?.[0]?.count ?? 0,
     }));
     setVmodels(mapped);
-    if (mapped.length === 1) setChosenModel(mapped[0].id);
+    if (mapped.length === 1) setChosenModels([mapped[0].id]);
   };
 
-  const applyVariations = async () => {
-    if (!selected || !chosenModel) return;
-    setApplying(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("apply-variations", {
-        body: { product_id: selected.id, model_id: chosenModel },
-      });
-      if (error) throw error;
-      if (data?.success === false) throw new Error(data.error || "Erro ao aplicar variações");
-      toast.success(`${data.created} variações aplicadas! (${data.deleted} antigas removidas)`);
-      setSelected(null);
-      fetchProducts();
-    } catch (err: any) {
-      toast.error(err.message || "Erro ao aplicar variações");
-    } finally {
-      setApplying(false);
-    }
+  const toggleModel = (id: string) => {
+    setChosenModels((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  };
+
+  const applyVariations = () => {
+    if (!selected || chosenModels.length === 0) return;
+    const product = selected;
+    const modelIds = [...chosenModels];
+    // Marca como em andamento e fecha o modal — o trabalho segue em segundo plano
+    setApplyStatus((s) => ({ ...s, [product.id]: "applying" }));
+    setSelected(null);
+    toast.info(`Atualizando "${product.name}" em segundo plano...`);
+
+    (async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke("apply-variations", {
+          body: { product_id: product.id, model_ids: modelIds },
+        });
+        if (error) throw error;
+        if (data?.success === false) throw new Error(data.error || "Erro ao aplicar variações");
+        setApplyStatus((s) => ({ ...s, [product.id]: "done" }));
+        if (data?.product_url) {
+          setProducts((prev) => prev.map((p) => (p.id === product.id ? { ...p, product_url: data.product_url } : p)));
+        }
+        toast.success(`"${product.name}": ${data.created} variações aplicadas!`);
+        fetchProducts();
+        // Remove o check verde após alguns segundos
+        setTimeout(() => {
+          setApplyStatus((s) => {
+            const next = { ...s };
+            delete next[product.id];
+            return next;
+          });
+        }, 8000);
+      } catch (err: any) {
+        setApplyStatus((s) => ({ ...s, [product.id]: "error" }));
+        toast.error(`"${product.name}": ${err.message || "Erro ao aplicar variações"}`);
+      }
+    })();
   };
 
   const syncCatalog = async () => {
@@ -222,8 +248,27 @@ export default function Catalog() {
                   <div
                     key={p.id}
                     onClick={() => openProduct(p)}
-                    className="border border-border overflow-hidden bg-card cursor-pointer hover:border-primary transition-colors"
+                    className="relative border border-border overflow-hidden bg-card cursor-pointer hover:border-primary transition-colors"
                   >
+                    {applyStatus[p.id] && (
+                      <div className="absolute top-2 right-2 z-10">
+                        {applyStatus[p.id] === "applying" && (
+                          <span className="flex items-center justify-center w-7 h-7 rounded-full bg-primary text-primary-foreground shadow">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          </span>
+                        )}
+                        {applyStatus[p.id] === "done" && (
+                          <span className="flex items-center justify-center w-7 h-7 rounded-full bg-green-600 text-white shadow">
+                            <Check className="w-4 h-4" />
+                          </span>
+                        )}
+                        {applyStatus[p.id] === "error" && (
+                          <span className="flex items-center justify-center w-7 h-7 rounded-full bg-destructive text-destructive-foreground shadow">
+                            <AlertTriangle className="w-4 h-4" />
+                          </span>
+                        )}
+                      </div>
+                    )}
                     <div className="aspect-square bg-secondary/30 flex items-center justify-center overflow-hidden">
                       {img ? (
                         <img src={img.image_url} alt={p.name || "Produto"} className="w-full h-full object-cover" loading="lazy" />
@@ -239,6 +284,17 @@ export default function Catalog() {
                         <Badge variant="secondary" className="text-[10px]">{p.image_count} fotos</Badge>
                         {p.status && <Badge variant="outline" className="text-[10px]">{p.status}</Badge>}
                       </div>
+                      {p.product_url && (
+                        <a
+                          href={p.product_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="inline-flex items-center gap-1 pt-1 text-[11px] text-primary hover:underline"
+                        >
+                          <ExternalLink className="w-3 h-3" /> Ver na loja
+                        </a>
+                      )}
                     </div>
                   </div>
                 );
@@ -259,16 +315,26 @@ export default function Catalog() {
           <DialogHeader>
             <DialogTitle className="line-clamp-2">{selected?.name || "Produto"}</DialogTitle>
             <DialogDescription>
-              Aplique um modelo de variações cadastrado a este produto na Nuvemshop.
+              Selecione um ou mais modelos de variações para aplicar a este produto na Nuvemshop.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
+            {selected?.product_url && (
+              <a
+                href={selected.product_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
+              >
+                <ExternalLink className="w-3.5 h-3.5" /> Ver camiseta na loja online
+              </a>
+            )}
             <div className="flex items-start gap-2 border border-destructive/40 bg-destructive/10 p-3 text-xs text-foreground">
               <AlertTriangle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
               <span>
                 Ao aplicar, <strong>todas as variações atuais deste produto serão apagadas</strong> e
-                substituídas pelas variações do modelo selecionado.
+                substituídas pela mescla dos modelos selecionados.
               </span>
             </div>
 
@@ -282,18 +348,28 @@ export default function Catalog() {
                   <button
                     key={m.id}
                     type="button"
-                    onClick={() => setChosenModel(m.id)}
+                    onClick={() => toggleModel(m.id)}
                     className={
-                      "w-full text-left border p-3 transition-colors " +
-                      (chosenModel === m.id
+                      "w-full text-left border p-3 transition-colors flex items-center gap-3 " +
+                      (chosenModels.includes(m.id)
                         ? "border-primary bg-primary/10"
                         : "border-border hover:bg-accent")
                     }
                   >
-                    <p className="text-sm font-medium uppercase">{m.nome}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {m.cores} cores · {m.malhas} malhas · {m.tamanhos} tamanhos
-                    </p>
+                    <span
+                      className={
+                        "shrink-0 w-4 h-4 border flex items-center justify-center " +
+                        (chosenModels.includes(m.id) ? "bg-primary border-primary" : "border-muted-foreground/40")
+                      }
+                    >
+                      {chosenModels.includes(m.id) && <Check className="w-3 h-3 text-primary-foreground" />}
+                    </span>
+                    <span className="flex-1">
+                      <span className="block text-sm font-medium uppercase">{m.nome}</span>
+                      <span className="block text-xs text-muted-foreground">
+                        {m.cores} cores · {m.malhas} malhas · {m.tamanhos} tamanhos
+                      </span>
+                    </span>
                   </button>
                 ))}
               </div>
@@ -301,16 +377,12 @@ export default function Catalog() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setSelected(null)} disabled={applying}>
+            <Button variant="outline" onClick={() => setSelected(null)}>
               Cancelar
             </Button>
-            <Button onClick={applyVariations} disabled={applying || !chosenModel}>
-              {applying ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <Sparkles className="w-4 h-4 mr-2" />
-              )}
-              Apagar e aplicar variações
+            <Button onClick={applyVariations} disabled={chosenModels.length === 0}>
+              <Sparkles className="w-4 h-4 mr-2" />
+              Apagar e aplicar {chosenModels.length > 1 ? `(${chosenModels.length} modelos)` : "variações"}
             </Button>
           </DialogFooter>
         </DialogContent>
