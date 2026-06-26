@@ -74,6 +74,23 @@ function makeVariantPayload(v: { color: string | null; mat: string | null; size:
   };
 }
 
+function makeCleanupPayload(id: number, anyColor: boolean, anyMaterial: boolean, fallbackPrice: string | null) {
+  const values: { pt: string }[] = [];
+  // Antes de apagar, movemos cada variação antiga para uma combinação única.
+  // Isso libera imediatamente combinações como Preto/Babylook/M mesmo quando a
+  // Nuvemshop demora para refletir o DELETE internamente.
+  if (anyColor) values.push({ pt: `__limpeza_${id}` });
+  if (anyMaterial) values.push({ pt: `RESET_${id}` });
+  values.push({ pt: `TMP_${id}` });
+
+  return {
+    values,
+    price: fallbackPrice ?? "0.00",
+    promotional_price: null,
+    stock_management: false,
+  };
+}
+
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 Deno.serve(async (req) => {
@@ -224,6 +241,7 @@ Deno.serve(async (req) => {
 
     const oldVariants: any[] = await fetchCurrentVariants();
     const oldIds: number[] = oldVariants.map((v) => v.id);
+    const fallbackPrice = priceStr(allVariants[0]?.size?.preco);
 
     const deleteVariant = async (id: number) => {
       const deleteRes = await fetch(`${API}/${storeId}/products/${nsProductId}/variants/${id}`, {
@@ -240,6 +258,24 @@ Deno.serve(async (req) => {
     const placeholderId: number | null = oldVariants[0]?.id ?? null;
     const deleteFirstIds = oldVariants.map((v) => v.id).filter((id) => id && id !== placeholderId);
     console.log("apply-variations: variantes antigas encontradas=", oldVariants.length, "placeholder=", placeholderId, "apagando=", deleteFirstIds.length);
+
+    // Passo crítico para produtos "presos": primeiro altera TODAS as variações
+    // antigas para valores temporários únicos. Assim, mesmo que a exclusão demore
+    // no cache interno da Nuvemshop, nenhuma combinação antiga continua bloqueando
+    // a criação das combinações finais.
+    for (const oldVariant of oldVariants) {
+      if (!oldVariant?.id) continue;
+      const cleanupRes = await fetch(`${API}/${storeId}/products/${nsProductId}/variants/${oldVariant.id}`, {
+        method: "PUT",
+        headers: nsHeaders(accessToken),
+        body: JSON.stringify(makeCleanupPayload(oldVariant.id, anyColor, anyMaterial, fallbackPrice)),
+      });
+      if (!cleanupRes.ok) {
+        console.warn("apply-variations: falha ao limpar assinatura antiga", oldVariant.id, cleanupRes.status, await cleanupRes.text());
+      }
+      await delay(90);
+    }
+    if (oldVariants.length) await delay(700);
 
     for (const id of deleteFirstIds) {
       await deleteVariant(id);
@@ -339,11 +375,25 @@ Deno.serve(async (req) => {
         console.warn("apply-variations: combinação já existia, mas falhou ao atualizar", signature, updateExistingRes.status, await updateExistingRes.text());
       }
 
-      const r = await fetch(`${API}/${storeId}/products/${nsProductId}/variants`, {
+      let r = await fetch(`${API}/${storeId}/products/${nsProductId}/variants`, {
         method: "POST",
         headers: nsHeaders(accessToken),
         body: JSON.stringify(payload),
       });
+      if (!r.ok && r.status === 422) {
+        const firstErrText = await r.clone().text();
+        if (firstErrText.includes("Variants cannot be repeated")) {
+          // Último reforço contra trava/cache: aguarda a limpeza refletir e tenta
+          // mais uma vez antes de considerar falha real.
+          await delay(1800);
+          await refreshExistingSignatures();
+          r = await fetch(`${API}/${storeId}/products/${nsProductId}/variants`, {
+            method: "POST",
+            headers: nsHeaders(accessToken),
+            body: JSON.stringify(payload),
+          });
+        }
+      }
       if (r.ok) {
         created++;
         existingBySignature.set(signature, await r.json());
