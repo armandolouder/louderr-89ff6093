@@ -71,7 +71,17 @@ export default function Catalog() {
   const [vmodels, setVmodels] = useState<VariationModelOption[]>([]);
   const [chosenModels, setChosenModels] = useState<string[]>([]);
   // Status de aplicação por produto (continua em segundo plano mesmo com o modal fechado)
-  const [applyStatus, setApplyStatus] = useState<Record<string, "applying" | "done" | "error">>({});
+  const [applyStatus, setApplyStatus] = useState<Record<string, "applying" | "done" | "error">>(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem("catalog_apply_status") || "{}");
+      // Mantém apenas os marcados como "done" — o tick verde fica permanente.
+      const done: Record<string, "done"> = {};
+      for (const [k, v] of Object.entries(saved)) if (v === "done") done[k] = "done";
+      return done;
+    } catch {
+      return {};
+    }
+  });
   const [hiding, setHiding] = useState(false);
   // Conteúdo / SEO com IA (Groq)
   const [aiContent, setAiContent] = useState<ProductContent | null>(null);
