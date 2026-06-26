@@ -447,11 +447,12 @@ export default function Catalog() {
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
               {products.map((p) => {
                 const img = (p.catalog_images || []).sort((a, b) => (a.position || 0) - (b.position || 0))[0];
+                const isDraft = (p.status || "").toLowerCase() === "draft";
                 return (
                   <div
                     key={p.id}
                     onClick={() => openProduct(p)}
-                    className="relative border border-border overflow-hidden bg-card cursor-pointer hover:border-primary transition-colors"
+                    className={`relative border border-border overflow-hidden bg-card cursor-pointer hover:border-primary transition-colors ${isDraft ? "opacity-50 grayscale hover:opacity-100 hover:grayscale-0" : ""}`}
                   >
                     {applyStatus[p.id] && (
                       <div className="absolute top-2 right-2 z-10">
