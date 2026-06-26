@@ -316,6 +316,27 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
                 <TooltipContent>Sincronizar Instagram Pessoal</TooltipContent>
               </Tooltip>
             )}
+            {conversation.channel === "whatsapp" && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={fetchWhatsappPhoto}
+                    disabled={isFetchingPhoto}
+                    aria-label="Buscar foto do WhatsApp"
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    {isFetchingPhoto ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      <ImageDown className="w-5 h-5" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Puxar foto do WhatsApp</TooltipContent>
+              </Tooltip>
+            )}
             <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
               <Phone className="w-5 h-5" />
             </Button>
