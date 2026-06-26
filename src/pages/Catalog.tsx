@@ -664,15 +664,27 @@ export default function Catalog() {
                 )}
               </div>
               <DialogFooter className="flex-col sm:flex-row gap-2 p-6 pt-4 border-t border-border shrink-0">
-                <Button
-                  variant="outline"
-                  onClick={hideProduct}
-                  disabled={hiding}
-                  className="sm:mr-auto text-destructive hover:text-destructive border-destructive/40"
-                >
-                  {hiding ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <EyeOff className="w-4 h-4 mr-2" />}
-                  Não exibir na loja
-                </Button>
+                {(selected?.status || "").toLowerCase() === "draft" ? (
+                  <Button
+                    variant="outline"
+                    onClick={() => toggleVisibility(true)}
+                    disabled={hiding}
+                    className="sm:mr-auto text-emerald-600 hover:text-emerald-600 border-emerald-500/40"
+                  >
+                    {hiding ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Eye className="w-4 h-4 mr-2" />}
+                    Reexibir na loja
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    onClick={() => toggleVisibility(false)}
+                    disabled={hiding}
+                    className="sm:mr-auto text-destructive hover:text-destructive border-destructive/40"
+                  >
+                    {hiding ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <EyeOff className="w-4 h-4 mr-2" />}
+                    Não exibir na loja
+                  </Button>
+                )}
                 <Button variant="outline" onClick={() => setSelected(null)}>
                   Cancelar
                 </Button>
