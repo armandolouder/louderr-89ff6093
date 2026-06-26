@@ -65,3 +65,6 @@ verify_jwt = false
 
 [functions.instagram-personal-fetch]
 verify_jwt = false
+
+[functions.fetch-whatsapp-photo]
+verify_jwt = true
