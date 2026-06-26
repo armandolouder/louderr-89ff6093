@@ -38,6 +38,7 @@ interface VariationModelOption {
   cores: number;
   malhas: number;
   tamanhos: number;
+  malhaNames: string[];
 }
 
 interface ProductImageContent {
