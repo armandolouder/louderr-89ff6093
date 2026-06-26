@@ -177,14 +177,7 @@ export default function Catalog() {
           toast.success(`"${product.name}": ${data.created} variações aplicadas!`);
         }
         fetchProducts();
-        // Remove o check verde após alguns segundos
-        setTimeout(() => {
-          setApplyStatus((s) => {
-            const next = { ...s };
-            delete next[product.id];
-            return next;
-          });
-        }, 8000);
+        // O check verde permanece (persistido no localStorage) mesmo ao sair da página.
       } catch (err: any) {
         setApplyStatus((s) => ({ ...s, [product.id]: "error" }));
         toast.error(`"${product.name}": ${err.message || "Erro ao aplicar variações"}`);
