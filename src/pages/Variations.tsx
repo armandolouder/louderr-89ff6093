@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Plus, Trash2, Loader2, Save, Palette, Shirt, Ruler, Pencil, X } from "lucide-react";
+import { Plus, Trash2, Loader2, Save, Palette, Shirt, Ruler, Pencil, X, LayoutGrid, List, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -39,6 +39,7 @@ interface SizeRow {
 interface VariationModel {
   id: string;
   nome: string;
+  position: number;
   colors: string[];
   materials: string[];
   sizes: { tamanho: string; preco: number | null; precoPromocional: number | null; ativo: boolean }[];
@@ -70,6 +71,15 @@ export default function Variations() {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<"block" | "list">(
+    () => (localStorage.getItem("variations_view_mode") as "block" | "list") || "block"
+  );
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
+
+  useEffect(() => {
+    localStorage.setItem("variations_view_mode", viewMode);
+  }, [viewMode]);
 
   // form state
   const [editId, setEditId] = useState<string | null>(null);
@@ -86,14 +96,16 @@ export default function Variations() {
       const { data, error } = await (supabase as any)
         .from("variation_models")
         .select(
-          "id, nome, variation_colors(nome_cor), variation_materials(nome_malha), variation_sizes(tamanho, preco, preco_promocional, ativo, position)"
+          "id, nome, position, variation_colors(nome_cor), variation_materials(nome_malha), variation_sizes(tamanho, preco, preco_promocional, ativo, position)"
         )
+        .order("position", { ascending: true })
         .order("created_at", { ascending: false });
       if (error) throw error;
       setModels(
         (data || []).map((m: any) => ({
           id: m.id,
           nome: m.nome,
+          position: m.position ?? 0,
           colors: (m.variation_colors || []).map((c: any) => c.nome_cor),
           materials: (m.variation_materials || []).map((c: any) => c.nome_malha),
           sizes: (m.variation_sizes || [])
