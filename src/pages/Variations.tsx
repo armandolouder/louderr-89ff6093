@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { NUVEM_COLORS, colorHex, isRecognized, findNuvemColor } from "@/lib/nuvemshopColors";
 
 interface SizeRow {
   id?: string;
@@ -43,7 +44,6 @@ interface VariationModel {
   sizes: { tamanho: string; preco: number | null; precoPromocional: number | null; ativo: boolean }[];
 }
 
-const DEFAULT_COLORS = ["Preta", "Branca", "Azul Marinho", "Cinza", "Vermelha", "Verde"];
 const DEFAULT_MATERIALS = ["Unissex", "Babylook", "Egípcia", "Oversized", "Manga Longa", "Moletom"];
 const DEFAULT_SIZES: SizeRow[] = [
   { tamanho: "P", preco: "129,90", precoPromocional: "99,90", ativo: true },
