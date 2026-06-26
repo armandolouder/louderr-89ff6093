@@ -203,16 +203,9 @@ Deno.serve(async (req) => {
     const variantsToCreate = [...allVariants];
 
     if (keepLastId != null && variantsToCreate.length > 0) {
-      const placeholderVariant = oldVariants.find((v) => v.id === keepLastId);
-      const placeholderSig = variantValuesSignature(placeholderVariant?.values);
-      const matchingIndex = variantsToCreate.findIndex((v) => {
-        const parts: string[] = [];
-        if (anyColor) parts.push(v.color ?? "—");
-        if (anyMaterial) parts.push(v.mat ?? "—");
-        parts.push(v.size.tamanho);
-        return parts.join("|") === placeholderSig;
-      });
-      const [variantForPlaceholder] = variantsToCreate.splice(matchingIndex >= 0 ? matchingIndex : 0, 1);
+      // Reaproveita a variação antiga mantida, mas SEMPRE como a 1ª combinação
+      // da ordem desejada (para a sequência exibida na loja ficar correta).
+      const [variantForPlaceholder] = variantsToCreate.splice(0, 1);
       const values: { pt: string }[] = [];
       if (anyColor) values.push({ pt: variantForPlaceholder.color ?? "—" });
       if (anyMaterial) values.push({ pt: variantForPlaceholder.mat ?? "—" });
