@@ -53,6 +53,7 @@ export default function Catalog() {
   const [chosenModels, setChosenModels] = useState<string[]>([]);
   // Status de aplicação por produto (continua em segundo plano mesmo com o modal fechado)
   const [applyStatus, setApplyStatus] = useState<Record<string, "applying" | "done" | "error">>({});
+  const [hiding, setHiding] = useState(false);
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);
