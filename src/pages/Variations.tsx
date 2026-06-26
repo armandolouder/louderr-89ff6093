@@ -321,7 +321,9 @@ export default function Variations() {
                           variant={s.ativo ? "default" : "outline"}
                           className="text-[10px]"
                         >
-                          {s.tamanho} · {formatPrice(s.preco)}
+                          {s.tamanho} · {s.precoPromocional != null
+                            ? `${formatPrice(s.precoPromocional)} (de ${formatPrice(s.preco)})`
+                            : formatPrice(s.preco)}
                         </Badge>
                       ))}
                     </div>
