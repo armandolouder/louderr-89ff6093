@@ -138,6 +138,8 @@ export default function Catalog() {
   const openProduct = async (p: CatalogProduct) => {
     setSelected(p);
     setChosenModels([]);
+    setModelSearch("");
+    setMalhaFilter(null);
     setAiContent(null);
     const { data } = await (supabase as any)
       .from("variation_models")
