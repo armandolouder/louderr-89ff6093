@@ -48,6 +48,23 @@ function variantValuesSignature(values: any[] | null | undefined): string {
     .join("|");
 }
 
+function makeVariantValues(v: { color: string | null; mat: string | null; size: any }, anyColor: boolean, anyMaterial: boolean): { pt: string }[] {
+  const values: { pt: string }[] = [];
+  if (anyColor) values.push({ pt: v.color ?? "—" });
+  if (anyMaterial) values.push({ pt: v.mat ?? "—" });
+  values.push({ pt: v.size.tamanho });
+  return values;
+}
+
+function makeVariantPayload(v: { color: string | null; mat: string | null; size: any }, anyColor: boolean, anyMaterial: boolean) {
+  return {
+    values: makeVariantValues(v, anyColor, anyMaterial),
+    price: priceStr(v.size.preco),
+    promotional_price: priceStr(v.size.preco_promocional),
+    stock_management: false,
+  };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -175,10 +192,14 @@ Deno.serve(async (req) => {
     //    A Nuvemshop rejeita criar uma variante cuja combinação de valores já
     //    exista em outra variante, então precisamos limpar primeiro — senão os
     //    modelos que repetem combinações são descartados silenciosamente.
-    const getRes = await fetch(`${API}/${storeId}/products/${nsProductId}/variants`, {
-      headers: nsHeaders(accessToken),
-    });
-    const oldVariants: any[] = getRes.ok ? await getRes.json() : [];
+    const fetchCurrentVariants = async (): Promise<any[]> => {
+      const res = await fetch(`${API}/${storeId}/products/${nsProductId}/variants`, {
+        headers: nsHeaders(accessToken),
+      });
+      return res.ok ? await res.json() : [];
+    };
+
+    const oldVariants: any[] = await fetchCurrentVariants();
     const oldIds: number[] = oldVariants.map((v) => v.id);
 
     // A Nuvemshop não permite um produto sem nenhuma variante. Mantemos a 1ª
@@ -186,10 +207,13 @@ Deno.serve(async (req) => {
     const keepLastId = oldIds.length > 0 ? oldIds[0] : null;
     const deleteFirstIds = oldIds.slice(1);
     for (const id of deleteFirstIds) {
-      await fetch(`${API}/${storeId}/products/${nsProductId}/variants/${id}`, {
+      const deleteRes = await fetch(`${API}/${storeId}/products/${nsProductId}/variants/${id}`, {
         method: "DELETE",
         headers: nsHeaders(accessToken),
       });
+      if (!deleteRes.ok) {
+        console.warn("apply-variations: falha ao apagar variante antiga", id, deleteRes.status, await deleteRes.text());
+      }
       await new Promise((res) => setTimeout(res, 100));
     }
 
@@ -199,6 +223,7 @@ Deno.serve(async (req) => {
     //    combinação desejada e criamos apenas as demais.
     let created = 0;
     let reusedPlaceholder = 0;
+    let reusedExisting = 0;
     const errors: string[] = [];
     const variantsToCreate = [...allVariants];
 
@@ -206,17 +231,8 @@ Deno.serve(async (req) => {
       // Reaproveita a variação antiga mantida, mas SEMPRE como a 1ª combinação
       // da ordem desejada (para a sequência exibida na loja ficar correta).
       const [variantForPlaceholder] = variantsToCreate.splice(0, 1);
-      const values: { pt: string }[] = [];
-      if (anyColor) values.push({ pt: variantForPlaceholder.color ?? "—" });
-      if (anyMaterial) values.push({ pt: variantForPlaceholder.mat ?? "—" });
-      values.push({ pt: variantForPlaceholder.size.tamanho });
-
-      const payload: any = {
-        values,
-        price: priceStr(variantForPlaceholder.size.preco),
-        promotional_price: priceStr(variantForPlaceholder.size.preco_promocional),
-        stock_management: false,
-      };
+      const payload: any = makeVariantPayload(variantForPlaceholder, anyColor, anyMaterial);
+      const values = payload.values;
 
       const updateRes = await fetch(`${API}/${storeId}/products/${nsProductId}/variants/${keepLastId}`, {
         method: "PUT",
@@ -233,19 +249,36 @@ Deno.serve(async (req) => {
       await new Promise((res) => setTimeout(res, 120));
     }
 
-    for (const v of variantsToCreate) {
-      const values: { pt: string }[] = [];
-      // Mantém a ordem dos atributos (Cor, Malha, Tamanho)
-      if (anyColor) values.push({ pt: v.color ?? "—" });
-      if (anyMaterial) values.push({ pt: v.mat ?? "—" });
-      values.push({ pt: v.size.tamanho });
+    // Alguns deletes da Nuvemshop podem demorar ou falhar silenciosamente. Antes
+    // de cada criação, conferimos as combinações que ainda existem; se a própria
+    // combinação desejada já estiver na loja, atualizamos/reaproveitamos em vez
+    // de tentar criar e receber 422 "Variants cannot be repeated".
+    let existingBySignature = new Map<string, any>();
+    const refreshExistingSignatures = async () => {
+      const current = await fetchCurrentVariants();
+      existingBySignature = new Map(current.map((variant) => [variantValuesSignature(variant.values), variant]));
+    };
+    await refreshExistingSignatures();
 
-      const payload: any = {
-        values,
-        price: priceStr(v.size.preco),
-        promotional_price: priceStr(v.size.preco_promocional),
-        stock_management: false,
-      };
+    for (const v of variantsToCreate) {
+      const payload: any = makeVariantPayload(v, anyColor, anyMaterial);
+      const values = payload.values;
+      const signature = variantValuesSignature(values);
+
+      const existing = existingBySignature.get(signature);
+      if (existing?.id) {
+        const updateExistingRes = await fetch(`${API}/${storeId}/products/${nsProductId}/variants/${existing.id}`, {
+          method: "PUT",
+          headers: nsHeaders(accessToken),
+          body: JSON.stringify(payload),
+        });
+        if (updateExistingRes.ok) {
+          reusedExisting++;
+          await new Promise((res) => setTimeout(res, 120));
+          continue;
+        }
+        console.warn("apply-variations: combinação já existia, mas falhou ao atualizar", signature, updateExistingRes.status, await updateExistingRes.text());
+      }
 
       const r = await fetch(`${API}/${storeId}/products/${nsProductId}/variants`, {
         method: "POST",
@@ -254,16 +287,34 @@ Deno.serve(async (req) => {
       });
       if (r.ok) {
         created++;
+        existingBySignature.set(signature, await r.json());
       } else {
         const errText = await r.text();
+        if (r.status === 422 && errText.includes("Variants cannot be repeated")) {
+          await refreshExistingSignatures();
+          const repeated = existingBySignature.get(signature);
+          if (repeated?.id) {
+            const updateRepeatedRes = await fetch(`${API}/${storeId}/products/${nsProductId}/variants/${repeated.id}`, {
+              method: "PUT",
+              headers: nsHeaders(accessToken),
+              body: JSON.stringify(payload),
+            });
+            if (updateRepeatedRes.ok) {
+              reusedExisting++;
+              console.log("apply-variations: variante repetida reaproveitada", signature);
+              await new Promise((res) => setTimeout(res, 120));
+              continue;
+            }
+          }
+        }
         console.error("apply-variations: falha ao criar variante", values.map((x) => x.pt).join("/"), r.status, errText);
         errors.push(`${values.map((x) => x.pt).join("/")}: ${r.status} ${errText}`);
       }
       await new Promise((res) => setTimeout(res, 120));
     }
 
-    const applied = created + reusedPlaceholder;
-    console.log("apply-variations: aplicadas=", applied, "criadas=", created, "reaproveitadas=", reusedPlaceholder, "de", allVariants.length, "erros=", errors.length);
+    const applied = created + reusedPlaceholder + reusedExisting;
+    console.log("apply-variations: aplicadas=", applied, "criadas=", created, "placeholder=", reusedPlaceholder, "existentes=", reusedExisting, "de", allVariants.length, "erros=", errors.length);
 
     if (applied === 0) {
       throw new Error("Nenhuma variação criada. " + errors.slice(0, 3).join(" | "));
