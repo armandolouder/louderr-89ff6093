@@ -1,10 +1,18 @@
 import { useState, useEffect, useCallback } from "react";
-import { Download, Loader2, RefreshCw, Package, ShoppingBag, Image as ImageIcon, Layers } from "lucide-react";
+import { Download, Loader2, RefreshCw, Package, ShoppingBag, Image as ImageIcon, Layers, Sparkles, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import CatalogAudit from "@/components/catalog/CatalogAudit";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -20,12 +28,24 @@ interface CatalogProduct {
   catalog_images?: { image_url: string; position: number | null }[];
 }
 
+interface VariationModelOption {
+  id: string;
+  nome: string;
+  cores: number;
+  malhas: number;
+  tamanhos: number;
+}
+
 export default function Catalog() {
   const [products, setProducts] = useState<CatalogProduct[]>([]);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [progress, setProgress] = useState({ synced: 0, page: 0, status: "" });
   const [total, setTotal] = useState(0);
+  const [selected, setSelected] = useState<CatalogProduct | null>(null);
+  const [vmodels, setVmodels] = useState<VariationModelOption[]>([]);
+  const [chosenModel, setChosenModel] = useState<string | null>(null);
+  const [applying, setApplying] = useState(false);
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);
@@ -46,6 +66,43 @@ export default function Catalog() {
   }, []);
 
   useEffect(() => { fetchProducts(); }, [fetchProducts]);
+
+  const openProduct = async (p: CatalogProduct) => {
+    setSelected(p);
+    setChosenModel(null);
+    const { data } = await (supabase as any)
+      .from("variation_models")
+      .select("id, nome, variation_colors(count), variation_materials(count), variation_sizes(count)")
+      .order("created_at", { ascending: false });
+    const mapped: VariationModelOption[] = (data || []).map((m: any) => ({
+      id: m.id,
+      nome: m.nome,
+      cores: m.variation_colors?.[0]?.count ?? 0,
+      malhas: m.variation_materials?.[0]?.count ?? 0,
+      tamanhos: m.variation_sizes?.[0]?.count ?? 0,
+    }));
+    setVmodels(mapped);
+    if (mapped.length === 1) setChosenModel(mapped[0].id);
+  };
+
+  const applyVariations = async () => {
+    if (!selected || !chosenModel) return;
+    setApplying(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("apply-variations", {
+        body: { product_id: selected.id, model_id: chosenModel },
+      });
+      if (error) throw error;
+      if (data?.success === false) throw new Error(data.error || "Erro ao aplicar variações");
+      toast.success(`${data.created} variações aplicadas! (${data.deleted} antigas removidas)`);
+      setSelected(null);
+      fetchProducts();
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao aplicar variações");
+    } finally {
+      setApplying(false);
+    }
+  };
 
   const syncCatalog = async () => {
     setSyncing(true);
