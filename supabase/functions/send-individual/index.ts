@@ -212,23 +212,14 @@ serve(async (req) => {
       if (conversation) {
         const messageType = mediaUrl ? "image" : "text";
 
-        // Determine provider and extract message ID
-        const provider = Deno.env.get("WHATSAPP_PROVIDER")?.toLowerCase()?.trim() || "uazapi";
+        // Extract Evolution message ID
         const metadata: any = {
           api_response: apiData,
           source: "individual_send"
         };
-
-        if (provider === "evolution") {
-          const evolutionId = apiData?.key?.id || apiData?.id || apiData?.item?.key?.id;
-          if (evolutionId) {
-            metadata.evolution_message_id = evolutionId;
-          }
-        } else {
-          const uazapiId = apiData?.messageid || apiData?.id;
-          if (uazapiId) {
-            metadata.whatsapp_message_id = uazapiId;
-          }
+        const evolutionId = apiData?.key?.id || apiData?.id || apiData?.item?.key?.id;
+        if (evolutionId) {
+          metadata.evolution_message_id = evolutionId;
         }
 
         const { error: msgErr } = await supabase.from("messages").insert({
