@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
-import { Download, Loader2, RefreshCw, Package, ShoppingBag, Image as ImageIcon, Layers, Sparkles, AlertTriangle, Check, ExternalLink, Search, ChevronLeft, ChevronRight, EyeOff } from "lucide-react";
+import { Download, Loader2, RefreshCw, Package, ShoppingBag, Image as ImageIcon, Layers, Sparkles, AlertTriangle, Check, ExternalLink, Search, ChevronLeft, ChevronRight, EyeOff, Wand2, ArrowUp, ArrowDown, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -38,6 +40,23 @@ interface VariationModelOption {
   tamanhos: number;
 }
 
+interface ProductImageContent {
+  id: string;
+  image_url: string;
+  position: number;
+  alt: string;
+}
+
+interface ProductContent {
+  name: string;
+  description: string;
+  tags: string;
+  seo_title: string;
+  seo_description: string;
+  handle: string;
+  images: ProductImageContent[];
+}
+
 export default function Catalog() {
   const [products, setProducts] = useState<CatalogProduct[]>([]);
   const [loading, setLoading] = useState(false);
@@ -54,6 +73,10 @@ export default function Catalog() {
   // Status de aplicação por produto (continua em segundo plano mesmo com o modal fechado)
   const [applyStatus, setApplyStatus] = useState<Record<string, "applying" | "done" | "error">>({});
   const [hiding, setHiding] = useState(false);
+  // Conteúdo / SEO com IA (Groq)
+  const [aiContent, setAiContent] = useState<ProductContent | null>(null);
+  const [genLoading, setGenLoading] = useState(false);
+  const [savingContent, setSavingContent] = useState(false);
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);
@@ -95,6 +118,7 @@ export default function Catalog() {
   const openProduct = async (p: CatalogProduct) => {
     setSelected(p);
     setChosenModels([]);
+    setAiContent(null);
     const { data } = await (supabase as any)
       .from("variation_models")
       .select("id, nome, variation_colors(count), variation_materials(count), variation_sizes(count)")
@@ -175,6 +199,81 @@ export default function Catalog() {
       toast.error(err.message || "Erro ao ocultar produto");
     } finally {
       setHiding(false);
+    }
+  };
+
+  const generateContent = async () => {
+    if (!selected) return;
+    setGenLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-product-content", {
+        body: { product_id: selected.id },
+      });
+      if (error) throw error;
+      if (data?.success === false) throw new Error(data.error || "Erro ao gerar conteúdo");
+      setAiContent(data.suggestion);
+      toast.success("Sugestões geradas! Revise antes de salvar.");
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao gerar conteúdo");
+    } finally {
+      setGenLoading(false);
+    }
+  };
+
+  const moveImage = (index: number, dir: -1 | 1) => {
+    setAiContent((c) => {
+      if (!c) return c;
+      const imgs = [...c.images];
+      const j = index + dir;
+      if (j < 0 || j >= imgs.length) return c;
+      [imgs[index], imgs[j]] = [imgs[j], imgs[index]];
+      return { ...c, images: imgs };
+    });
+  };
+
+  const updateField = (field: keyof ProductContent, value: string) => {
+    setAiContent((c) => (c ? { ...c, [field]: value } : c));
+  };
+
+  const updateAlt = (index: number, value: string) => {
+    setAiContent((c) => {
+      if (!c) return c;
+      const imgs = c.images.map((im, i) => (i === index ? { ...im, alt: value } : im));
+      return { ...c, images: imgs };
+    });
+  };
+
+  const saveContent = async () => {
+    if (!selected || !aiContent) return;
+    setSavingContent(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("update-product-content", {
+        body: {
+          product_id: selected.id,
+          content: {
+            name: aiContent.name,
+            description: aiContent.description,
+            tags: aiContent.tags,
+            seo_title: aiContent.seo_title,
+            seo_description: aiContent.seo_description,
+            handle: aiContent.handle,
+          },
+          images: aiContent.images.map((im) => ({ id: im.id, alt: im.alt })),
+        },
+      });
+      if (error) throw error;
+      if (data?.success === false) throw new Error(data.error || "Erro ao salvar");
+      const errCount = Array.isArray(data?.errors) ? data.errors.length : 0;
+      if (errCount > 0) {
+        toast.warning(`Salvo, mas ${errCount} imagem(ns) falharam. ${(data.errors || []).slice(0, 2).join(" | ")}`);
+      } else {
+        toast.success("Conteúdo salvo na Nuvemshop!");
+      }
+      fetchProducts();
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao salvar conteúdo");
+    } finally {
+      setSavingContent(false);
     }
   };
 
