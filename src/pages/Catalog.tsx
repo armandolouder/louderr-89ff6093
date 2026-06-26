@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Download, Loader2, RefreshCw, Package, ShoppingBag, Image as ImageIcon, Layers, Sparkles, AlertTriangle } from "lucide-react";
+import { Download, Loader2, RefreshCw, Package, ShoppingBag, Image as ImageIcon, Layers, Sparkles, AlertTriangle, Check, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -26,6 +26,7 @@ interface CatalogProduct {
   image_count: number;
   variant_count: number;
   catalog_images?: { image_url: string; position: number | null }[];
+  product_url?: string | null;
 }
 
 interface VariationModelOption {
@@ -44,15 +45,16 @@ export default function Catalog() {
   const [total, setTotal] = useState(0);
   const [selected, setSelected] = useState<CatalogProduct | null>(null);
   const [vmodels, setVmodels] = useState<VariationModelOption[]>([]);
-  const [chosenModel, setChosenModel] = useState<string | null>(null);
-  const [applying, setApplying] = useState(false);
+  const [chosenModels, setChosenModels] = useState<string[]>([]);
+  // Status de aplicação por produto (continua em segundo plano mesmo com o modal fechado)
+  const [applyStatus, setApplyStatus] = useState<Record<string, "applying" | "done" | "error">>({});
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);
     try {
       const { data, error, count } = await (supabase as any)
         .from("catalog_products")
-        .select("id, nuvemshop_product_id, name, category, status, image_count, variant_count, catalog_images(image_url, position)", { count: "exact" })
+        .select("id, nuvemshop_product_id, name, category, status, image_count, variant_count, product_url:raw->>canonical_url, catalog_images(image_url, position)", { count: "exact" })
         .order("name", { ascending: true })
         .limit(200);
       if (error) throw error;
@@ -69,7 +71,7 @@ export default function Catalog() {
 
   const openProduct = async (p: CatalogProduct) => {
     setSelected(p);
-    setChosenModel(null);
+    setChosenModels([]);
     const { data } = await (supabase as any)
       .from("variation_models")
       .select("id, nome, variation_colors(count), variation_materials(count), variation_sizes(count)")
@@ -82,26 +84,50 @@ export default function Catalog() {
       tamanhos: m.variation_sizes?.[0]?.count ?? 0,
     }));
     setVmodels(mapped);
-    if (mapped.length === 1) setChosenModel(mapped[0].id);
+    if (mapped.length === 1) setChosenModels([mapped[0].id]);
   };
 
-  const applyVariations = async () => {
-    if (!selected || !chosenModel) return;
-    setApplying(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("apply-variations", {
-        body: { product_id: selected.id, model_id: chosenModel },
-      });
-      if (error) throw error;
-      if (data?.success === false) throw new Error(data.error || "Erro ao aplicar variações");
-      toast.success(`${data.created} variações aplicadas! (${data.deleted} antigas removidas)`);
-      setSelected(null);
-      fetchProducts();
-    } catch (err: any) {
-      toast.error(err.message || "Erro ao aplicar variações");
-    } finally {
-      setApplying(false);
-    }
+  const toggleModel = (id: string) => {
+    setChosenModels((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  };
+
+  const applyVariations = () => {
+    if (!selected || chosenModels.length === 0) return;
+    const product = selected;
+    const modelIds = [...chosenModels];
+    // Marca como em andamento e fecha o modal — o trabalho segue em segundo plano
+    setApplyStatus((s) => ({ ...s, [product.id]: "applying" }));
+    setSelected(null);
+    toast.info(`Atualizando "${product.name}" em segundo plano...`);
+
+    (async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke("apply-variations", {
+          body: { product_id: product.id, model_ids: modelIds },
+        });
+        if (error) throw error;
+        if (data?.success === false) throw new Error(data.error || "Erro ao aplicar variações");
+        setApplyStatus((s) => ({ ...s, [product.id]: "done" }));
+        if (data?.product_url) {
+          setProducts((prev) => prev.map((p) => (p.id === product.id ? { ...p, product_url: data.product_url } : p)));
+        }
+        toast.success(`"${product.name}": ${data.created} variações aplicadas!`);
+        fetchProducts();
+        // Remove o check verde após alguns segundos
+        setTimeout(() => {
+          setApplyStatus((s) => {
+            const next = { ...s };
+            delete next[product.id];
+            return next;
+          });
+        }, 8000);
+      } catch (err: any) {
+        setApplyStatus((s) => ({ ...s, [product.id]: "error" }));
+        toast.error(`"${product.name}": ${err.message || "Erro ao aplicar variações"}`);
+      }
+    })();
   };
 
   const syncCatalog = async () => {
