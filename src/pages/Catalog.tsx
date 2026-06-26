@@ -158,10 +158,6 @@ export default function Catalog() {
     })();
   };
 
-  const syncCatalog = async () => {
-    return;
-  };
-  const _placeholder = () => {};
   const hideProduct = async () => {
     if (!selected) return;
     const product = selected;
@@ -182,7 +178,7 @@ export default function Catalog() {
     }
   };
 
-  const realSyncCatalog = async () => {
+  const syncCatalog = async () => {
     setSyncing(true);
     setProgress({ synced: 0, page: 0, status: "Iniciando..." });
     try {
