@@ -1,4 +1,4 @@
-import { sendUazapiText, hasUazapiCredentials } from "../../_shared/uazapi.ts";
+import { sendWhatsAppText, hasWhatsAppCredentials } from "../../_shared/whatsapp.ts";
 import { replaceWhatsappVariables } from "../../_shared/variables.ts";
 import { digitsOnly } from "../../_shared/phone.ts";
 import { resolveCustomerEmail } from "../customerResolver.ts";
@@ -143,8 +143,8 @@ export class MessageNodeExecutor implements NodeExecutor {
     const { supabase, exec, currentNode } = ctx;
     const nodeData = currentNode.data;
 
-    if (!hasUazapiCredentials()) {
-      console.warn("UAZAPI credentials not configured, skipping WhatsApp");
+    if (!hasWhatsAppCredentials()) {
+      console.warn("WhatsApp credentials not configured, skipping WhatsApp");
       return;
     }
 
@@ -177,7 +177,7 @@ export class MessageNodeExecutor implements NodeExecutor {
 
       const formattedPhone = digitsOnly(exec.customer_phone);
       console.log(`Journey WhatsApp: Sending to ${formattedPhone}`);
-      const uazResult = await sendUazapiText(formattedPhone, waContent);
+      const uazResult = await sendWhatsAppText(formattedPhone, waContent);
       if (uazResult.ok) {
         console.log(`Journey WhatsApp sent to ${formattedPhone}: ${uazResult.raw.substring(0, 100)}`);
         registerInInbox(supabase, {
