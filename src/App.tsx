@@ -26,7 +26,13 @@ const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Install = lazy(() => import("./pages/Install"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    // O realtime já invalida o cache nas mudanças, então não precisamos
+    // refazer todas as queries a cada foco de janela.
+    queries: { staleTime: 30_000 },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
