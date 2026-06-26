@@ -159,6 +159,30 @@ export default function Catalog() {
   };
 
   const syncCatalog = async () => {
+    return;
+  };
+  const _placeholder = () => {};
+  const hideProduct = async () => {
+    if (!selected) return;
+    const product = selected;
+    setHiding(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("toggle-product-visibility", {
+        body: { product_id: product.id, published: false },
+      });
+      if (error) throw error;
+      if (data?.success === false) throw new Error(data.error || "Erro ao ocultar produto");
+      toast.success(`"${product.name}" não será mais exibido na loja.`);
+      setSelected(null);
+      fetchProducts();
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao ocultar produto");
+    } finally {
+      setHiding(false);
+    }
+  };
+
+  const realSyncCatalog = async () => {
     setSyncing(true);
     setProgress({ synced: 0, page: 0, status: "Iniciando..." });
     try {
