@@ -86,7 +86,7 @@ export default function Variations() {
       const { data, error } = await (supabase as any)
         .from("variation_models")
         .select(
-          "id, nome, variation_colors(nome_cor), variation_materials(nome_malha), variation_sizes(tamanho, preco, ativo, position)"
+          "id, nome, variation_colors(nome_cor), variation_materials(nome_malha), variation_sizes(tamanho, preco, preco_promocional, ativo, position)"
         )
         .order("created_at", { ascending: false });
       if (error) throw error;
