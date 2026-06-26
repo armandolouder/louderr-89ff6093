@@ -112,6 +112,19 @@ export async function getEvolutionProfilePicture(phone: string): Promise<Evoluti
   });
 }
 
+// Deletes a WhatsApp message for everyone via Evolution API.
+export function deleteEvolutionMessage(params: {
+  messageId: string;
+  phone: string;
+  fromMe?: boolean;
+}): Promise<EvolutionApiResult> {
+  return postToEvolution("/chat/deleteMessageForEveryone/{instance}", {
+    id: params.messageId,
+    remoteJid: `${digitsOnly(params.phone)}@s.whatsapp.net`,
+    fromMe: params.fromMe ?? true,
+  });
+}
+
  // Downloads (and decrypts) media from a WhatsApp message via Evolution API.
  // Returns the decoded bytes plus mimetype/filename, or null on failure.
  export async function getEvolutionMediaBase64(message: Record<string, any>): Promise<

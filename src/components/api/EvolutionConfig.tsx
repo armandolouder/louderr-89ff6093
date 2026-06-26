@@ -66,7 +66,7 @@
 
     setIsChecking(true);
     try {
-      const { data, error } = await supabase.functions.invoke("check-uazapi-status", {
+      const { data, error } = await supabase.functions.invoke("check-evolution-status", {
         body: {
           evolution_url: apiUrl,
           evolution_key: apiKey,

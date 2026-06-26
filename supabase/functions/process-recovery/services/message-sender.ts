@@ -1,11 +1,11 @@
  import { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
- import { sendUazapiMedia, sendUazapiText, hasUazapiCredentials } from "../../_shared/uazapi.ts";
+ import { sendWhatsAppMedia, sendWhatsAppText, hasWhatsAppCredentials } from "../../_shared/whatsapp.ts";
  import { replaceWhatsappVariables } from "../../_shared/variables.ts";
  import { buildRecoveryEmailHtml } from "../utils/email-builder.ts";
 import { registerInInbox } from "../../_shared/inbox-registry.ts";
  
  export async function sendWhatsappRecovery(supabase: SupabaseClient, exec: any, step: any, variant: string, msgRecordId: string) {
-   if (!hasUazapiCredentials()) return { success: false, error: "UAZAPI credentials not configured" };
+   if (!hasWhatsAppCredentials()) return { success: false, error: "WhatsApp credentials not configured" };
  
    const phone = exec.customer_phone.replace(/\D/g, "");
    const firstName = (exec.customer_name || "Cliente").split(" ")[0];
@@ -55,7 +55,7 @@ import { registerInInbox } from "../../_shared/inbox-registry.ts";
      : productsWithImages.slice(0, 2);
  
    for (const prod of imagesToSend) {
-     await sendUazapiMedia({
+     await sendWhatsAppMedia({
        phone,
        mediaType: "image",
        fileUrl: prod.image!,
@@ -64,14 +64,14 @@ import { registerInInbox } from "../../_shared/inbox-registry.ts";
      await new Promise(r => setTimeout(r, 1000));
    }
  
-   const result = await sendUazapiText(phone, messageText);
+   const result = await sendWhatsAppText(phone, messageText);
    
    await supabase.from("recovery_messages")
      .update({
        content: messageText,
        status: result.ok ? "sent" : "failed",
        sent_at: result.ok ? new Date().toISOString() : null,
-       error_message: result.ok ? null : `UAZAPI Error: ${result.raw.substring(0, 255)}`,
+       error_message: result.ok ? null : `WhatsApp Error: ${result.raw.substring(0, 255)}`,
      })
      .eq("id", msgRecordId);
  

@@ -69,7 +69,7 @@ export default function Api() {
 
   const checkInstanceStatus = async () => {
     try {
-      const { data, error } = await supabase.functions.invoke("check-uazapi-status");
+      const { data, error } = await supabase.functions.invoke("check-evolution-status");
       if (error) {
         setInstanceStatus({ connected: false, error: error.message });
       } else if (data) {

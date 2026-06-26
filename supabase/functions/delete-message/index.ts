@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { deleteEvolutionMessage } from "../_shared/evolution-api.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -30,14 +31,8 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    const UAZAPI_SERVER_URL = Deno.env.get("UAZAPI_SERVER_URL");
-    const UAZAPI_INSTANCE_TOKEN = Deno.env.get("UAZAPI_INSTANCE_TOKEN");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-
-    if (!UAZAPI_SERVER_URL || !UAZAPI_INSTANCE_TOKEN) {
-      throw new Error("UAZAPI credentials not configured");
-    }
 
     if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
       throw new Error("Supabase credentials not configured");
@@ -51,10 +46,10 @@ serve(async (req) => {
       throw new Error("messageId and conversationId are required");
     }
 
-    // Get message details to find whatsapp_message_id
+    // Get message + contact details to find the WhatsApp message id
     const { data: message, error: msgError } = await supabase
       .from("messages")
-      .select("*")
+      .select("*, conversation:conversations(contact:contacts(phone))")
       .eq("id", messageId)
       .single();
 
@@ -63,106 +58,27 @@ serve(async (req) => {
     }
 
     const metadata = message.metadata as Record<string, unknown> | null;
-    const whatsappMessageId = metadata?.whatsapp_message_id as string | undefined;
-    const chatid = metadata?.chatid as string | undefined;
+    const evolutionMessageId =
+      (message.evolution_message_id as string | undefined) ||
+      (metadata?.evolution_message_id as string | undefined);
+    const phone = (message as any).conversation?.contact?.phone as string | undefined;
     const fromMe = message.sender_type === "agent";
 
-    // Also check for whatsapp_message_id in uazapi_response (for agent messages)
-    const uazapiResponse = metadata?.uazapi_response as Record<string, unknown> | undefined;
-    const altMessageId = uazapiResponse?.messageid as string | undefined;
-    const altChatId = uazapiResponse?.chatid as string | undefined;
-
-    const finalMessageId = whatsappMessageId || altMessageId;
-    const finalChatId = chatid || altChatId;
-
-    // If we have whatsapp message id, try to delete on WhatsApp
-    if (finalMessageId && finalChatId) {
-      console.log(`Deleting WhatsApp message: ${finalMessageId} in chat: ${finalChatId}, fromMe: ${fromMe}`);
-
-      // Try different body formats to find the correct one
-      // Format 1: Standard UAZAPI format
-      const requestBodyV1 = {
-        Id: finalMessageId,
-        chatid: finalChatId,
-        everyone: deleteForEveryone,
-        fromMe: fromMe,
-      };
-
-      console.log("Trying format V1:", JSON.stringify(requestBodyV1));
-
-      let uazapiRes = await fetch(`${UAZAPI_SERVER_URL}/message/delete`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "token": UAZAPI_INSTANCE_TOKEN,
-        },
-        body: JSON.stringify(requestBodyV1),
-      });
-
-      let responseText = await uazapiRes.text();
-      console.log("UAZAPI V1 response status:", uazapiRes.status);
-      console.log("UAZAPI V1 response:", responseText);
-
-      // If V1 failed, try format V2 with remoteJid
-      if (!uazapiRes.ok) {
-        console.log("V1 failed, trying format V2 with remoteJid...");
-        
-        const requestBodyV2 = {
-          id: finalMessageId,
-          remoteJid: finalChatId,
-          fromMe: fromMe,
-        };
-
-        console.log("Trying format V2:", JSON.stringify(requestBodyV2));
-
-        uazapiRes = await fetch(`${UAZAPI_SERVER_URL}/message/delete`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "token": UAZAPI_INSTANCE_TOKEN,
-          },
-          body: JSON.stringify(requestBodyV2),
-        });
-
-        responseText = await uazapiRes.text();
-        console.log("UAZAPI V2 response status:", uazapiRes.status);
-        console.log("UAZAPI V2 response:", responseText);
-      }
-
-      // If still failed, try format V3 with msgId
-      if (!uazapiRes.ok) {
-        console.log("V2 failed, trying format V3 with msgId...");
-        
-        const requestBodyV3 = {
-          msgId: finalMessageId,
-          chatid: finalChatId,
-        };
-
-        console.log("Trying format V3:", JSON.stringify(requestBodyV3));
-
-        uazapiRes = await fetch(`${UAZAPI_SERVER_URL}/message/delete`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "token": UAZAPI_INSTANCE_TOKEN,
-          },
-          body: JSON.stringify(requestBodyV3),
-        });
-
-        responseText = await uazapiRes.text();
-        console.log("UAZAPI V3 response status:", uazapiRes.status);
-        console.log("UAZAPI V3 response:", responseText);
-      }
-
-      if (!uazapiRes.ok) {
-        console.error("All UAZAPI delete attempts failed:", responseText);
-        // Continue to delete from database even if UAZAPI fails
-      } else {
-        console.log("Message deleted from WhatsApp successfully");
+    // If we have the Evolution message id, try to delete on WhatsApp
+    if (deleteForEveryone && evolutionMessageId && phone) {
+      try {
+        console.log(`Deleting Evolution message: ${evolutionMessageId}, fromMe: ${fromMe}`);
+        const delRes = await deleteEvolutionMessage({ messageId: evolutionMessageId, phone, fromMe });
+        if (!delRes.ok) {
+          console.error("Evolution delete failed:", delRes.status, delRes.raw);
+        } else {
+          console.log("Message deleted from WhatsApp successfully");
+        }
+      } catch (e) {
+        console.error("Evolution delete error:", e);
       }
     } else {
-      console.log("No WhatsApp message ID found, deleting only from database");
-      console.log("Metadata:", JSON.stringify(metadata));
+      console.log("No Evolution message ID/phone found, deleting only from database");
     }
 
     // Delete message from database

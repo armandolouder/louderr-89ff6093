@@ -49,14 +49,13 @@ serve(async (req) => {
     }
 
     const formattedPhone = digitsOnly(phone);
-    const provider = Deno.env.get("WHATSAPP_PROVIDER")?.toLowerCase()?.trim() || "uazapi";
-    console.log(`Sending ${messageType} message to ${formattedPhone} using provider: ${provider}`);
+    console.log(`Sending ${messageType} message to ${formattedPhone} via Evolution`);
 
      let result: { ok: boolean; status: number; data: any; raw: string };
     if (messageType === "text") {
        result = await sendWhatsAppText(formattedPhone, content);
     } else if (mediaUrl) {
-      // Resolve storage path to a signed URL for UAZAPI to download
+      // Resolve storage path to a signed URL for the provider to download
       let fileUrl = mediaUrl;
       if (mediaUrl.startsWith("whatsapp-media:")) {
         const storagePath = mediaUrl.replace("whatsapp-media:", "");
@@ -98,18 +97,10 @@ serve(async (req) => {
 
     // Extract message ID to help with deduplication in webhooks
     const messageMetadata: any = { api_response: apiResponseData };
-    if (provider === "evolution") {
-      // Evolution v2 response structure often has key.id or just id
-      const evolutionId = apiResponseData?.key?.id || apiResponseData?.id || apiResponseData?.item?.key?.id;
-      if (evolutionId) {
-        messageMetadata.evolution_message_id = evolutionId;
-      }
-    } else {
-      // UAZAPI response structure
-      const uazapiId = apiResponseData?.messageid || apiResponseData?.id;
-      if (uazapiId) {
-        messageMetadata.whatsapp_message_id = uazapiId;
-      }
+    // Evolution v2 response structure often has key.id or just id
+    const evolutionId = apiResponseData?.key?.id || apiResponseData?.id || apiResponseData?.item?.key?.id;
+    if (evolutionId) {
+      messageMetadata.evolution_message_id = evolutionId;
     }
 
     // Check if message already exists (webhook might have been faster)

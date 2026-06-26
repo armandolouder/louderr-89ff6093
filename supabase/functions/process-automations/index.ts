@@ -1,13 +1,13 @@
  import { createServiceClient } from "../_shared/auth.ts";
  import { corsHeaders } from "../_shared/cors.ts";
- import { sendUazapiMedia, sendUazapiText, hasUazapiCredentials, UazapiMediaType } from "../_shared/uazapi.ts";
+  import { sendWhatsAppMedia, sendWhatsAppText, hasWhatsAppCredentials } from "../_shared/whatsapp.ts";
  import { registerInInbox } from "../_shared/inbox-registry.ts";
  
  Deno.serve(async (req) => {
    if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
  
    try {
-     if (!hasUazapiCredentials()) throw new Error("UAZAPI credentials not configured");
+     if (!hasWhatsAppCredentials()) throw new Error("WhatsApp credentials not configured");
      const supabase = createServiceClient();
  
       const { data: executions, error } = await supabase.rpc("pick_automation_executions", { batch_size: 20 });
@@ -27,8 +27,8 @@
   
         try {
           const result = media_url && media_type 
-            ? await sendUazapiMedia({ phone, mediaType: media_type as UazapiMediaType, fileUrl: media_url, caption: content })
-            : await sendUazapiText(phone, content);
+            ? await sendWhatsAppMedia({ phone, mediaType: media_type, fileUrl: media_url, caption: content })
+            : await sendWhatsAppText(phone, content);
   
           if (result.ok) {
             await supabase.from("automation_executions").update({ status: "sent", executed_at: new Date().toISOString() }).eq("id", exec.id);
