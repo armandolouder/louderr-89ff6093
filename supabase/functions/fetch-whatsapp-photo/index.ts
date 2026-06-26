@@ -1,6 +1,6 @@
 import { handleCorsPreflightRequest, jsonResponse } from "../_shared/cors.ts";
 import { verifyUserJwt, createServiceClient } from "../_shared/auth.ts";
-import { getUazapiProfile, hasUazapiCredentials } from "../_shared/uazapi.ts";
+import { getEvolutionProfilePicture, hasEvolutionCredentials } from "../_shared/evolution-api.ts";
 import { phoneCandidates } from "../_shared/phone.ts";
 
 Deno.serve(async (req) => {
@@ -12,8 +12,8 @@ Deno.serve(async (req) => {
     if (!authResult.ok) return authResult.response;
     const { userId } = authResult.auth;
 
-    if (!hasUazapiCredentials()) {
-      return jsonResponse({ success: false, error: "WhatsApp (UAZAPI) não configurado" }, { status: 400 });
+    if (!hasEvolutionCredentials()) {
+      return jsonResponse({ success: false, error: "WhatsApp (Evolution API) não configurado" }, { status: 400 });
     }
 
     let body: { contactId?: string } = {};
@@ -47,9 +47,9 @@ Deno.serve(async (req) => {
     // Tenta variações do número (com/sem 9º dígito)
     let imageUrl: string | null = null;
     for (const candidate of phoneCandidates(contact.phone)) {
-      const result = await getUazapiProfile(candidate);
+      const result = await getEvolutionProfilePicture(candidate);
       const data = result.data as Record<string, unknown> | null;
-      const url = (data?.imgUrl || data?.imageUrl || data?.image || data?.url) as string | undefined;
+      const url = (data?.profilePictureUrl || data?.imgUrl || data?.imageUrl || data?.image || data?.url) as string | undefined;
       if (result.ok && url && typeof url === "string" && url.startsWith("http")) {
         imageUrl = url;
         break;

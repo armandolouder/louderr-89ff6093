@@ -105,6 +105,13 @@
    );
  }
 
+// Fetches the WhatsApp profile picture URL for a phone number via Evolution API.
+export async function getEvolutionProfilePicture(phone: string): Promise<EvolutionApiResult> {
+  return postToEvolution("/chat/fetchProfilePictureUrl/{instance}", {
+    number: digitsOnly(phone),
+  });
+}
+
  // Downloads (and decrypts) media from a WhatsApp message via Evolution API.
  // Returns the decoded bytes plus mimetype/filename, or null on failure.
  export async function getEvolutionMediaBase64(message: Record<string, any>): Promise<
