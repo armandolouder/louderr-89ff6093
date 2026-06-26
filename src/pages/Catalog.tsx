@@ -219,7 +219,11 @@ export default function Catalog() {
               {products.map((p) => {
                 const img = (p.catalog_images || []).sort((a, b) => (a.position || 0) - (b.position || 0))[0];
                 return (
-                  <div key={p.id} className="border border-border overflow-hidden bg-card">
+                  <div
+                    key={p.id}
+                    onClick={() => openProduct(p)}
+                    className="border border-border overflow-hidden bg-card cursor-pointer hover:border-primary transition-colors"
+                  >
                     <div className="aspect-square bg-secondary/30 flex items-center justify-center overflow-hidden">
                       {img ? (
                         <img src={img.image_url} alt={p.name || "Produto"} className="w-full h-full object-cover" loading="lazy" />
