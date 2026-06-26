@@ -301,7 +301,6 @@ export default function Catalog() {
             tags: aiContent.tags,
             seo_title: aiContent.seo_title,
             seo_description: aiContent.seo_description,
-            handle: aiContent.handle,
           },
           images: aiContent.images.map((im) => ({ id: im.id, alt: im.alt })),
         },
@@ -694,8 +693,8 @@ export default function Catalog() {
                 </div>
 
                 {!aiContent ? (
-                  <p className="text-sm text-muted-foreground text-center py-8">
-                    Clique em <strong>Gerar com IA</strong> para criar sugestões de nome, descrição, tags, SEO, URL e textos das fotos.
+                    <p className="text-sm text-muted-foreground text-center py-8">
+                    Clique em <strong>Gerar com IA</strong> para criar sugestões de nome, descrição, tags, SEO e textos das fotos. A URL do produto nunca será alterada.
                   </p>
                 ) : (
                   <div className="space-y-4">
@@ -719,9 +718,8 @@ export default function Catalog() {
                       <Label className="text-xs">Descrição SEO ({aiContent.seo_description.length}/155)</Label>
                       <Textarea rows={2} value={aiContent.seo_description} onChange={(e) => updateField("seo_description", e.target.value)} />
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">URL do produto (handle)</Label>
-                      <Input value={aiContent.handle} onChange={(e) => updateField("handle", e.target.value)} />
+                    <div className="border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
+                      URL do produto protegida: este fluxo não edita nem envia o handle para IA/Nuvemshop.
                     </div>
 
                     {aiContent.images.length > 0 && (

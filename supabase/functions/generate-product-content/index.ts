@@ -37,10 +37,9 @@ Responda APENAS com um JSON válido, sem markdown e sem explicações, no format
   "tags": "tag1, tag2, tag3, tag4, tag5",
   "seo_title": "título SEO até 60 caracteres",
   "seo_description": "descrição SEO até 155 caracteres",
-  "handle": "url-amigavel-sem-acentos-com-hifens",
   "images_alt": ["texto alternativo da imagem 1", "texto alternativo da imagem 2"]
 }
-Regras: tags com 5 a 8 termos relevantes; handle em minúsculas, sem acentos, palavras separadas por hífen; images_alt deve ter exatamente ${images.length} itens, cada um descrevendo a foto correspondente da camiseta para acessibilidade e SEO.
+Regras: tags com 5 a 8 termos relevantes; NUNCA gere, sugira ou altere URL/handle/slug do produto; images_alt deve ter exatamente ${images.length} itens, cada um descrevendo a foto correspondente da camiseta para acessibilidade e SEO.
 REGRA DO seo_title: deve SEMPRE terminar com o sufixo " I LOUDER.ink" (espaço, "I", espaço, "LOUDER.ink"). O título completo (incluindo o sufixo) NÃO pode passar de 60 caracteres — encurte a parte inicial se necessário para caber. Exemplo: "Camiseta The Cure I LOUDER.ink".
 
 ESTRUTURA OBRIGATÓRIA DO CAMPO "description" (HTML, use apenas <h2>, <h3>, <p>, <strong> e <ul>/<li>):

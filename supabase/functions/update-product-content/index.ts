@@ -28,7 +28,7 @@ Deno.serve(async (req) => {
 
     const { data: prod, error: prodErr } = await supabase
       .from("catalog_products")
-      .select("id, nuvemshop_product_id, raw, catalog_images(id, nuvemshop_image_id)")
+      .select("id, nuvemshop_product_id, handle, raw, catalog_images(id, nuvemshop_image_id)")
       .eq("id", productUuid)
       .single();
     if (prodErr || !prod) throw new Error("Produto não encontrado");
@@ -38,7 +38,11 @@ Deno.serve(async (req) => {
     const productPayload: any = {};
     if (content.name != null) productPayload.name = { pt: content.name };
     if (content.description != null) productPayload.description = { pt: content.description };
-    // URL SEO (handle) nunca é alterada — mantém a URL original do produto.
+    // URL SEO (handle) nunca é alterada. A Nuvemshop pode recalcular o slug
+    // quando o nome muda; por isso reenviamos explicitamente o handle atual salvo.
+    const rawHandle = ((prod as any).raw || {})?.handle;
+    const currentHandle = (prod as any).handle || (typeof rawHandle === "string" ? rawHandle : rawHandle?.pt);
+    if (currentHandle) productPayload.handle = { pt: currentHandle };
     if (content.seo_title != null) productPayload.seo_title = { pt: content.seo_title };
     if (content.seo_description != null) productPayload.seo_description = { pt: content.seo_description };
     if (content.tags != null) productPayload.tags = content.tags;
