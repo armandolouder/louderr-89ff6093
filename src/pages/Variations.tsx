@@ -98,7 +98,7 @@ export default function Variations() {
           materials: (m.variation_materials || []).map((c: any) => c.nome_malha),
           sizes: (m.variation_sizes || [])
             .sort((a: any, b: any) => (a.position || 0) - (b.position || 0))
-            .map((s: any) => ({ tamanho: s.tamanho, preco: s.preco, ativo: s.ativo })),
+            .map((s: any) => ({ tamanho: s.tamanho, preco: s.preco, precoPromocional: s.preco_promocional, ativo: s.ativo })),
         }))
       );
     } catch (err: any) {
