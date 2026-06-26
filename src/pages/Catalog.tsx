@@ -71,12 +71,29 @@ export default function Catalog() {
   const [vmodels, setVmodels] = useState<VariationModelOption[]>([]);
   const [chosenModels, setChosenModels] = useState<string[]>([]);
   // Status de aplicação por produto (continua em segundo plano mesmo com o modal fechado)
-  const [applyStatus, setApplyStatus] = useState<Record<string, "applying" | "done" | "error">>({});
+  const [applyStatus, setApplyStatus] = useState<Record<string, "applying" | "done" | "error">>(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem("catalog_apply_status") || "{}");
+      // Mantém apenas os marcados como "done" — o tick verde fica permanente.
+      const done: Record<string, "done"> = {};
+      for (const [k, v] of Object.entries(saved)) if (v === "done") done[k] = "done";
+      return done;
+    } catch {
+      return {};
+    }
+  });
   const [hiding, setHiding] = useState(false);
   // Conteúdo / SEO com IA (Groq)
   const [aiContent, setAiContent] = useState<ProductContent | null>(null);
   const [genLoading, setGenLoading] = useState(false);
   const [savingContent, setSavingContent] = useState(false);
+
+  // Persiste os ticks de "atualizado" para não sumirem ao sair da página.
+  useEffect(() => {
+    const done: Record<string, "done"> = {};
+    for (const [k, v] of Object.entries(applyStatus)) if (v === "done") done[k] = "done";
+    try { localStorage.setItem("catalog_apply_status", JSON.stringify(done)); } catch { /* noop */ }
+  }, [applyStatus]);
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);
@@ -167,14 +184,7 @@ export default function Catalog() {
           toast.success(`"${product.name}": ${data.created} variações aplicadas!`);
         }
         fetchProducts();
-        // Remove o check verde após alguns segundos
-        setTimeout(() => {
-          setApplyStatus((s) => {
-            const next = { ...s };
-            delete next[product.id];
-            return next;
-          });
-        }, 8000);
+        // O check verde permanece (persistido no localStorage) mesmo ao sair da página.
       } catch (err: any) {
         setApplyStatus((s) => ({ ...s, [product.id]: "error" }));
         toast.error(`"${product.name}": ${err.message || "Erro ao aplicar variações"}`);
