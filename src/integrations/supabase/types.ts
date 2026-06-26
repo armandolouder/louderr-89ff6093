@@ -282,6 +282,145 @@ export type Database = {
         }
         Relationships: []
       }
+      catalog_images: {
+        Row: {
+          created_at: string
+          id: string
+          image_url: string
+          nuvemshop_image_id: string | null
+          position: number | null
+          product_id: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          image_url: string
+          nuvemshop_image_id?: string | null
+          position?: number | null
+          product_id: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          image_url?: string
+          nuvemshop_image_id?: string | null
+          position?: number | null
+          product_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalog_images_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      catalog_products: {
+        Row: {
+          brand: string | null
+          category: string | null
+          created_at: string
+          description: string | null
+          handle: string | null
+          id: string
+          image_count: number
+          name: string | null
+          nuvemshop_product_id: string
+          raw: Json | null
+          status: string | null
+          updated_at: string
+          user_id: string | null
+          variant_count: number
+        }
+        Insert: {
+          brand?: string | null
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          handle?: string | null
+          id?: string
+          image_count?: number
+          name?: string | null
+          nuvemshop_product_id: string
+          raw?: Json | null
+          status?: string | null
+          updated_at?: string
+          user_id?: string | null
+          variant_count?: number
+        }
+        Update: {
+          brand?: string | null
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          handle?: string | null
+          id?: string
+          image_count?: number
+          name?: string | null
+          nuvemshop_product_id?: string
+          raw?: Json | null
+          status?: string | null
+          updated_at?: string
+          user_id?: string | null
+          variant_count?: number
+        }
+        Relationships: []
+      }
+      catalog_variants: {
+        Row: {
+          color: string | null
+          created_at: string
+          id: string
+          name: string | null
+          nuvemshop_variant_id: string
+          price: number | null
+          product_id: string
+          size: string | null
+          sku: string | null
+          stock: number | null
+          user_id: string | null
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          name?: string | null
+          nuvemshop_variant_id: string
+          price?: number | null
+          product_id: string
+          size?: string | null
+          sku?: string | null
+          stock?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          name?: string | null
+          nuvemshop_variant_id?: string
+          price?: number | null
+          product_id?: string
+          size?: string | null
+          sku?: string | null
+          stock?: number | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalog_variants_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contacts: {
         Row: {
           avatar_url: string | null
