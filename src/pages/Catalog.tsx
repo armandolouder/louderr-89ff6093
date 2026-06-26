@@ -253,6 +253,68 @@ export default function Catalog() {
           <CatalogAudit />
         </TabsContent>
       </Tabs>
+
+      <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="line-clamp-2">{selected?.name || "Produto"}</DialogTitle>
+            <DialogDescription>
+              Aplique um modelo de variações cadastrado a este produto na Nuvemshop.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="flex items-start gap-2 border border-destructive/40 bg-destructive/10 p-3 text-xs text-foreground">
+              <AlertTriangle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+              <span>
+                Ao aplicar, <strong>todas as variações atuais deste produto serão apagadas</strong> e
+                substituídas pelas variações do modelo selecionado.
+              </span>
+            </div>
+
+            {vmodels.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                Nenhum modelo cadastrado. Crie em Catálogo → Variações.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {vmodels.map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => setChosenModel(m.id)}
+                    className={
+                      "w-full text-left border p-3 transition-colors " +
+                      (chosenModel === m.id
+                        ? "border-primary bg-primary/10"
+                        : "border-border hover:bg-accent")
+                    }
+                  >
+                    <p className="text-sm font-medium uppercase">{m.nome}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {m.cores} cores · {m.malhas} malhas · {m.tamanhos} tamanhos
+                    </p>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSelected(null)} disabled={applying}>
+              Cancelar
+            </Button>
+            <Button onClick={applyVariations} disabled={applying || !chosenModel}>
+              {applying ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Sparkles className="w-4 h-4 mr-2" />
+              )}
+              Apagar e aplicar variações
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
