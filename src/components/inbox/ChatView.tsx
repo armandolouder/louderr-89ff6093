@@ -270,16 +270,17 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
     }, 50);
   };
 
-  // Auto-scroll to bottom when messages load or change
+  // Auto-scroll to bottom apenas quando troca de conversa ou chega mensagem nova no fim.
+  // Não rola quando mensagens antigas são prependadas via paginação.
+  const lastMessageId = messages?.[messages.length - 1]?.id;
   useEffect(() => {
     if (!messages?.length) return;
-    // Use longer delay on conversation switch to wait for render
-    const delay = 100;
     const timer = setTimeout(() => {
       messagesEndRef.current?.scrollIntoView({ behavior: "instant" as ScrollBehavior });
-    }, delay);
+    }, 100);
     return () => clearTimeout(timer);
-  }, [messages, conversation.id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversation.id, lastMessageId]);
 
   // Detect scroll position to show/hide scroll-down button
   const handleScroll = () => {
