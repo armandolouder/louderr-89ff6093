@@ -718,7 +718,7 @@ export default function Catalog() {
                       <Textarea rows={2} value={aiContent.seo_description} onChange={(e) => updateField("seo_description", e.target.value)} />
                     </div>
                     <div className="border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
-                      URL do produto protegida: este fluxo não edita nem envia o handle para IA/Nuvemshop.
+                      URL do produto protegida: este fluxo não permite edição do handle e mantém a URL atual da Nuvemshop.
                     </div>
 
                     {aiContent.images.length > 0 && (
