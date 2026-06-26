@@ -40,7 +40,8 @@ Responda APENAS com um JSON válido, sem markdown e sem explicações, no format
   "handle": "url-amigavel-sem-acentos-com-hifens",
   "images_alt": ["texto alternativo da imagem 1", "texto alternativo da imagem 2"]
 }
-Regras: tags com 5 a 8 termos relevantes; handle em minúsculas, sem acentos, palavras separadas por hífen; images_alt deve ter exatamente ${images.length} itens, cada um descrevendo a foto correspondente da camiseta para acessibilidade e SEO.`;
+Regras: tags com 5 a 8 termos relevantes; handle em minúsculas, sem acentos, palavras separadas por hífen; images_alt deve ter exatamente ${images.length} itens, cada um descrevendo a foto correspondente da camiseta para acessibilidade e SEO.
+REGRA DO seo_title: deve SEMPRE terminar com o sufixo " I LOUDER.ink" (espaço, "I", espaço, "LOUDER.ink"). O título completo (incluindo o sufixo) NÃO pode passar de 60 caracteres — encurte a parte inicial se necessário para caber. Exemplo: "Camiseta The Cure I LOUDER.ink".`;
 
     const userPrompt = `Dados atuais do produto:
 Nome: ${(prod as any).name || "(sem nome)"}
@@ -74,11 +75,20 @@ Quantidade de fotos: ${images.length}`;
     try { parsed = JSON.parse(rawContent); } catch { parsed = {}; }
 
     const altArr: string[] = Array.isArray(parsed.images_alt) ? parsed.images_alt : [];
+    const SUFFIX = " I LOUDER.ink";
+    const enforceSeoTitle = (title: string): string => {
+      let base = (title || (prod as any).name || "").trim();
+      // remove sufixo existente (variações) para não duplicar
+      base = base.replace(/\s*[I|]\s*LOUDER\.ink\s*$/i, "").trim();
+      const maxBase = 60 - SUFFIX.length;
+      if (base.length > maxBase) base = base.slice(0, maxBase).trim();
+      return `${base}${SUFFIX}`;
+    };
     const suggestion = {
       name: parsed.name || (prod as any).name || "",
       description: parsed.description || (prod as any).description || "",
       tags: parsed.tags || currentTags || "",
-      seo_title: parsed.seo_title || "",
+      seo_title: enforceSeoTitle(parsed.seo_title || ""),
       seo_description: parsed.seo_description || "",
       handle: parsed.handle || (prod as any).handle || "",
       images: images.map((img: any, i: number) => ({
