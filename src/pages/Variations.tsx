@@ -444,19 +444,20 @@ export default function Variations() {
             {/* Tamanhos */}
             <div className="space-y-2">
               <Label className="flex items-center gap-1">
-                <Ruler className="w-4 h-4" /> Tamanhos (o preço pertence ao tamanho)
+                <Ruler className="w-4 h-4" /> Tamanhos (preços por tamanho)
               </Label>
               <div className="border border-border">
-                <div className="grid grid-cols-[1fr_1fr_auto_auto] gap-2 px-3 py-2 bg-muted text-xs font-medium text-muted-foreground">
+                <div className="grid grid-cols-[1fr_1fr_1fr_auto_auto] gap-2 px-3 py-2 bg-muted text-xs font-medium text-muted-foreground">
                   <span>Tamanho</span>
-                  <span>Preço</span>
+                  <span>Preço de venda</span>
+                  <span>Preço promocional</span>
                   <span>Ativo</span>
                   <span></span>
                 </div>
                 {sizes.map((s, idx) => (
                   <div
                     key={idx}
-                    className="grid grid-cols-[1fr_1fr_auto_auto] gap-2 px-3 py-2 items-center border-t border-border"
+                    className="grid grid-cols-[1fr_1fr_1fr_auto_auto] gap-2 px-3 py-2 items-center border-t border-border"
                   >
                     <Input
                       value={s.tamanho}
@@ -467,6 +468,12 @@ export default function Variations() {
                     <Input
                       value={s.preco}
                       onChange={(e) => updateSize(idx, { preco: e.target.value })}
+                      placeholder="129,90"
+                      className="h-8"
+                    />
+                    <Input
+                      value={s.precoPromocional}
+                      onChange={(e) => updateSize(idx, { precoPromocional: e.target.value })}
                       placeholder="99,90"
                       className="h-8"
                     />
