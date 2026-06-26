@@ -103,7 +103,6 @@ Quantidade de fotos: ${images.length}`;
       tags: parsed.tags || currentTags || "",
       seo_title: enforceSeoTitle(parsed.seo_title || ""),
       seo_description: parsed.seo_description || "",
-      handle: parsed.handle || (prod as any).handle || "",
       images: images.map((img: any, i: number) => ({
         id: img.id,
         image_url: img.image_url,

@@ -12,6 +12,15 @@ function nsHeaders(token: string) {
   };
 }
 
+function getPtValue(value: unknown): string | undefined {
+  if (typeof value === "string") return value;
+  if (value && typeof value === "object" && "pt" in value) {
+    const pt = (value as { pt?: unknown }).pt;
+    return typeof pt === "string" ? pt : undefined;
+  }
+  return undefined;
+}
+
 // Salva o conteúdo/SEO editado na Nuvemshop após revisão do usuário.
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -34,6 +43,17 @@ Deno.serve(async (req) => {
     if (prodErr || !prod) throw new Error("Produto não encontrado");
     const pid = (prod as any).nuvemshop_product_id;
 
+    const currentProductRes = await fetch(`${API}/${storeId}/products/${pid}`, {
+      method: "GET",
+      headers: nsHeaders(accessToken),
+    });
+    if (!currentProductRes.ok) {
+      const txt = await currentProductRes.text();
+      throw new Error(`Nuvemshop ${currentProductRes.status}: ${txt}`);
+    }
+    const currentProduct = await currentProductRes.json();
+    const currentRemoteHandle = getPtValue(currentProduct?.handle);
+
     // Monta payload do produto (apenas campos enviados)
     const productPayload: any = {};
     if (content.name != null) productPayload.name = { pt: content.name };
@@ -41,7 +61,7 @@ Deno.serve(async (req) => {
     // URL SEO (handle) nunca é alterada. A Nuvemshop pode recalcular o slug
     // quando o nome muda; por isso reenviamos explicitamente o handle atual salvo.
     const rawHandle = ((prod as any).raw || {})?.handle;
-    const currentHandle = (prod as any).handle || (typeof rawHandle === "string" ? rawHandle : rawHandle?.pt);
+    const currentHandle = currentRemoteHandle || (prod as any).handle || getPtValue(rawHandle);
     if (currentHandle) productPayload.handle = { pt: currentHandle };
     if (content.seo_title != null) productPayload.seo_title = { pt: content.seo_title };
     if (content.seo_description != null) productPayload.seo_description = { pt: content.seo_description };

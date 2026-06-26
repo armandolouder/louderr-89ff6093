@@ -54,7 +54,6 @@ interface ProductContent {
   tags: string;
   seo_title: string;
   seo_description: string;
-  handle: string;
   images: ProductImageContent[];
 }
 
