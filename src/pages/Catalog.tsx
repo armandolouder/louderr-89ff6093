@@ -144,7 +144,7 @@ export default function Catalog() {
     setAiContent(null);
     const { data } = await (supabase as any)
       .from("variation_models")
-      .select("id, nome, variation_colors(count), variation_materials(count), variation_sizes(count)")
+      .select("id, nome, variation_colors(count), variation_materials(count), variation_sizes(count), variation_materials(nome_malha)")
       .order("created_at", { ascending: false });
     const mapped: VariationModelOption[] = (data || []).map((m: any) => ({
       id: m.id,
@@ -152,6 +152,9 @@ export default function Catalog() {
       cores: m.variation_colors?.[0]?.count ?? 0,
       malhas: m.variation_materials?.[0]?.count ?? 0,
       tamanhos: m.variation_sizes?.[0]?.count ?? 0,
+      malhaNames: Array.isArray(m.variation_materials)
+        ? m.variation_materials.map((x: any) => x?.nome_malha).filter(Boolean)
+        : [],
     }));
     setVmodels(mapped);
     if (mapped.length === 1) setChosenModels([mapped[0].id]);
