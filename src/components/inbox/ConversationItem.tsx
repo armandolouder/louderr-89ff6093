@@ -171,6 +171,7 @@ export function ConversationItem({ conversation, isActive, onClick }: Conversati
           )}
           onClick={handleArchiveToggle}
           title={conversation.is_archived ? "Reabrir conversa" : "Fechar conversa"}
+          aria-label={conversation.is_archived ? "Reabrir conversa" : "Fechar conversa"}
         >
           {conversation.is_archived ? (
             <ArchiveRestore className="h-4 w-4" />

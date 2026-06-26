@@ -27,6 +27,20 @@ interface ChatViewProps {
   hideHeader?: boolean;
 }
 
+// Função pura — definida fora do componente para não ser recriada a cada render/mensagem.
+function formatDateSeparator(date: Date) {
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+
+  if (date.toDateString() === today.toDateString()) {
+    return "Hoje";
+  } else if (date.toDateString() === yesterday.toDateString()) {
+    return "Ontem";
+  }
+  return format(date, "dd/MM/yyyy");
+}
+
 export function ChatView({ conversation, hideHeader }: ChatViewProps) {
   const queryClient = useQueryClient();
   const [message, setMessage] = useState("");
@@ -337,13 +351,13 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
                 <TooltipContent>Puxar foto do WhatsApp</TooltipContent>
               </Tooltip>
             )}
-            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
+            <Button variant="ghost" size="icon" aria-label="Ligar" className="text-muted-foreground hover:text-foreground">
               <Phone className="w-5 h-5" />
             </Button>
-            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
+            <Button variant="ghost" size="icon" aria-label="Ver perfil" className="text-muted-foreground hover:text-foreground">
               <User className="w-5 h-5" />
             </Button>
-            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
+            <Button variant="ghost" size="icon" aria-label="Mais opções" className="text-muted-foreground hover:text-foreground">
               <MoreVertical className="w-5 h-5" />
             </Button>
           </div>
@@ -372,21 +386,7 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
             const prevDate = prevMessage ? new Date(prevMessage.created_at) : null;
             const showDateSeparator = !prevDate || 
               messageDate.toDateString() !== prevDate.toDateString();
-            
-            const formatDateSeparator = (date: Date) => {
-              const today = new Date();
-              const yesterday = new Date(today);
-              yesterday.setDate(yesterday.getDate() - 1);
-              
-              if (date.toDateString() === today.toDateString()) {
-                return "Hoje";
-              } else if (date.toDateString() === yesterday.toDateString()) {
-                return "Ontem";
-              } else {
-                return format(date, "dd/MM/yyyy");
-              }
-            };
-            
+
             return (
               <div key={msg.id}>
                 {/* Date separator */}
@@ -506,6 +506,7 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
           <Button
             variant="secondary"
             size="icon"
+            aria-label="Ir para o fim da conversa"
             className="absolute bottom-4 right-4 rounded-full shadow-lg h-10 w-10 z-10 border border-border/50"
             onClick={() => scrollToBottom()}
           >

@@ -75,15 +75,12 @@ export function useMessages(conversationId: string | null) {
           table: "messages",
           filter: `conversation_id=eq.${conversationId}`
         },
-        (payload) => {
-          console.log("Realtime message update:", payload);
+        () => {
+          // invalidateQueries já dispara o refetch da query ativa.
           queryClient.invalidateQueries({ queryKey: ["messages", conversationId] });
-          queryClient.refetchQueries({ queryKey: ["messages", conversationId] });
         }
       )
-      .subscribe((status) => {
-        console.log(`Realtime subscription status for messages (${conversationId}):`, status);
-      });
+      .subscribe();
 
     return () => {
       supabase.removeChannel(channel);

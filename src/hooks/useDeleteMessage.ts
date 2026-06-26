@@ -14,13 +14,9 @@ export function useDeleteMessage() {
 
   return useMutation({
     mutationFn: async ({ messageId, conversationId, deleteForEveryone = true }: DeleteMessageParams) => {
-      console.log("Deleting message:", messageId, "from conversation:", conversationId);
-      
       const { data, error } = await supabase.functions.invoke("delete-message", {
         body: { messageId, conversationId, deleteForEveryone },
       });
-
-      console.log("Delete response:", data, "error:", error);
 
       if (error) throw error;
       if (!data.success) throw new Error(data.error || "Failed to delete message");
