@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import CatalogAudit from "@/components/catalog/CatalogAudit";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -115,6 +117,13 @@ export default function Catalog() {
         </Card>
       )}
 
+      <Tabs defaultValue="catalog">
+        <TabsList>
+          <TabsTrigger value="catalog">Catálogo</TabsTrigger>
+          <TabsTrigger value="analysis">Análise</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="catalog" className="space-y-6 mt-4">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { label: "Produtos", value: total, icon: Package },
@@ -177,6 +186,12 @@ export default function Catalog() {
           )}
         </CardContent>
       </Card>
+        </TabsContent>
+
+        <TabsContent value="analysis" className="mt-4">
+          <CatalogAudit />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

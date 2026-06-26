@@ -2351,6 +2351,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      audit_catalog: { Args: never; Returns: Json }
       calculate_rfm_scores: { Args: never; Returns: undefined }
       find_meta_user_by_verify_token: {
         Args: { _token: string }
