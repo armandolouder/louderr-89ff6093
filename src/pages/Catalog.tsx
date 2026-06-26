@@ -162,6 +162,25 @@ export default function Catalog() {
     );
   };
 
+  // Malhas padrão para filtro rápido por chip
+  const MALHA_CHIPS = ["UNISSEX", "BABYLOOK", "EGIPCIA", "OVERSIZED", "MANGA LONGA", "MOLETOM"];
+  const normTxt = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+  const filteredModels = vmodels.filter((m) => {
+    const nome = normTxt(m.nome);
+    if (modelSearch.trim() && !nome.includes(normTxt(modelSearch))) return false;
+    if (malhaFilter && !nome.includes(malhaFilter)) return false;
+    return true;
+  });
+  const toggleAllFiltered = () => {
+    const ids = filteredModels.map((m) => m.id);
+    const allSelected = ids.length > 0 && ids.every((id) => chosenModels.includes(id));
+    if (allSelected) {
+      setChosenModels((prev) => prev.filter((id) => !ids.includes(id)));
+    } else {
+      setChosenModels((prev) => Array.from(new Set([...prev, ...ids])));
+    }
+  };
+
   const applyVariations = () => {
     if (!selected || chosenModels.length === 0) return;
     const product = selected;
