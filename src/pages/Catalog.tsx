@@ -526,6 +526,35 @@ export default function Catalog() {
             >
               <ChevronLeft className="w-4 h-4 mr-1" /> Anterior
             </Button>
+            {(() => {
+              const pages: (number | "...")[] = [];
+              const cur = page;
+              const last = totalPages - 1;
+              const add = (n: number | "...") => pages.push(n);
+              add(0);
+              const start = Math.max(1, cur - 1);
+              const end = Math.min(last - 1, cur + 1);
+              if (start > 1) add("...");
+              for (let i = start; i <= end; i++) add(i);
+              if (end < last - 1) add("...");
+              if (last > 0) add(last);
+              return pages.map((p, i) =>
+                p === "..." ? (
+                  <span key={`e${i}`} className="px-1 text-xs text-muted-foreground">…</span>
+                ) : (
+                  <Button
+                    key={p}
+                    variant={p === cur ? "default" : "outline"}
+                    size="sm"
+                    className="w-9 px-0"
+                    onClick={() => setPage(p)}
+                    disabled={loading}
+                  >
+                    {p + 1}
+                  </Button>
+                ),
+              );
+            })()}
             <Button
               variant="outline"
               size="sm"
