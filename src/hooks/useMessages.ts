@@ -96,7 +96,13 @@ export function useMessages(conversationId: string | null) {
     };
   }, [conversationId, queryClient]);
 
-  return query;
+  return {
+    data: messages,
+    isLoading: query.isLoading,
+    fetchOlder: query.fetchNextPage,
+    hasMore: query.hasNextPage,
+    isFetchingOlder: query.isFetchingNextPage,
+  };
 }
 
 async function shouldRouteInstagramThroughZernio(conversationId: string) {
