@@ -138,12 +138,27 @@ Deno.serve(async (req) => {
       throw new Error(`Erro ao atualizar atributos: ${putRes.status} - ${await putRes.text()}`);
     }
 
-    // 2) Busca variações atuais (para apagar depois)
+    // 2) Busca e APAGA as variações atuais ANTES de criar as novas.
+    //    A Nuvemshop rejeita criar uma variante cuja combinação de valores já
+    //    exista em outra variante, então precisamos limpar primeiro — senão os
+    //    modelos que repetem combinações são descartados silenciosamente.
     const getRes = await fetch(`${API}/${storeId}/products/${nsProductId}/variants`, {
       headers: nsHeaders(accessToken),
     });
     const oldVariants: any[] = getRes.ok ? await getRes.json() : [];
     const oldIds: number[] = oldVariants.map((v) => v.id);
+
+    // A Nuvemshop não permite um produto sem nenhuma variante. Mantemos a 1ª
+    // antiga e a apagamos por último, depois de criar as novas.
+    const keepLastId = oldIds.length > 0 ? oldIds[0] : null;
+    const deleteFirstIds = oldIds.slice(1);
+    for (const id of deleteFirstIds) {
+      await fetch(`${API}/${storeId}/products/${nsProductId}/variants/${id}`, {
+        method: "DELETE",
+        headers: nsHeaders(accessToken),
+      });
+      await new Promise((res) => setTimeout(res, 100));
+    }
 
     // 3) Cria as novas variações (união de todos os modelos selecionados)
     let created = 0;
@@ -183,13 +198,12 @@ Deno.serve(async (req) => {
       throw new Error("Nenhuma variação criada. " + errors.slice(0, 3).join(" | "));
     }
 
-    // 4) Apaga as variações antigas (após criar as novas)
-    for (const id of oldIds) {
-      await fetch(`${API}/${storeId}/products/${nsProductId}/variants/${id}`, {
+    // 4) Apaga a última variação antiga que foi mantida como placeholder
+    if (keepLastId != null) {
+      await fetch(`${API}/${storeId}/products/${nsProductId}/variants/${keepLastId}`, {
         method: "DELETE",
         headers: nsHeaders(accessToken),
       });
-      await new Promise((res) => setTimeout(res, 100));
     }
 
     // 5) Atualiza o catálogo local
