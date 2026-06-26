@@ -292,7 +292,13 @@ export default function Variations() {
                     </p>
                     <div className="flex flex-wrap gap-1">
                       {m.colors.map((c) => (
-                        <Badge key={c} variant="secondary" className="text-[10px]">{c}</Badge>
+                        <Badge key={c} variant="secondary" className="text-[10px] gap-1">
+                          <span
+                            className="w-2.5 h-2.5 border border-border"
+                            style={{ background: colorHex(c) }}
+                          />
+                          {c}
+                        </Badge>
                       ))}
                     </div>
                   </div>
