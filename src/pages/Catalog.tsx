@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Download, Loader2, RefreshCw, Package, ShoppingBag, Image as ImageIcon, Layers, Sparkles, AlertTriangle, Check, ExternalLink, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { Download, Loader2, RefreshCw, Package, ShoppingBag, Image as ImageIcon, Layers, Sparkles, AlertTriangle, Check, ExternalLink, Search, ChevronLeft, ChevronRight, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -53,6 +53,7 @@ export default function Catalog() {
   const [chosenModels, setChosenModels] = useState<string[]>([]);
   // Status de aplicação por produto (continua em segundo plano mesmo com o modal fechado)
   const [applyStatus, setApplyStatus] = useState<Record<string, "applying" | "done" | "error">>({});
+  const [hiding, setHiding] = useState(false);
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);
@@ -155,6 +156,26 @@ export default function Catalog() {
         toast.error(`"${product.name}": ${err.message || "Erro ao aplicar variações"}`);
       }
     })();
+  };
+
+  const hideProduct = async () => {
+    if (!selected) return;
+    const product = selected;
+    setHiding(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("toggle-product-visibility", {
+        body: { product_id: product.id, published: false },
+      });
+      if (error) throw error;
+      if (data?.success === false) throw new Error(data.error || "Erro ao ocultar produto");
+      toast.success(`"${product.name}" não será mais exibido na loja.`);
+      setSelected(null);
+      fetchProducts();
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao ocultar produto");
+    } finally {
+      setHiding(false);
+    }
   };
 
   const syncCatalog = async () => {
@@ -442,7 +463,16 @@ export default function Catalog() {
             )}
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              onClick={hideProduct}
+              disabled={hiding}
+              className="sm:mr-auto text-destructive hover:text-destructive border-destructive/40"
+            >
+              {hiding ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <EyeOff className="w-4 h-4 mr-2" />}
+              Não exibir na loja
+            </Button>
             <Button variant="outline" onClick={() => setSelected(null)}>
               Cancelar
             </Button>
