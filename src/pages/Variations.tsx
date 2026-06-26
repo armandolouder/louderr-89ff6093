@@ -296,9 +296,39 @@ export default function Variations() {
             Cadastre as opções que serão utilizadas nos produtos da Nuvemshop.
           </p>
         </div>
-        <Button onClick={openNew}>
-          <Plus className="w-4 h-4 mr-2" /> Novo Modelo
-        </Button>
+        <div className="flex items-center gap-2">
+          <div className="flex border border-border">
+            <button
+              type="button"
+              onClick={() => setViewMode("block")}
+              className={
+                "flex items-center gap-1.5 px-3 py-2 text-xs transition-colors " +
+                (viewMode === "block"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-background text-muted-foreground hover:bg-accent")
+              }
+              title="Modo bloco"
+            >
+              <LayoutGrid className="w-4 h-4" /> Blocos
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("list")}
+              className={
+                "flex items-center gap-1.5 px-3 py-2 text-xs transition-colors border-l border-border " +
+                (viewMode === "list"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-background text-muted-foreground hover:bg-accent")
+              }
+              title="Modo lista"
+            >
+              <List className="w-4 h-4" /> Lista
+            </button>
+          </div>
+          <Button onClick={openNew}>
+            <Plus className="w-4 h-4 mr-2" /> Novo Modelo
+          </Button>
+        </div>
       </div>
 
       {loading ? (
@@ -309,16 +339,31 @@ export default function Variations() {
         <div className="text-center py-16 text-muted-foreground text-sm">
           Nenhum modelo cadastrado. Clique em "Novo Modelo" para começar.
         </div>
-      ) : (
+      ) : viewMode === "block" ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {models.map((m) => (
-            <Card key={m.id}>
+            <Card
+              key={m.id}
+              draggable
+              onDragStart={() => setDragId(m.id)}
+              onDragEnd={() => { setDragId(null); setOverId(null); }}
+              onDragOver={(e) => { e.preventDefault(); setOverId(m.id); }}
+              onDrop={() => handleDrop(m.id)}
+              className={
+                "transition-all cursor-grab active:cursor-grabbing " +
+                (dragId === m.id ? "opacity-40 " : "") +
+                (overId === m.id && dragId !== m.id ? "ring-2 ring-primary " : "")
+              }
+            >
               <CardHeader className="flex-row items-start justify-between gap-2 space-y-0">
-                <div>
-                  <CardTitle className="text-base uppercase">{m.nome}</CardTitle>
-                  <CardDescription>
-                    {m.colors.length} cores · {m.materials.length} malhas · {m.sizes.length} tamanhos
-                  </CardDescription>
+                <div className="flex items-start gap-2">
+                  <GripVertical className="w-4 h-4 text-muted-foreground mt-1 shrink-0" />
+                  <div>
+                    <CardTitle className="text-base uppercase">{m.nome}</CardTitle>
+                    <CardDescription>
+                      {m.colors.length} cores · {m.materials.length} malhas · {m.sizes.length} tamanhos
+                    </CardDescription>
+                  </div>
                 </div>
                 <div className="flex gap-1">
                   <Button variant="ghost" size="icon" onClick={() => openEdit(m)}>
@@ -382,6 +427,48 @@ export default function Variations() {
                 )}
               </CardContent>
             </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="flex flex-col border border-border divide-y divide-border">
+          {models.map((m) => (
+            <div
+              key={m.id}
+              draggable
+              onDragStart={() => setDragId(m.id)}
+              onDragEnd={() => { setDragId(null); setOverId(null); }}
+              onDragOver={(e) => { e.preventDefault(); setOverId(m.id); }}
+              onDrop={() => handleDrop(m.id)}
+              className={
+                "flex items-center gap-3 px-3 py-2.5 bg-card transition-all cursor-grab active:cursor-grabbing " +
+                (dragId === m.id ? "opacity-40 " : "") +
+                (overId === m.id && dragId !== m.id ? "ring-2 ring-inset ring-primary " : "hover:bg-accent/40 ")
+              }
+            >
+              <GripVertical className="w-4 h-4 text-muted-foreground shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium uppercase truncate">{m.nome}</p>
+                <p className="text-xs text-muted-foreground">
+                  {m.colors.length} cores · {m.materials.length} malhas · {m.sizes.length} tamanhos
+                </p>
+              </div>
+              <div className="hidden sm:flex flex-wrap gap-1 max-w-[40%] justify-end">
+                {m.colors.slice(0, 4).map((c) => (
+                  <Badge key={c} variant="secondary" className="text-[10px] gap-1">
+                    <span className="w-2.5 h-2.5 border border-border" style={{ background: colorHex(c) }} />
+                    {c}
+                  </Badge>
+                ))}
+              </div>
+              <div className="flex gap-1 shrink-0">
+                <Button variant="ghost" size="icon" onClick={() => openEdit(m)}>
+                  <Pencil className="w-4 h-4" />
+                </Button>
+                <Button variant="ghost" size="icon" onClick={() => setDeleteId(m.id)}>
+                  <Trash2 className="w-4 h-4 text-destructive" />
+                </Button>
+              </div>
+            </div>
           ))}
         </div>
       )}
