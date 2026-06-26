@@ -77,3 +77,14 @@ export function sendUazapiMedia(params: {
 export function hasUazapiCredentials(): boolean {
   return Boolean(Deno.env.get("UAZAPI_SERVER_URL") && Deno.env.get("UAZAPI_INSTANCE_TOKEN"));
 }
+
+/**
+ * Busca nome e URL da foto de perfil do contato no WhatsApp.
+ * UAZAPI: `POST /chat/GetNameAndImageURL` com body `{ number, preview }`.
+ */
+export function getUazapiProfile(phone: string): Promise<UazapiResult> {
+  return postToUazapi("/chat/GetNameAndImageURL", {
+    number: digitsOnly(phone),
+    preview: false,
+  });
+}

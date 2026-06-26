@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useCustomTabs } from "@/hooks/useCustomTabs";
-import { MessageSquareOff, ArrowLeft } from "lucide-react";
+import { MessageSquareOff, ArrowLeft, ImageDown, Loader2 } from "lucide-react";
 import { ConversationList } from "@/components/inbox/ConversationList";
 import { ChatView } from "@/components/inbox/ChatView";
 import { CustomTabsSidebar } from "@/components/inbox/CustomTabsSidebar";
@@ -10,6 +10,9 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useNewMessageAlerts } from "@/hooks/useNewMessageAlerts";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 
 const SELECTED_CONV_KEY = "inbox:selectedConversationId";
 
@@ -22,6 +25,25 @@ export default function Inbox() {
   const isMobile = useIsMobile();
   const { data: tabs } = useCustomTabs();
   const { data: conversations } = useConversations();
+  const queryClient = useQueryClient();
+  const [isFetchingPhoto, setIsFetchingPhoto] = useState(false);
+
+  const fetchWhatsappPhoto = async (contactId: string) => {
+    setIsFetchingPhoto(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("fetch-whatsapp-photo", {
+        body: { contactId },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || "Falha ao buscar foto");
+      await queryClient.invalidateQueries({ queryKey: ["conversations"] });
+      toast.success("Foto do WhatsApp atualizada");
+    } catch (e: any) {
+      toast.error(e?.message || "Erro ao buscar foto do WhatsApp");
+    } finally {
+      setIsFetchingPhoto(false);
+    }
+  };
 
   // Resolve the full conversation object from the persisted id so the open
   // chat survives navigating to other pages and back.
@@ -63,6 +85,22 @@ export default function Inbox() {
                   {selectedConversation.contact.phone || selectedConversation.channel}
                 </p>
               </div>
+              {selectedConversation.channel === "whatsapp" && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => fetchWhatsappPhoto(selectedConversation.contact_id)}
+                  disabled={isFetchingPhoto}
+                  aria-label="Puxar foto do WhatsApp"
+                  className="text-muted-foreground flex-shrink-0"
+                >
+                  {isFetchingPhoto ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <ImageDown className="w-5 h-5" />
+                  )}
+                </Button>
+              )}
             </div>
           </header>
         ) : (

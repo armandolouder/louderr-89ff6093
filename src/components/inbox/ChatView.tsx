@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, ClipboardEvent, ChangeEvent } from "react";
-import { Send, Paperclip, Smile, MoreVertical, Phone, User, Loader2, Sparkles, MessageSquareText, X, Image as ImageIcon, ArrowDown, RefreshCw } from "lucide-react";
+import { Send, Paperclip, Smile, MoreVertical, Phone, User, Loader2, Sparkles, MessageSquareText, X, Image as ImageIcon, ArrowDown, RefreshCw, ImageDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -61,6 +61,26 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
       toast.error(e?.message || "Erro ao sincronizar Instagram");
     } finally {
       setIsSyncingIg(false);
+    }
+  };
+
+  const [isFetchingPhoto, setIsFetchingPhoto] = useState(false);
+
+  const fetchWhatsappPhoto = async () => {
+    setIsFetchingPhoto(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("fetch-whatsapp-photo", {
+        body: { contactId: conversation.contact_id },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || "Falha ao buscar foto");
+      await queryClient.invalidateQueries({ queryKey: ["conversations"] });
+      toast.success("Foto do WhatsApp atualizada");
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e?.message || "Erro ao buscar foto do WhatsApp");
+    } finally {
+      setIsFetchingPhoto(false);
     }
   };
 
@@ -294,6 +314,27 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>Sincronizar Instagram Pessoal</TooltipContent>
+              </Tooltip>
+            )}
+            {conversation.channel === "whatsapp" && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={fetchWhatsappPhoto}
+                    disabled={isFetchingPhoto}
+                    aria-label="Buscar foto do WhatsApp"
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    {isFetchingPhoto ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      <ImageDown className="w-5 h-5" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Puxar foto do WhatsApp</TooltipContent>
               </Tooltip>
             )}
             <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
