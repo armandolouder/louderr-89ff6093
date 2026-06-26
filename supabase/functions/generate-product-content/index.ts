@@ -99,7 +99,7 @@ Quantidade de fotos: ${images.length}`;
     };
     const finalSeoTitle = enforceSeoTitle(parsed.seo_title || "");
     const suggestion = {
-      name: finalSeoTitle,
+      name: (prod as any).name || "",
       description: parsed.description || (prod as any).description || "",
       tags: parsed.tags || currentTags || "",
       seo_title: finalSeoTitle,
