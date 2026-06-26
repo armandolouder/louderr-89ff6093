@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Copy, CheckCircle, ExternalLink, ShoppingBag, RefreshCw, Download, Loader2, Square } from "lucide-react";
+import { Copy, CheckCircle, ExternalLink, ShoppingBag, RefreshCw, Download, Loader2, Square, Link2, AlertTriangle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,6 +14,8 @@ interface NuvemshopConfigProps {
 
 export function NuvemshopConfig({ status, onStatusChange }: NuvemshopConfigProps) {
   const [copied, setCopied] = useState(false);
+  const [copiedRedirect, setCopiedRedirect] = useState(false);
+  const [connection, setConnection] = useState<{ store_id: string; store_name: string | null; updated_at: string } | null>(null);
   const [recentOrders, setRecentOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -21,12 +23,36 @@ export function NuvemshopConfig({ status, onStatusChange }: NuvemshopConfigProps
   const abortRef = useRef(false);
 
   const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/nuvemshop-webhook`;
+  const redirectUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/nuvemshop-oauth-callback`;
+  const appId = "17587";
+  const installUrl = `https://www.nuvemshop.com.br/apps/${appId}/authorize`;
+
+  const fetchConnection = async () => {
+    try {
+      const { data } = await (supabase as any)
+        .from("nuvemshop_credentials")
+        .select("store_id, store_name, updated_at")
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      setConnection(data || null);
+    } catch {
+      setConnection(null);
+    }
+  };
 
   const copyWebhookUrl = () => {
     navigator.clipboard.writeText(webhookUrl);
     setCopied(true);
     toast.success("URL copiada!");
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const copyRedirectUrl = () => {
+    navigator.clipboard.writeText(redirectUrl);
+    setCopiedRedirect(true);
+    toast.success("URL de redirecionamento copiada!");
+    setTimeout(() => setCopiedRedirect(false), 2000);
   };
 
   const fetchRecentOrders = async () => {
@@ -107,6 +133,7 @@ export function NuvemshopConfig({ status, onStatusChange }: NuvemshopConfigProps
 
   useEffect(() => {
     fetchRecentOrders();
+    fetchConnection();
   }, []);
 
   const eventLabels: Record<string, string> = {
@@ -133,6 +160,70 @@ export function NuvemshopConfig({ status, onStatusChange }: NuvemshopConfigProps
           Receba pedidos da sua loja Nuvemshop via webhook
         </p>
       </div>
+
+      {/* Conexão OAuth */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Link2 className="w-4 h-4" />
+            Conexão da Loja (OAuth)
+          </CardTitle>
+          <CardDescription>
+            Instale o app na sua loja para gerar um token de acesso válido automaticamente
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {connection ? (
+            <div className="flex items-center gap-2 text-sm text-foreground bg-primary/10 px-3 py-2 rounded-lg">
+              <CheckCircle className="w-4 h-4 text-primary" />
+              <span>
+                Conectado{connection.store_name ? `: ${connection.store_name}` : ""} (ID {connection.store_id}) ·{" "}
+                {new Date(connection.updated_at).toLocaleString("pt-BR")}
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-lg">
+              <AlertTriangle className="w-4 h-4" />
+              <span>Loja não conectada. Instale o app para gerar o token.</span>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-foreground">
+              1. Cole esta URL no campo <em>"URL de redirecionamento após instalação"</em> do seu app na Nuvemshop:
+            </p>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 bg-secondary/50 text-sm px-3 py-2 rounded-lg text-foreground break-all">
+                {redirectUrl}
+              </code>
+              <Button variant="outline" size="icon" onClick={copyRedirectUrl}>
+                {copiedRedirect ? <CheckCircle className="w-4 h-4 text-primary" /> : <Copy className="w-4 h-4" />}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              No campo "Site do aplicativo" use: <code className="text-foreground">{window.location.origin}</code>
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-foreground">2. Depois de salvar, instale/reconecte o app:</p>
+            <div className="flex gap-2">
+              <Button asChild className="flex-1">
+                <a href={installUrl} target="_blank" rel="noopener noreferrer">
+                  <Link2 className="w-4 h-4 mr-2" />
+                  Instalar / Reconectar na Nuvemshop
+                </a>
+              </Button>
+              <Button variant="outline" size="icon" onClick={fetchConnection}>
+                <RefreshCw className="w-4 h-4" />
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Ao autorizar, você volta com a mensagem "Conexão realizada". Clique em atualizar para confirmar o status aqui.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Webhook URL */}
       <Card>

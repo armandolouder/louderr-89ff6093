@@ -1,5 +1,6 @@
 import { createServiceClient } from "../_shared/auth.ts";
 import { corsHeaders } from "../_shared/cors.ts";
+import { getNuvemshopCredentials, NUVEMSHOP_USER_AGENT } from "../_shared/nuvemshop.ts";
 
 // Extrai o texto localizado de campos da Nuvemshop (que podem ser { pt: "..." } ou string)
 function loc(value: unknown): string | null {
@@ -19,18 +20,12 @@ function isSizeAttr(name: string): boolean {
   return /tamanho|size|talle/i.test(name);
 }
 
-async function fetchProductsPage(page: number, perPage: number) {
-  const accessToken = Deno.env.get("NUVEMSHOP_ACCESS_TOKEN")?.trim();
-  const storeId = Deno.env.get("NUVEMSHOP_STORE_ID");
-  if (!accessToken || !storeId) {
-    throw new Error("NUVEMSHOP_ACCESS_TOKEN ou NUVEMSHOP_STORE_ID não configurados");
-  }
-
+async function fetchProductsPage(storeId: string, accessToken: string, page: number, perPage: number) {
   const url = `https://api.tiendanube.com/v1/${storeId}/products?page=${page}&per_page=${perPage}`;
   const response = await fetch(url, {
     headers: {
       "Authentication": `bearer ${accessToken}`,
-      "User-Agent": "LOUDER.ink (allvisualweb@gmail.com)",
+      "User-Agent": NUVEMSHOP_USER_AGENT,
       "Content-Type": "application/json",
     },
   });
@@ -49,6 +44,7 @@ Deno.serve(async (req) => {
     const supabase = createServiceClient();
     const { data: ownerData } = await supabase.rpc("get_webhook_owner_user_id");
     const ownerUserId = ownerData as string | null;
+    const creds = await getNuvemshopCredentials(supabase);
 
     const urlObj = new URL(req.url);
     let page = parseInt(urlObj.searchParams.get("page") || "1", 10);
@@ -63,7 +59,7 @@ Deno.serve(async (req) => {
       } catch (_) { /* sem corpo */ }
     }
 
-    const products = await fetchProductsPage(page, perPage);
+    const products = await fetchProductsPage(creds.storeId, creds.accessToken, page, perPage);
     let synced = 0;
 
     for (const product of products) {

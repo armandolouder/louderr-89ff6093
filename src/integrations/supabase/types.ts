@@ -1697,6 +1697,39 @@ export type Database = {
         }
         Relationships: []
       }
+      nuvemshop_credentials: {
+        Row: {
+          access_token: string
+          created_at: string
+          id: string
+          scope: string | null
+          store_id: string
+          store_name: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          access_token: string
+          created_at?: string
+          id?: string
+          scope?: string | null
+          store_id: string
+          store_name?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          access_token?: string
+          created_at?: string
+          id?: string
+          scope?: string | null
+          store_id?: string
+          store_name?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       nuvemshop_orders: {
         Row: {
           created_at: string
