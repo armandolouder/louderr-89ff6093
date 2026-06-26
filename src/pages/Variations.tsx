@@ -152,7 +152,7 @@ export default function Variations() {
   const updateSize = (idx: number, patch: Partial<SizeRow>) => {
     setSizes((prev) => prev.map((s, i) => (i === idx ? { ...s, ...patch } : s)));
   };
-  const addSizeRow = () => setSizes((prev) => [...prev, { tamanho: "", preco: "", ativo: true }]);
+  const addSizeRow = () => setSizes((prev) => [...prev, { tamanho: "", preco: "", precoPromocional: "", ativo: true }]);
   const removeSizeRow = (idx: number) => setSizes((prev) => prev.filter((_, i) => i !== idx));
 
   const handleSave = async () => {
