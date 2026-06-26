@@ -38,7 +38,7 @@ Deno.serve(async (req) => {
     const productPayload: any = {};
     if (content.name != null) productPayload.name = { pt: content.name };
     if (content.description != null) productPayload.description = { pt: content.description };
-    if (content.handle != null && content.handle !== "") productPayload.handle = { pt: content.handle };
+    // URL SEO (handle) nunca é alterada — mantém a URL original do produto.
     if (content.seo_title != null) productPayload.seo_title = { pt: content.seo_title };
     if (content.seo_description != null) productPayload.seo_description = { pt: content.seo_description };
     if (content.tags != null) productPayload.tags = content.tags;
