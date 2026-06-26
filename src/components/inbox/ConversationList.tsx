@@ -138,6 +138,7 @@ export function ConversationList({ selectedId, onSelect, filterTabId, showArchiv
             onClick={() => setUnreadOnly(v => !v)}
             className={cn("h-8 w-8 relative flex-shrink-0", !unreadOnly && "border-border text-muted-foreground")}
             title="Aguardando — mensagens não abertas ainda"
+            aria-label="Filtrar mensagens não lidas"
           >
             <InboxIcon className="w-4 h-4" />
             {unreadCount > 0 && (
