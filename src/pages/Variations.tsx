@@ -254,6 +254,39 @@ export default function Variations() {
     }
   };
 
+  const persistOrder = async (ordered: VariationModel[]) => {
+    try {
+      await Promise.all(
+        ordered.map((m, i) =>
+          (supabase as any).from("variation_models").update({ position: i }).eq("id", m.id)
+        )
+      );
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao salvar ordem");
+      fetchModels();
+    }
+  };
+
+  const handleDrop = (targetId: string) => {
+    if (!dragId || dragId === targetId) {
+      setDragId(null);
+      setOverId(null);
+      return;
+    }
+    setModels((prev) => {
+      const list = [...prev];
+      const from = list.findIndex((m) => m.id === dragId);
+      const to = list.findIndex((m) => m.id === targetId);
+      if (from === -1 || to === -1) return prev;
+      const [moved] = list.splice(from, 1);
+      list.splice(to, 0, moved);
+      persistOrder(list);
+      return list;
+    });
+    setDragId(null);
+    setOverId(null);
+  };
+
   return (
     <div className="flex-1 overflow-y-auto p-6 space-y-6">
       <div className="flex items-start justify-between gap-4 flex-wrap">
