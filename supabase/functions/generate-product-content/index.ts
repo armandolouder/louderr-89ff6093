@@ -75,7 +75,7 @@ Quantidade de fotos: ${images.length}`;
           { role: "user", content: userPrompt },
         ],
         temperature: 0.8,
-        max_tokens: 1500,
+        max_tokens: 4000,
         response_format: { type: "json_object" },
       }),
     });
