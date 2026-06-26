@@ -130,7 +130,7 @@ export default function Variations() {
     setMaterials([...m.materials]);
     setSizes(
       m.sizes.length
-        ? m.sizes.map((s) => ({ tamanho: s.tamanho, preco: formatPrice(s.preco), ativo: s.ativo }))
+        ? m.sizes.map((s) => ({ tamanho: s.tamanho, preco: formatPrice(s.preco), precoPromocional: formatPrice(s.precoPromocional), ativo: s.ativo }))
         : DEFAULT_SIZES.map((s) => ({ ...s }))
     );
     setNewColor("");
