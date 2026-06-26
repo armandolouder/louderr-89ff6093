@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Download, Loader2, RefreshCw, Package, ShoppingBag, Image as ImageIcon, Layers, Sparkles, AlertTriangle, Check, ExternalLink, Search, ChevronLeft, ChevronRight, EyeOff, Wand2, ArrowUp, ArrowDown, Save } from "lucide-react";
+import { Download, Loader2, RefreshCw, Package, ShoppingBag, Image as ImageIcon, Layers, Sparkles, AlertTriangle, Check, ExternalLink, Search, ChevronLeft, ChevronRight, EyeOff, Eye, Wand2, ArrowUp, ArrowDown, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -226,21 +226,25 @@ export default function Catalog() {
     })();
   };
 
-  const hideProduct = async () => {
+  const toggleVisibility = async (publish: boolean) => {
     if (!selected) return;
     const product = selected;
     setHiding(true);
     try {
       const { data, error } = await supabase.functions.invoke("toggle-product-visibility", {
-        body: { product_id: product.id, published: false },
+        body: { product_id: product.id, published: publish },
       });
       if (error) throw error;
-      if (data?.success === false) throw new Error(data.error || "Erro ao ocultar produto");
-      toast.success(`"${product.name}" não será mais exibido na loja.`);
-      setSelected(null);
+      if (data?.success === false) throw new Error(data.error || "Erro ao atualizar produto");
+      toast.success(
+        publish
+          ? `"${product.name}" voltou a ser exibido na loja.`
+          : `"${product.name}" não será mais exibido na loja.`,
+      );
+      setSelected({ ...product, status: publish ? "active" : "draft" });
       fetchProducts();
     } catch (err: any) {
-      toast.error(err.message || "Erro ao ocultar produto");
+      toast.error(err.message || "Erro ao atualizar produto");
     } finally {
       setHiding(false);
     }
@@ -660,15 +664,27 @@ export default function Catalog() {
                 )}
               </div>
               <DialogFooter className="flex-col sm:flex-row gap-2 p-6 pt-4 border-t border-border shrink-0">
-                <Button
-                  variant="outline"
-                  onClick={hideProduct}
-                  disabled={hiding}
-                  className="sm:mr-auto text-destructive hover:text-destructive border-destructive/40"
-                >
-                  {hiding ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <EyeOff className="w-4 h-4 mr-2" />}
-                  Não exibir na loja
-                </Button>
+                {(selected?.status || "").toLowerCase() === "draft" ? (
+                  <Button
+                    variant="outline"
+                    onClick={() => toggleVisibility(true)}
+                    disabled={hiding}
+                    className="sm:mr-auto text-emerald-600 hover:text-emerald-600 border-emerald-500/40"
+                  >
+                    {hiding ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Eye className="w-4 h-4 mr-2" />}
+                    Reexibir na loja
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    onClick={() => toggleVisibility(false)}
+                    disabled={hiding}
+                    className="sm:mr-auto text-destructive hover:text-destructive border-destructive/40"
+                  >
+                    {hiding ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <EyeOff className="w-4 h-4 mr-2" />}
+                    Não exibir na loja
+                  </Button>
+                )}
                 <Button variant="outline" onClick={() => setSelected(null)}>
                   Cancelar
                 </Button>
