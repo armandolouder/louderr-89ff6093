@@ -70,6 +70,9 @@ export default function Catalog() {
   const [selected, setSelected] = useState<CatalogProduct | null>(null);
   const [vmodels, setVmodels] = useState<VariationModelOption[]>([]);
   const [chosenModels, setChosenModels] = useState<string[]>([]);
+  // Filtro do seletor de modelos dentro do modal
+  const [modelSearch, setModelSearch] = useState("");
+  const [malhaFilter, setMalhaFilter] = useState<string | null>(null);
   // Status de aplicação por produto (continua em segundo plano mesmo com o modal fechado)
   const [applyStatus, setApplyStatus] = useState<Record<string, "applying" | "done" | "error">>(() => {
     try {
