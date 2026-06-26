@@ -12,6 +12,15 @@ function nsHeaders(token: string) {
   };
 }
 
+function getPtValue(value: unknown): string | undefined {
+  if (typeof value === "string") return value;
+  if (value && typeof value === "object" && "pt" in value) {
+    const pt = (value as { pt?: unknown }).pt;
+    return typeof pt === "string" ? pt : undefined;
+  }
+  return undefined;
+}
+
 // Salva o conteúdo/SEO editado na Nuvemshop após revisão do usuário.
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -28,17 +37,32 @@ Deno.serve(async (req) => {
 
     const { data: prod, error: prodErr } = await supabase
       .from("catalog_products")
-      .select("id, nuvemshop_product_id, raw, catalog_images(id, nuvemshop_image_id)")
+      .select("id, nuvemshop_product_id, handle, raw, catalog_images(id, nuvemshop_image_id)")
       .eq("id", productUuid)
       .single();
     if (prodErr || !prod) throw new Error("Produto não encontrado");
     const pid = (prod as any).nuvemshop_product_id;
 
+    const currentProductRes = await fetch(`${API}/${storeId}/products/${pid}`, {
+      method: "GET",
+      headers: nsHeaders(accessToken),
+    });
+    if (!currentProductRes.ok) {
+      const txt = await currentProductRes.text();
+      throw new Error(`Nuvemshop ${currentProductRes.status}: ${txt}`);
+    }
+    const currentProduct = await currentProductRes.json();
+    const currentRemoteHandle = getPtValue(currentProduct?.handle);
+
     // Monta payload do produto (apenas campos enviados)
     const productPayload: any = {};
     if (content.name != null) productPayload.name = { pt: content.name };
     if (content.description != null) productPayload.description = { pt: content.description };
-    // URL SEO (handle) nunca é alterada — mantém a URL original do produto.
+    // URL SEO (handle) nunca é alterada. A Nuvemshop pode recalcular o slug
+    // quando o nome muda; por isso reenviamos explicitamente o handle atual salvo.
+    const rawHandle = ((prod as any).raw || {})?.handle;
+    const currentHandle = currentRemoteHandle || (prod as any).handle || getPtValue(rawHandle);
+    if (currentHandle) productPayload.handle = { pt: currentHandle };
     if (content.seo_title != null) productPayload.seo_title = { pt: content.seo_title };
     if (content.seo_description != null) productPayload.seo_description = { pt: content.seo_description };
     if (content.tags != null) productPayload.tags = content.tags;
