@@ -170,10 +170,14 @@ Deno.serve(async (req) => {
       if (r.ok) {
         created++;
       } else {
-        errors.push(`${values.map((x) => x.pt).join("/")}: ${r.status} ${await r.text()}`);
+        const errText = await r.text();
+        console.error("apply-variations: falha ao criar variante", values.map((x) => x.pt).join("/"), r.status, errText);
+        errors.push(`${values.map((x) => x.pt).join("/")}: ${r.status} ${errText}`);
       }
       await new Promise((res) => setTimeout(res, 120));
     }
+
+    console.log("apply-variations: criadas=", created, "de", allVariants.length, "erros=", errors.length);
 
     if (created === 0) {
       throw new Error("Nenhuma variação criada. " + errors.slice(0, 3).join(" | "));
