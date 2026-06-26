@@ -31,6 +31,7 @@ interface SizeRow {
   id?: string;
   tamanho: string;
   preco: string;
+  precoPromocional: string;
   ativo: boolean;
 }
 
@@ -39,20 +40,20 @@ interface VariationModel {
   nome: string;
   colors: string[];
   materials: string[];
-  sizes: { tamanho: string; preco: number | null; ativo: boolean }[];
+  sizes: { tamanho: string; preco: number | null; precoPromocional: number | null; ativo: boolean }[];
 }
 
 const DEFAULT_COLORS = ["Preta", "Branca", "Azul Marinho", "Cinza", "Vermelha", "Verde"];
 const DEFAULT_MATERIALS = ["Unissex", "Babylook", "Egípcia", "Oversized", "Manga Longa", "Moletom"];
 const DEFAULT_SIZES: SizeRow[] = [
-  { tamanho: "P", preco: "99,90", ativo: true },
-  { tamanho: "M", preco: "99,90", ativo: true },
-  { tamanho: "G", preco: "99,90", ativo: true },
-  { tamanho: "GG", preco: "109,90", ativo: true },
-  { tamanho: "XG", preco: "109,90", ativo: true },
-  { tamanho: "G1", preco: "119,90", ativo: false },
-  { tamanho: "G2", preco: "129,90", ativo: false },
-  { tamanho: "G3", preco: "139,90", ativo: false },
+  { tamanho: "P", preco: "129,90", precoPromocional: "99,90", ativo: true },
+  { tamanho: "M", preco: "129,90", precoPromocional: "99,90", ativo: true },
+  { tamanho: "G", preco: "129,90", precoPromocional: "99,90", ativo: true },
+  { tamanho: "GG", preco: "139,90", precoPromocional: "109,90", ativo: true },
+  { tamanho: "XG", preco: "139,90", precoPromocional: "109,90", ativo: true },
+  { tamanho: "G1", preco: "149,90", precoPromocional: "119,90", ativo: false },
+  { tamanho: "G2", preco: "159,90", precoPromocional: "129,90", ativo: false },
+  { tamanho: "G3", preco: "169,90", precoPromocional: "139,90", ativo: false },
 ];
 
 const parsePrice = (v: string): number | null => {
