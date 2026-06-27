@@ -651,29 +651,34 @@ export default function SalesDashboard() {
             )}
 
             {/* Dados do Cliente */}
-            <section className="space-y-1">
-              <h3 className="text-sm font-semibold text-primary border-b pb-1.5 mb-1">Dados do Cliente</h3>
-              <div className="grid grid-cols-2 gap-x-6">
-                <Field label="Nome" value={orderDetails?.customer_name || selectedOrder?.customer_name} />
-                <Field label="CPF/CNPJ" value={orderDetails?.identification} />
-                <Field label="Telefone" value={orderDetails?.phone || selectedOrder?.customer_phone} />
-                <Field label="Nº do Pedido" value={selectedOrder?.order_number || selectedOrder?.nuvemshop_order_id} />
-              </div>
-            </section>
-
-            {/* Endereço de Entrega */}
-            <section className="space-y-1">
-              <h3 className="text-sm font-semibold text-primary border-b pb-1.5 mb-1">Endereço de Entrega</h3>
-              <div className="grid grid-cols-2 gap-x-6">
-                <Field label="CEP" value={orderDetails?.address?.zipcode} />
-                <Field label="Logradouro" value={orderDetails?.address?.address} />
-                <Field label="Número" value={orderDetails?.address?.number} />
-                <Field label="Complemento" value={orderDetails?.address?.floor} />
-                <Field label="Bairro" value={orderDetails?.address?.locality} />
-                <Field label="Cidade" value={orderDetails?.address?.city} />
-                <Field label="UF" value={orderDetails?.address?.province} />
-              </div>
-            </section>
+            {(() => {
+              const addr = orderDetails?.address;
+              const linha = (label: string, value?: string | number | null) =>
+                value ? (
+                  <p className="text-sm">
+                    <span className="text-muted-foreground">{label}: </span>
+                    <span className="text-foreground">{value}</span>
+                  </p>
+                ) : null;
+              return (
+                <section className="space-y-0.5">
+                  <p className="text-sm font-semibold text-foreground">{orderDetails?.customer_name || selectedOrder?.customer_name || "—"}</p>
+                  {(orderDetails?.phone || selectedOrder?.customer_phone) && (
+                    <p className="text-sm text-foreground">{orderDetails?.phone || selectedOrder?.customer_phone}</p>
+                  )}
+                  <div className="pt-1.5 space-y-0.5">
+                    {linha("CPF/CNPJ", orderDetails?.identification)}
+                    {linha("Nº do Pedido", selectedOrder?.order_number || selectedOrder?.nuvemshop_order_id)}
+                    {linha("Endereço", [addr?.address, addr?.number].filter(Boolean).join(", "))}
+                    {linha("Complemento", addr?.floor)}
+                    {linha("Bairro", addr?.locality)}
+                    {linha("CEP", addr?.zipcode)}
+                    {linha("Cidade", addr?.city)}
+                    {linha("Estado", addr?.province)}
+                  </div>
+                </section>
+              );
+            })()}
 
             {/* Produtos */}
             <section className="space-y-3">
