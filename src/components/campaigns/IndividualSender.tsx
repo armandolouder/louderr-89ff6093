@@ -318,7 +318,7 @@ export function IndividualSender({ initialPhone, initialMessage, initialLink }: 
   };
 
   const selectSavedMessage = (msg: SavedMessage) => {
-    setContent(msg.content);
+    setContent(replaceLinkTags(msg.content, initialLink));
     if (msg.media_url) setMediaUrl(msg.media_url);
   };
 
