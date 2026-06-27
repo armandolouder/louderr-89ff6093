@@ -50,9 +50,9 @@ function formatCurrency(value: number) {
 
 function Field({ label, value, className }: { label: string; value?: string | number | null; className?: string }) {
   return (
-    <div className={`border rounded-md px-3 py-2 ${className || ""}`}>
-      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className="text-sm text-foreground truncate">{value || "—"}</p>
+    <div className={`flex justify-between gap-3 py-1 text-sm ${className || ""}`}>
+      <span className="text-muted-foreground shrink-0">{label}</span>
+      <span className="text-foreground text-right truncate">{value || "—"}</span>
     </div>
   );
 }
@@ -641,7 +641,7 @@ export default function SalesDashboard() {
           <DialogHeader>
             <DialogTitle>Detalhes do Pedido #{selectedOrder?.order_number || selectedOrder?.nuvemshop_order_id}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-6">
+          <div className="space-y-4">
             {loadingDetails && (
               <div className="space-y-3">
                 <Skeleton className="h-12 w-full" />
@@ -651,29 +651,23 @@ export default function SalesDashboard() {
             )}
 
             {/* Dados do Cliente */}
-            <section className="space-y-3">
-              <h3 className="text-sm font-semibold text-primary border-b pb-2">Dados do Cliente</h3>
-              <Field label="Nome Completo" value={orderDetails?.customer_name || selectedOrder?.customer_name} />
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <Field label="CPF ou CNPJ" value={orderDetails?.identification} />
-                <Field label="Telefone" value={orderDetails?.phone || selectedOrder?.customer_phone} />
-                <Field label="Número do Pedido" value={selectedOrder?.order_number || selectedOrder?.nuvemshop_order_id} />
-              </div>
+            <section className="space-y-1">
+              <h3 className="text-sm font-semibold text-primary border-b pb-1.5 mb-1">Dados do Cliente</h3>
+              <Field label="Nome" value={orderDetails?.customer_name || selectedOrder?.customer_name} />
+              <Field label="CPF/CNPJ" value={orderDetails?.identification} />
+              <Field label="Telefone" value={orderDetails?.phone || selectedOrder?.customer_phone} />
+              <Field label="Nº do Pedido" value={selectedOrder?.order_number || selectedOrder?.nuvemshop_order_id} />
             </section>
 
             {/* Endereço de Entrega */}
-            <section className="space-y-3">
-              <h3 className="text-sm font-semibold text-primary border-b pb-2">Endereço de Entrega</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <Field label="CEP" value={orderDetails?.address?.zipcode} />
-                <Field label="Logradouro" value={orderDetails?.address?.address} className="sm:col-span-2" />
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <Field label="Número" value={orderDetails?.address?.number} />
-                <Field label="Complemento" value={orderDetails?.address?.floor} />
-                <Field label="Bairro" value={orderDetails?.address?.locality} />
-                <Field label="Cidade" value={orderDetails?.address?.city} />
-              </div>
+            <section className="space-y-1">
+              <h3 className="text-sm font-semibold text-primary border-b pb-1.5 mb-1">Endereço de Entrega</h3>
+              <Field label="CEP" value={orderDetails?.address?.zipcode} />
+              <Field label="Logradouro" value={orderDetails?.address?.address} />
+              <Field label="Número" value={orderDetails?.address?.number} />
+              <Field label="Complemento" value={orderDetails?.address?.floor} />
+              <Field label="Bairro" value={orderDetails?.address?.locality} />
+              <Field label="Cidade" value={orderDetails?.address?.city} />
               <Field label="UF" value={orderDetails?.address?.province} />
             </section>
 
