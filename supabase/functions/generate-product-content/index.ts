@@ -64,23 +64,41 @@ Descrição atual: ${((prod as any).description || "(vazia)").slice(0, 1500)}
 Tags atuais: ${currentTags || "(nenhuma)"}
 Quantidade de fotos: ${images.length}`;
 
-    const resp = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        temperature: 0.8,
-        max_tokens: 4000,
-        response_format: { type: "json_object" },
-      }),
-    });
-    if (!resp.ok) {
+    const callGroq = async (model: string) =>
+      fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+          ],
+          temperature: 0.8,
+          max_tokens: 4000,
+          response_format: { type: "json_object" },
+        }),
+      });
+
+    // Modelo principal + fallbacks (usados quando o principal atinge rate limit/erro)
+    const models = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"];
+    let resp: Response | null = null;
+    let lastErr = "";
+    for (const model of models) {
+      resp = await callGroq(model);
+      if (resp.ok) break;
       const txt = await resp.text();
-      throw new Error(`Groq ${resp.status}: ${txt}`);
+      lastErr = `Groq ${resp.status}: ${txt}`;
+      // Só tenta o próximo modelo em caso de rate limit (429)
+      if (resp.status !== 429) break;
+      console.warn(`Modelo ${model} atingiu rate limit, tentando fallback...`);
+      resp = null;
+    }
+    if (!resp || !resp.ok) {
+      const friendly = lastErr.includes("rate_limit") || lastErr.includes("429")
+        ? "Limite diário de uso da IA (Groq) atingido. Tente novamente em alguns minutos ou faça upgrade do plano Groq."
+        : lastErr;
+      throw new Error(friendly);
     }
     const data = await resp.json();
     const rawContent = data.choices?.[0]?.message?.content?.trim() || "{}";
