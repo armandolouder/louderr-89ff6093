@@ -62,6 +62,20 @@ export default function SalesDashboard() {
   const startDate = new Date(year, month, 1).toISOString();
   const endDate = new Date(year, month + 1, 0, 23, 59, 59).toISOString();
 
+  const { data: orderDetails, isLoading: loadingDetails } = useQuery({
+    queryKey: ["order-details", selectedOrder?.nuvemshop_order_id],
+    enabled: !!selectedOrder?.nuvemshop_order_id,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke("get-order-details", {
+        body: { orderId: selectedOrder.nuvemshop_order_id },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || "Erro ao buscar pedido");
+      return data.details as any;
+    },
+  });
+
   // Payment fee config per method (Nuvem Pago) — stored in bot_settings (key='payment_fees')
   // Defaults: cartão 4,19% + R$0,35 / Pix 0,99% / Boleto R$2,39
   const DEFAULT_FEES = {
