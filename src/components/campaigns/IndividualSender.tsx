@@ -179,9 +179,17 @@ function SavedMessageDialog({
   );
 }
 
-export function IndividualSender({ initialPhone, initialMessage }: { initialPhone?: string; initialMessage?: string }) {
+const replaceLinkTags = (text: string, link?: string) =>
+  link
+    ? text
+        .replace(/\[link_pagamento\]/gi, link)
+        .replace(/\[link_recuperacao\]/gi, link)
+        .replace(/\[link_checkout\]/gi, link)
+    : text;
+
+export function IndividualSender({ initialPhone, initialMessage, initialLink }: { initialPhone?: string; initialMessage?: string; initialLink?: string }) {
   const [phone, setPhone] = useState(initialPhone || "");
-  const [content, setContent] = useState(initialMessage || "");
+  const [content, setContent] = useState(replaceLinkTags(initialMessage || "", initialLink));
   const [mediaUrl, setMediaUrl] = useState("");
   const [uploading, setUploading] = useState(false);
   const [sending, setSending] = useState(false);
