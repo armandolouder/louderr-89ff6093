@@ -543,7 +543,7 @@ export default function SalesDashboard() {
                   const statusVariant = order.status === "cancelled" ? "destructive" : order.status === "closed" ? "default" : "outline";
                   const total = order.total || 0;
                   const products = order.products as any[];
-                  const itemCount = Array.isArray(products) ? products.reduce((s, p) => s + (p.quantity || 1), 0) : 0;
+                  const itemCount = Array.isArray(products) ? products.reduce((s, p) => s + (Number(p.quantity) || 1), 0) : 0;
                   
                   const supplierName = (order as any).supplier || "";
                   const cost = (order as any).production_cost || 0;
