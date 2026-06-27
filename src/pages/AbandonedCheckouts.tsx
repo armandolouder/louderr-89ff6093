@@ -840,14 +840,16 @@ export default function AbandonedCheckouts() {
             {selectedCheckout?.customer_phone && (
               <Button
                 className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
-                disabled={sendingId === selectedCheckout.id}
-                onClick={() => sendWhatsApp(selectedCheckout)}
+                onClick={() => {
+                  const phone = selectedCheckout.customer_phone?.replace(/\D/g, "") || "";
+                  const firstName = (selectedCheckout.customer_name || "").split(" ")[0] || "Cliente";
+                  const products = (selectedCheckout.products as any[]) || [];
+                  const productsList = products.map((p: any) => `• ${p.name}`).join("\n");
+                  const msg = `Olá ${firstName}! 👋\nVi que você se interessou por:\n${productsList}\n\nPosso te ajudar com alguma dúvida?`;
+                  navigate(`/campaigns?tab=individual&phone=${encodeURIComponent(phone)}&msg=${encodeURIComponent(msg)}`);
+                }}
               >
-                {sendingId === selectedCheckout.id ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <Send className="w-4 h-4 mr-2" />
-                )}
+                <Send className="w-4 h-4 mr-2" />
                 ENVIAR MENSAGEM WHATSAPP
               </Button>
             )}
