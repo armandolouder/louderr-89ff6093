@@ -653,22 +653,26 @@ export default function SalesDashboard() {
             {/* Dados do Cliente */}
             <section className="space-y-1">
               <h3 className="text-sm font-semibold text-primary border-b pb-1.5 mb-1">Dados do Cliente</h3>
-              <Field label="Nome" value={orderDetails?.customer_name || selectedOrder?.customer_name} />
-              <Field label="CPF/CNPJ" value={orderDetails?.identification} />
-              <Field label="Telefone" value={orderDetails?.phone || selectedOrder?.customer_phone} />
-              <Field label="Nº do Pedido" value={selectedOrder?.order_number || selectedOrder?.nuvemshop_order_id} />
+              <div className="grid grid-cols-2 gap-x-6">
+                <Field label="Nome" value={orderDetails?.customer_name || selectedOrder?.customer_name} />
+                <Field label="CPF/CNPJ" value={orderDetails?.identification} />
+                <Field label="Telefone" value={orderDetails?.phone || selectedOrder?.customer_phone} />
+                <Field label="Nº do Pedido" value={selectedOrder?.order_number || selectedOrder?.nuvemshop_order_id} />
+              </div>
             </section>
 
             {/* Endereço de Entrega */}
             <section className="space-y-1">
               <h3 className="text-sm font-semibold text-primary border-b pb-1.5 mb-1">Endereço de Entrega</h3>
-              <Field label="CEP" value={orderDetails?.address?.zipcode} />
-              <Field label="Logradouro" value={orderDetails?.address?.address} />
-              <Field label="Número" value={orderDetails?.address?.number} />
-              <Field label="Complemento" value={orderDetails?.address?.floor} />
-              <Field label="Bairro" value={orderDetails?.address?.locality} />
-              <Field label="Cidade" value={orderDetails?.address?.city} />
-              <Field label="UF" value={orderDetails?.address?.province} />
+              <div className="grid grid-cols-2 gap-x-6">
+                <Field label="CEP" value={orderDetails?.address?.zipcode} />
+                <Field label="Logradouro" value={orderDetails?.address?.address} />
+                <Field label="Número" value={orderDetails?.address?.number} />
+                <Field label="Complemento" value={orderDetails?.address?.floor} />
+                <Field label="Bairro" value={orderDetails?.address?.locality} />
+                <Field label="Cidade" value={orderDetails?.address?.city} />
+                <Field label="UF" value={orderDetails?.address?.province} />
+              </div>
             </section>
 
             {/* Produtos */}
