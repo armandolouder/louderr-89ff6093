@@ -50,9 +50,9 @@ function formatCurrency(value: number) {
 
 function Field({ label, value, className }: { label: string; value?: string | number | null; className?: string }) {
   return (
-    <div className={`border rounded-md px-3 py-2 ${className || ""}`}>
-      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className="text-sm text-foreground truncate">{value || "—"}</p>
+    <div className={`flex justify-between gap-3 py-1 text-sm ${className || ""}`}>
+      <span className="text-muted-foreground shrink-0">{label}</span>
+      <span className="text-foreground text-right truncate">{value || "—"}</span>
     </div>
   );
 }
