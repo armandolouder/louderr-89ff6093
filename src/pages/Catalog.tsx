@@ -532,8 +532,8 @@ export default function Catalog() {
               const last = totalPages - 1;
               const add = (n: number | "...") => pages.push(n);
               add(0);
-              const start = Math.max(1, cur - 1);
-              const end = Math.min(last - 1, cur + 1);
+              const start = Math.max(1, cur - 3);
+              const end = Math.min(last - 1, cur + 3);
               if (start > 1) add("...");
               for (let i = start; i <= end; i++) add(i);
               if (end < last - 1) add("...");
