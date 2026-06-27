@@ -248,7 +248,7 @@ export default function SalesDashboard() {
     const avgTicket = totalOrders > 0 ? totalRevenueGross / totalOrders : 0;
     const totalItems = billable.reduce((sum, o) => {
       const products = o.products as any[];
-      return sum + (Array.isArray(products) ? products.reduce((s, p) => s + (p.quantity || 1), 0) : 0);
+      return sum + (Array.isArray(products) ? products.reduce((s, p) => s + (Number(p.quantity) || 1), 0) : 0);
     }, 0);
     
     // Calculate total costs from manual entries
