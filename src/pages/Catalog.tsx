@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Download, Loader2, RefreshCw, Package, ShoppingBag, Image as ImageIcon, Layers, Sparkles, AlertTriangle, Check, ExternalLink, Search, ChevronLeft, ChevronRight, EyeOff, Eye, Wand2, ArrowUp, ArrowDown, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -86,6 +86,11 @@ export default function Catalog() {
     }
   });
   const [hiding, setHiding] = useState(false);
+  // Fila sequencial de aplicação de variações: evita disparar vários PUTs
+  // simultâneos na Nuvemshop (que trava/limita atualizações em paralelo).
+  const applyQueueRef = useRef<{ id: string; name: string; modelIds: string[] }[]>([]);
+  const applyProcessingRef = useRef(false);
+  const [queueCount, setQueueCount] = useState(0);
   // Conteúdo / SEO com IA (Groq)
   const [aiContent, setAiContent] = useState<ProductContent | null>(null);
   const [genLoading, setGenLoading] = useState(false);
@@ -191,39 +196,65 @@ export default function Catalog() {
     }
   };
 
+  // Processa a fila um produto por vez, com intervalo entre eles, para não
+  // sobrecarregar a API da Nuvemshop (que trava com atualizações simultâneas).
+  const DELAY_BETWEEN_PRODUCTS = 3000;
+  const processApplyQueue = useCallback(async () => {
+    if (applyProcessingRef.current) return;
+    applyProcessingRef.current = true;
+    try {
+      while (applyQueueRef.current.length > 0) {
+        const job = applyQueueRef.current[0];
+        setApplyStatus((s) => ({ ...s, [job.id]: "applying" }));
+        try {
+          const { data, error } = await supabase.functions.invoke("apply-variations", {
+            body: { product_id: job.id, model_ids: job.modelIds },
+          });
+          if (error) throw error;
+          if (data?.success === false) throw new Error(data.error || "Erro ao aplicar variações");
+          setApplyStatus((s) => ({ ...s, [job.id]: "done" }));
+          if (data?.product_url) {
+            setProducts((prev) => prev.map((p) => (p.id === job.id ? { ...p, product_url: data.product_url } : p)));
+          }
+          const errCount = Array.isArray(data?.errors) ? data.errors.length : 0;
+          if (errCount > 0) {
+            toast.warning(`"${job.name}": ${data.created} aplicadas, ${errCount} falharam. ${(data.errors || []).slice(0, 2).join(" | ")}`);
+          } else {
+            toast.success(`"${job.name}": ${data.created} variações aplicadas!`);
+          }
+          fetchProducts();
+        } catch (err: any) {
+          setApplyStatus((s) => ({ ...s, [job.id]: "error" }));
+          toast.error(`"${job.name}": ${err.message || "Erro ao aplicar variações"}`);
+        }
+        // Remove o job concluído e aguarda antes do próximo (se houver fila).
+        applyQueueRef.current.shift();
+        setQueueCount(applyQueueRef.current.length);
+        if (applyQueueRef.current.length > 0) {
+          await new Promise((r) => setTimeout(r, DELAY_BETWEEN_PRODUCTS));
+        }
+      }
+    } finally {
+      applyProcessingRef.current = false;
+    }
+  }, [fetchProducts]);
+
   const applyVariations = () => {
     if (!selected || chosenModels.length === 0) return;
     const product = selected;
     const modelIds = [...chosenModels];
-    // Marca como em andamento e fecha o modal — o trabalho segue em segundo plano
+    // Enfileira o trabalho e fecha o modal — o processamento é sequencial.
+    applyQueueRef.current.push({ id: product.id, name: product.name || "Produto", modelIds });
+    setQueueCount(applyQueueRef.current.length);
     setApplyStatus((s) => ({ ...s, [product.id]: "applying" }));
     setSelected(null);
-    toast.info(`Atualizando "${product.name}" em segundo plano...`);
-
-    (async () => {
-      try {
-        const { data, error } = await supabase.functions.invoke("apply-variations", {
-          body: { product_id: product.id, model_ids: modelIds },
-        });
-        if (error) throw error;
-        if (data?.success === false) throw new Error(data.error || "Erro ao aplicar variações");
-        setApplyStatus((s) => ({ ...s, [product.id]: "done" }));
-        if (data?.product_url) {
-          setProducts((prev) => prev.map((p) => (p.id === product.id ? { ...p, product_url: data.product_url } : p)));
-        }
-        const errCount = Array.isArray(data?.errors) ? data.errors.length : 0;
-        if (errCount > 0) {
-          toast.warning(`"${product.name}": ${data.created} aplicadas, ${errCount} falharam. ${(data.errors || []).slice(0, 2).join(" | ")}`);
-        } else {
-          toast.success(`"${product.name}": ${data.created} variações aplicadas!`);
-        }
-        fetchProducts();
-        // O check verde permanece (persistido no localStorage) mesmo ao sair da página.
-      } catch (err: any) {
-        setApplyStatus((s) => ({ ...s, [product.id]: "error" }));
-        toast.error(`"${product.name}": ${err.message || "Erro ao aplicar variações"}`);
-      }
-    })();
+    const pos = applyQueueRef.current.length;
+    toast.info(
+      pos > 1
+        ? `"${product.name}" adicionado à fila (posição ${pos}). Atualizando um por vez...`
+        : `Atualizando "${product.name}" em segundo plano...`,
+    );
+    processApplyQueue();
   };
 
   const toggleVisibility = async (publish: boolean) => {
@@ -405,6 +436,17 @@ export default function Catalog() {
             </div>
             <Progress value={progress.page > 0 ? Math.min((progress.page / 20) * 100, 95) : 0} className="h-2" />
             <p className="text-xs text-muted-foreground">{progress.synced} produtos importados</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {queueCount > 0 && (
+        <Card>
+          <CardContent className="pt-6 flex items-center gap-3 text-sm">
+            <Loader2 className="w-4 h-4 animate-spin text-primary" />
+            <span className="text-foreground">
+              Aplicando variações em fila — {queueCount} produto(s) aguardando. Atualizando um por vez para não travar a Nuvemshop.
+            </span>
           </CardContent>
         </Card>
       )}
