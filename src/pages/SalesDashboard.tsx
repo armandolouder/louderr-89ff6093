@@ -686,47 +686,6 @@ export default function SalesDashboard() {
               );
             })()}
 
-            {/* Produtos */}
-            <section className="space-y-3">
-              <h3 className="text-sm font-semibold text-primary border-b pb-2">Produtos</h3>
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Produto</TableHead>
-                      <TableHead className="text-center w-[60px]">Qtd</TableHead>
-                      <TableHead className="text-right w-[110px]">Preço Un.</TableHead>
-                      <TableHead className="text-right w-[110px]">Subtotal</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {(orderDetails?.products || (selectedOrder?.products as any[]) || []).map((p: any, i: number) => {
-                      const qty = Number(p.quantity || 1);
-                      const price = Number(parseFloat(p.price) || p.price || 0);
-                      return (
-                        <TableRow key={i}>
-                          <TableCell>
-                            <div className="flex items-center gap-3">
-                              {p.image && (
-                                <img src={p.image} alt={p.name} className="w-10 h-10 object-cover border" />
-                              )}
-                              <div>
-                                <p className="text-sm font-medium">{p.name || "—"}</p>
-                                {p.variant && <p className="text-xs text-muted-foreground">{p.variant}</p>}
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-center">{qty}</TableCell>
-                          <TableCell className="text-right">{formatCurrency(price)}</TableCell>
-                          <TableCell className="text-right font-medium">{formatCurrency(p.subtotal ?? price * qty)}</TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-            </section>
-
             {/* Valores */}
             <section className="space-y-2">
               <h3 className="text-sm font-semibold text-primary border-b pb-2">Valores</h3>
@@ -773,6 +732,47 @@ export default function SalesDashboard() {
                   </div>
                 );
               })()}
+            </section>
+
+            {/* Produtos */}
+            <section className="space-y-3">
+              <h3 className="text-sm font-semibold text-primary border-b pb-2">Produtos</h3>
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Produto</TableHead>
+                      <TableHead className="text-center w-[60px]">Qtd</TableHead>
+                      <TableHead className="text-right w-[110px]">Preço Un.</TableHead>
+                      <TableHead className="text-right w-[110px]">Subtotal</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {(orderDetails?.products || (selectedOrder?.products as any[]) || []).map((p: any, i: number) => {
+                      const qty = Number(p.quantity || 1);
+                      const price = Number(parseFloat(p.price) || p.price || 0);
+                      return (
+                        <TableRow key={i}>
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              {p.image && (
+                                <img src={p.image} alt={p.name} className="w-10 h-10 object-cover border" />
+                              )}
+                              <div>
+                                <p className="text-sm font-medium">{p.name || "—"}</p>
+                                {p.variant && <p className="text-xs text-muted-foreground">{p.variant}</p>}
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center">{qty}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(price)}</TableCell>
+                          <TableCell className="text-right font-medium">{formatCurrency(p.subtotal ?? price * qty)}</TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
             </section>
 
             {selectedOrder?.customer_phone && (
