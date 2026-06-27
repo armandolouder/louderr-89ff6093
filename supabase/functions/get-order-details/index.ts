@@ -55,6 +55,7 @@ Deno.serve(async (req) => {
         price: Number(p.price || 0),
         subtotal: Number(p.price || 0) * Number(p.quantity || 1),
       })),
+    const coupons = (o.coupon || []).map((c: any) => c?.code).filter(Boolean)
       subtotal: Number(o.subtotal || 0),
       shipping_cost: Number(o.shipping_cost_customer ?? o.shipping_cost_owner ?? 0),
       discount: Number(o.discount || 0),
