@@ -278,7 +278,7 @@ function assignCustomerToCluster(
 }
 
 // Background processing function
-async function processAnalysis(supabase: any, jobId: string) {
+async function processAnalysis(supabase: any, jobId: string, ownerUserId: string) {
   try {
     // Fetch ALL imported customers
     let allCustomers: Customer[] = [];
@@ -289,6 +289,7 @@ async function processAnalysis(supabase: any, jobId: string) {
       const { data: batch, error: fetchError } = await supabase
         .from("imported_customers")
         .select("*, source")
+        .eq("user_id", ownerUserId)
         .range(offset, offset + pageSize - 1)
         .order("created_at", { ascending: false });
 
@@ -344,11 +345,12 @@ async function processAnalysis(supabase: any, jobId: string) {
     const totalSpentSum = allCustomers.reduce((sum, c) => sum + (c.total_spent || 0), 0);
     const avgTicket = totalSpentSum / allCustomers.length || 100;
 
-    // Clear existing clusters
-    await supabase.from("customer_clusters").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+    // Clear existing clusters (scoped to this owner)
+    await supabase.from("customer_clusters").delete().eq("user_id", ownerUserId);
 
     // Create clusters
     const clusterInserts = CLUSTER_DEFINITIONS.map((cluster) => ({
+      user_id: ownerUserId,
       name: cluster.name,
       emoji: cluster.emoji,
       description: cluster.description,
@@ -528,6 +530,7 @@ serve(async (req) => {
     if (claimsError || !claimsData?.claims) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
+    const ownerUserId = claimsData.claims.sub as string;
 
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -572,6 +575,7 @@ serve(async (req) => {
         filename: "analysis_job",
         status: "processing",
         total_rows: 0,
+        user_id: ownerUserId,
       })
       .select()
       .single();
@@ -584,11 +588,11 @@ serve(async (req) => {
     // @ts-ignore - EdgeRuntime is available in Supabase Edge Functions
     if (typeof EdgeRuntime !== "undefined" && EdgeRuntime.waitUntil) {
       // @ts-ignore
-      EdgeRuntime.waitUntil(processAnalysis(supabase, job.id));
+      EdgeRuntime.waitUntil(processAnalysis(supabase, job.id, ownerUserId));
     } else {
       // Fallback for environments without EdgeRuntime.waitUntil
       // Process synchronously but with a quick response first
-      processAnalysis(supabase, job.id).catch(console.error);
+      processAnalysis(supabase, job.id, ownerUserId).catch(console.error);
     }
 
     // Return immediately with job ID
