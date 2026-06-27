@@ -86,6 +86,11 @@ export default function Catalog() {
     }
   });
   const [hiding, setHiding] = useState(false);
+  // Fila sequencial de aplicação de variações: evita disparar vários PUTs
+  // simultâneos na Nuvemshop (que trava/limita atualizações em paralelo).
+  const applyQueueRef = useRef<{ id: string; name: string; modelIds: string[] }[]>([]);
+  const applyProcessingRef = useRef(false);
+  const [queueCount, setQueueCount] = useState(0);
   // Conteúdo / SEO com IA (Groq)
   const [aiContent, setAiContent] = useState<ProductContent | null>(null);
   const [genLoading, setGenLoading] = useState(false);
