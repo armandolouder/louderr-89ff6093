@@ -196,39 +196,65 @@ export default function Catalog() {
     }
   };
 
+  // Processa a fila um produto por vez, com intervalo entre eles, para não
+  // sobrecarregar a API da Nuvemshop (que trava com atualizações simultâneas).
+  const DELAY_BETWEEN_PRODUCTS = 3000;
+  const processApplyQueue = useCallback(async () => {
+    if (applyProcessingRef.current) return;
+    applyProcessingRef.current = true;
+    try {
+      while (applyQueueRef.current.length > 0) {
+        const job = applyQueueRef.current[0];
+        setApplyStatus((s) => ({ ...s, [job.id]: "applying" }));
+        try {
+          const { data, error } = await supabase.functions.invoke("apply-variations", {
+            body: { product_id: job.id, model_ids: job.modelIds },
+          });
+          if (error) throw error;
+          if (data?.success === false) throw new Error(data.error || "Erro ao aplicar variações");
+          setApplyStatus((s) => ({ ...s, [job.id]: "done" }));
+          if (data?.product_url) {
+            setProducts((prev) => prev.map((p) => (p.id === job.id ? { ...p, product_url: data.product_url } : p)));
+          }
+          const errCount = Array.isArray(data?.errors) ? data.errors.length : 0;
+          if (errCount > 0) {
+            toast.warning(`"${job.name}": ${data.created} aplicadas, ${errCount} falharam. ${(data.errors || []).slice(0, 2).join(" | ")}`);
+          } else {
+            toast.success(`"${job.name}": ${data.created} variações aplicadas!`);
+          }
+          fetchProducts();
+        } catch (err: any) {
+          setApplyStatus((s) => ({ ...s, [job.id]: "error" }));
+          toast.error(`"${job.name}": ${err.message || "Erro ao aplicar variações"}`);
+        }
+        // Remove o job concluído e aguarda antes do próximo (se houver fila).
+        applyQueueRef.current.shift();
+        setQueueCount(applyQueueRef.current.length);
+        if (applyQueueRef.current.length > 0) {
+          await new Promise((r) => setTimeout(r, DELAY_BETWEEN_PRODUCTS));
+        }
+      }
+    } finally {
+      applyProcessingRef.current = false;
+    }
+  }, [fetchProducts]);
+
   const applyVariations = () => {
     if (!selected || chosenModels.length === 0) return;
     const product = selected;
     const modelIds = [...chosenModels];
-    // Marca como em andamento e fecha o modal — o trabalho segue em segundo plano
+    // Enfileira o trabalho e fecha o modal — o processamento é sequencial.
+    applyQueueRef.current.push({ id: product.id, name: product.name || "Produto", modelIds });
+    setQueueCount(applyQueueRef.current.length);
     setApplyStatus((s) => ({ ...s, [product.id]: "applying" }));
     setSelected(null);
-    toast.info(`Atualizando "${product.name}" em segundo plano...`);
-
-    (async () => {
-      try {
-        const { data, error } = await supabase.functions.invoke("apply-variations", {
-          body: { product_id: product.id, model_ids: modelIds },
-        });
-        if (error) throw error;
-        if (data?.success === false) throw new Error(data.error || "Erro ao aplicar variações");
-        setApplyStatus((s) => ({ ...s, [product.id]: "done" }));
-        if (data?.product_url) {
-          setProducts((prev) => prev.map((p) => (p.id === product.id ? { ...p, product_url: data.product_url } : p)));
-        }
-        const errCount = Array.isArray(data?.errors) ? data.errors.length : 0;
-        if (errCount > 0) {
-          toast.warning(`"${product.name}": ${data.created} aplicadas, ${errCount} falharam. ${(data.errors || []).slice(0, 2).join(" | ")}`);
-        } else {
-          toast.success(`"${product.name}": ${data.created} variações aplicadas!`);
-        }
-        fetchProducts();
-        // O check verde permanece (persistido no localStorage) mesmo ao sair da página.
-      } catch (err: any) {
-        setApplyStatus((s) => ({ ...s, [product.id]: "error" }));
-        toast.error(`"${product.name}": ${err.message || "Erro ao aplicar variações"}`);
-      }
-    })();
+    const pos = applyQueueRef.current.length;
+    toast.info(
+      pos > 1
+        ? `"${product.name}" adicionado à fila (posição ${pos}). Atualizando um por vez...`
+        : `Atualizando "${product.name}" em segundo plano...`,
+    );
+    processApplyQueue();
   };
 
   const toggleVisibility = async (publish: boolean) => {
