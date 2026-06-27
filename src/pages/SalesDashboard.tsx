@@ -721,14 +721,49 @@ export default function SalesDashboard() {
             {/* Valores */}
             <section className="space-y-2">
               <h3 className="text-sm font-semibold text-primary border-b pb-2">Valores</h3>
-              <div className="space-y-1.5 text-sm">
-                <div className="flex justify-between"><span className="text-muted-foreground">Subtotal:</span><span>{formatCurrency(orderDetails?.subtotal ?? selectedOrder?.subtotal ?? 0)}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Frete:</span><span>{formatCurrency(orderDetails?.shipping_cost ?? 0)}</span></div>
-                {!!orderDetails?.discount && (
-                  <div className="flex justify-between"><span className="text-muted-foreground">Desconto:</span><span className="text-destructive">-{formatCurrency(orderDetails.discount)}</span></div>
-                )}
-                <div className="flex justify-between font-bold pt-1.5 border-t"><span>Total:</span><span>{formatCurrency(orderDetails?.total ?? selectedOrder?.total ?? 0)}</span></div>
-              </div>
+              {(() => {
+                const total = orderDetails?.total ?? selectedOrder?.total ?? 0;
+                const subtotal = orderDetails?.subtotal ?? selectedOrder?.subtotal ?? 0;
+                const frete = orderDetails?.shipping_cost ?? 0;
+                const desconto = (orderDetails?.discount ?? 0) + (orderDetails?.promotional_discount ?? 0);
+                const isPaid = selectedOrder?.payment_status === "paid";
+                const taxas = isPaid ? calcFee(total, (selectedOrder as any)?.payment_method) : 0;
+                const juros = orderDetails?.interest ?? 0;
+                const liquido = total - taxas - juros;
+                const cupons: string[] = orderDetails?.coupons || [];
+                const metodo = (() => {
+                  const m = ((selectedOrder as any)?.payment_method || orderDetails?.payment_method || "").toLowerCase();
+                  if (m.includes("pix")) return "Pix";
+                  if (m.includes("boleto")) return "Boleto";
+                  if (m.includes("credit")) return "Cartão de Crédito";
+                  if (m.includes("debit")) return "Cartão de Débito";
+                  return (selectedOrder as any)?.payment_method || "—";
+                })();
+                const gateway = orderDetails?.gateway_name;
+                return (
+                  <div className="space-y-1.5 text-sm">
+                    <div className="flex justify-between"><span className="text-muted-foreground">Subtotal:</span><span>{formatCurrency(subtotal)}</span></div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Frete{orderDetails?.shipping_name ? ` (${orderDetails.shipping_name})` : ""}:</span>
+                      <span>{formatCurrency(frete)}</span>
+                    </div>
+                    {desconto > 0 && (
+                      <div className="flex justify-between"><span className="text-muted-foreground">Desconto:</span><span className="text-destructive">-{formatCurrency(desconto)}</span></div>
+                    )}
+                    {cupons.length > 0 && (
+                      <div className="flex justify-between"><span className="text-muted-foreground">Cupom:</span><span className="font-medium">{cupons.join(", ")}</span></div>
+                    )}
+                    <div className="flex justify-between font-semibold pt-1.5 border-t"><span>Total (pago pelo cliente):</span><span>{formatCurrency(total)}</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Taxas:</span><span className="text-destructive">-{formatCurrency(taxas)}</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Juros:</span><span className="text-destructive">-{formatCurrency(juros)}</span></div>
+                    <div className="flex justify-between font-bold pt-1.5 border-t text-primary"><span>Total líquido:</span><span>{formatCurrency(liquido)}</span></div>
+                    <div className="flex items-center gap-2 pt-2 text-muted-foreground">
+                      <span className="font-medium text-foreground">{metodo}</span>
+                      {gateway && <><span>|</span><span className="capitalize">{gateway}</span></>}
+                    </div>
+                  </div>
+                );
+              })()}
             </section>
 
             {selectedOrder?.customer_phone && (
