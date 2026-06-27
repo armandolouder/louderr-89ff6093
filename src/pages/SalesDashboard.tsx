@@ -628,79 +628,103 @@ export default function SalesDashboard() {
 
       {/* Order Detail Modal */}
       <Dialog open={!!selectedOrder} onOpenChange={() => setSelectedOrder(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Pedido #{selectedOrder?.order_number || selectedOrder?.nuvemshop_order_id}</DialogTitle>
+            <DialogTitle>Detalhes do Pedido #{selectedOrder?.order_number || selectedOrder?.nuvemshop_order_id}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              <span className="text-muted-foreground">Cliente</span>
-              <span>{selectedOrder?.customer_name || "—"}</span>
-              <span className="text-muted-foreground">Data</span>
-              <span>{selectedOrder ? new Date(selectedOrder.order_date || selectedOrder.created_at).toLocaleDateString("pt-BR") : ""}</span>
-              <span className="text-muted-foreground">Fornecedor</span>
-              <span>{selectedOrder?.supplier || "—"}</span>
-              <span className="text-muted-foreground">Total</span>
-              <span className="font-bold">{selectedOrder ? formatCurrency(selectedOrder.total || 0) : ""}</span>
-              <span className="text-muted-foreground">Método</span>
-              <span className="capitalize">
-                {(() => {
-                  const m = (selectedOrder as any)?.payment_method?.toLowerCase() || "";
-                  if (m.includes("pix")) return "Pix";
-                  if (m.includes("boleto")) return "Boleto";
-                  if (m.includes("credit")) return "Cartão de Crédito";
-                  if (m.includes("debit")) return "Cartão de Débito";
-                  return m || "—";
-                })()}
-              </span>
-              <span className="text-muted-foreground">Taxas Gateway</span>
-              <span className="text-destructive">
-                {selectedOrder && selectedOrder.payment_status === "paid"
-                  ? `-${formatCurrency(calcFee(selectedOrder.total || 0, (selectedOrder as any).payment_method))}`
-                  : "—"}
-              </span>
-              <span className="text-muted-foreground">Custo</span>
-              <span>{selectedOrder ? formatCurrency(selectedOrder.production_cost || 0) : "—"}</span>
-              <span className="text-muted-foreground">Líquido</span>
-              <span className="font-bold text-primary">
-                {selectedOrder
-                  ? formatCurrency(
-                      (selectedOrder.total || 0)
-                      - (selectedOrder.payment_status === "paid" ? calcFee(selectedOrder.total || 0, (selectedOrder as any).payment_method) : 0)
-                      - (selectedOrder.production_cost || 0)
-                    )
-                  : ""}
-              </span>
-            </div>
+          <div className="space-y-6">
+            {loadingDetails && (
+              <div className="space-y-3">
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-24 w-full" />
+              </div>
+            )}
 
-            <div>
-              <h4 className="text-sm font-semibold mb-2">Produtos</h4>
+            {/* Dados do Cliente */}
+            <section className="space-y-3">
+              <h3 className="text-sm font-semibold text-primary border-b pb-2">Dados do Cliente</h3>
+              <Field label="Nome Completo" value={orderDetails?.customer_name || selectedOrder?.customer_name} />
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <Field label="CPF ou CNPJ" value={orderDetails?.identification} />
+                <Field label="Telefone" value={orderDetails?.phone || selectedOrder?.customer_phone} />
+                <Field label="Número do Pedido" value={selectedOrder?.order_number || selectedOrder?.nuvemshop_order_id} />
+              </div>
+            </section>
+
+            {/* Endereço de Entrega */}
+            <section className="space-y-3">
+              <h3 className="text-sm font-semibold text-primary border-b pb-2">Endereço de Entrega</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <Field label="CEP" value={orderDetails?.address?.zipcode} />
+                <Field label="Logradouro" value={orderDetails?.address?.address} className="sm:col-span-2" />
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <Field label="Número" value={orderDetails?.address?.number} />
+                <Field label="Complemento" value={orderDetails?.address?.floor} />
+                <Field label="Bairro" value={orderDetails?.address?.locality} />
+                <Field label="Cidade" value={orderDetails?.address?.city} />
+              </div>
+              <Field label="UF" value={orderDetails?.address?.province} />
+            </section>
+
+            {/* Produtos */}
+            <section className="space-y-3">
+              <h3 className="text-sm font-semibold text-primary border-b pb-2">Produtos</h3>
               <div className="rounded-md border">
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Produto</TableHead>
                       <TableHead className="text-center w-[60px]">Qtd</TableHead>
-                      <TableHead className="text-right w-[100px]">Preço</TableHead>
+                      <TableHead className="text-right w-[110px]">Preço Un.</TableHead>
+                      <TableHead className="text-right w-[110px]">Subtotal</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {(selectedOrder?.products as any[] || []).map((p: any, i: number) => (
-                      <TableRow key={i}>
-                        <TableCell className="text-sm">{p.name || "—"}</TableCell>
-                        <TableCell className="text-center">{p.quantity || 1}</TableCell>
-                        <TableCell className="text-right">{formatCurrency(parseFloat(p.price) || 0)}</TableCell>
-                      </TableRow>
-                    ))}
+                    {(orderDetails?.products || (selectedOrder?.products as any[]) || []).map((p: any, i: number) => {
+                      const qty = Number(p.quantity || 1);
+                      const price = Number(parseFloat(p.price) || p.price || 0);
+                      return (
+                        <TableRow key={i}>
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              {p.image && (
+                                <img src={p.image} alt={p.name} className="w-10 h-10 object-cover border" />
+                              )}
+                              <div>
+                                <p className="text-sm font-medium">{p.name || "—"}</p>
+                                {p.variant && <p className="text-xs text-muted-foreground">{p.variant}</p>}
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center">{qty}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(price)}</TableCell>
+                          <TableCell className="text-right font-medium">{formatCurrency(p.subtotal ?? price * qty)}</TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
-            </div>
+            </section>
+
+            {/* Valores */}
+            <section className="space-y-2">
+              <h3 className="text-sm font-semibold text-primary border-b pb-2">Valores</h3>
+              <div className="space-y-1.5 text-sm">
+                <div className="flex justify-between"><span className="text-muted-foreground">Subtotal:</span><span>{formatCurrency(orderDetails?.subtotal ?? selectedOrder?.subtotal ?? 0)}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Frete:</span><span>{formatCurrency(orderDetails?.shipping_cost ?? 0)}</span></div>
+                {!!orderDetails?.discount && (
+                  <div className="flex justify-between"><span className="text-muted-foreground">Desconto:</span><span className="text-destructive">-{formatCurrency(orderDetails.discount)}</span></div>
+                )}
+                <div className="flex justify-between font-bold pt-1.5 border-t"><span>Total:</span><span>{formatCurrency(orderDetails?.total ?? selectedOrder?.total ?? 0)}</span></div>
+              </div>
+            </section>
 
             {selectedOrder?.customer_phone && (
               <Button
-                className="w-full"
-                variant="outline"
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
                 onClick={() => {
                   const firstName = (selectedOrder.customer_name || "Cliente").split(" ")[0];
                   const prods = Array.isArray(selectedOrder.products) ? (selectedOrder.products as any[]).map((p: any) => `• ${p.name || "Produto"}`).join("\n") : "";
@@ -710,8 +734,8 @@ export default function SalesDashboard() {
                   setSelectedOrder(null);
                 }}
               >
-                <Send className="w-4 h-4 mr-2 text-emerald-500" />
-                Enviar WhatsApp Individual
+                <Send className="w-4 h-4 mr-2" />
+                ENVIAR MENSAGEM WHATSAPP
               </Button>
             )}
           </div>
