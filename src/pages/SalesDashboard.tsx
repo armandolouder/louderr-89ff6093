@@ -641,7 +641,7 @@ export default function SalesDashboard() {
           <DialogHeader>
             <DialogTitle>Detalhes do Pedido #{selectedOrder?.order_number || selectedOrder?.nuvemshop_order_id}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-6">
+          <div className="space-y-4">
             {loadingDetails && (
               <div className="space-y-3">
                 <Skeleton className="h-12 w-full" />
