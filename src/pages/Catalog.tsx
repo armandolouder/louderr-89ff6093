@@ -440,6 +440,17 @@ export default function Catalog() {
         </Card>
       )}
 
+      {queueCount > 0 && (
+        <Card>
+          <CardContent className="pt-6 flex items-center gap-3 text-sm">
+            <Loader2 className="w-4 h-4 animate-spin text-primary" />
+            <span className="text-foreground">
+              Aplicando variações em fila — {queueCount} produto(s) aguardando. Atualizando um por vez para não travar a Nuvemshop.
+            </span>
+          </CardContent>
+        </Card>
+      )}
+
       <Tabs defaultValue="catalog">
         <TabsList>
           <TabsTrigger value="catalog">Catálogo</TabsTrigger>
