@@ -650,25 +650,31 @@ export default function SalesDashboard() {
               </div>
             )}
 
-            {/* Dados do Cliente */}
+            {/* Dados do Cliente + Endereço */}
             {(() => {
               const addr = orderDetails?.address;
               const linha = (label: string, value?: string | number | null) =>
                 value ? (
-                  <p className="text-sm">
-                    <span className="text-muted-foreground">{label}: </span>
-                    <span className="text-foreground">{value}</span>
-                  </p>
+                  <div className="flex justify-between gap-3 py-1 text-sm border-b border-border/50 last:border-0">
+                    <span className="text-muted-foreground shrink-0">{label}</span>
+                    <span className="text-foreground text-right truncate">{value}</span>
+                  </div>
                 ) : null;
               return (
-                <section className="space-y-0.5">
-                  <p className="text-sm font-semibold text-foreground">{orderDetails?.customer_name || selectedOrder?.customer_name || "—"}</p>
-                  {(orderDetails?.phone || selectedOrder?.customer_phone) && (
-                    <p className="text-sm text-foreground">{orderDetails?.phone || selectedOrder?.customer_phone}</p>
-                  )}
-                  <div className="pt-1.5 space-y-0.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Cliente */}
+                  <div className="rounded-md border p-3 space-y-0.5">
+                    <h3 className="text-xs font-semibold uppercase tracking-wide text-primary mb-1.5">Cliente</h3>
+                    <p className="text-sm font-semibold text-foreground">{orderDetails?.customer_name || selectedOrder?.customer_name || "—"}</p>
+                    {(orderDetails?.phone || selectedOrder?.customer_phone) && (
+                      <p className="text-sm text-muted-foreground pb-1">{orderDetails?.phone || selectedOrder?.customer_phone}</p>
+                    )}
                     {linha("CPF/CNPJ", orderDetails?.identification)}
                     {linha("Nº do Pedido", selectedOrder?.order_number || selectedOrder?.nuvemshop_order_id)}
+                  </div>
+                  {/* Endereço */}
+                  <div className="rounded-md border p-3 space-y-0.5">
+                    <h3 className="text-xs font-semibold uppercase tracking-wide text-primary mb-1.5">Endereço de Entrega</h3>
                     {linha("Endereço", [addr?.address, addr?.number].filter(Boolean).join(", "))}
                     {linha("Complemento", addr?.floor)}
                     {linha("Bairro", addr?.locality)}
@@ -676,7 +682,7 @@ export default function SalesDashboard() {
                     {linha("Cidade", addr?.city)}
                     {linha("Estado", addr?.province)}
                   </div>
-                </section>
+                </div>
               );
             })()}
 
