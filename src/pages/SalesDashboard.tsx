@@ -650,41 +650,46 @@ export default function SalesDashboard() {
               </div>
             )}
 
-            {/* Dados do Cliente + Endereço */}
-            {(() => {
-              const addr = orderDetails?.address;
-              const linha = (label: string, value?: string | number | null) =>
-                value ? (
-                  <div className="flex justify-between gap-3 py-1 text-sm border-b border-border/50 last:border-0">
-                    <span className="text-muted-foreground shrink-0">{label}</span>
-                    <span className="text-foreground text-right truncate">{value}</span>
-                  </div>
-                ) : null;
-              return (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {/* Cliente */}
-                  <div className="rounded-md border p-3 space-y-0.5">
-                    <h3 className="text-xs font-semibold uppercase tracking-wide text-primary mb-1.5">Cliente</h3>
-                    <p className="text-sm font-semibold text-foreground">{orderDetails?.customer_name || selectedOrder?.customer_name || "—"}</p>
-                    {(orderDetails?.phone || selectedOrder?.customer_phone) && (
-                      <p className="text-sm text-muted-foreground pb-1">{orderDetails?.phone || selectedOrder?.customer_phone}</p>
-                    )}
-                    {linha("CPF/CNPJ", orderDetails?.identification)}
-                    {linha("Nº do Pedido", selectedOrder?.order_number || selectedOrder?.nuvemshop_order_id)}
-                  </div>
-                  {/* Endereço */}
-                  <div className="rounded-md border p-3 space-y-0.5">
-                    <h3 className="text-xs font-semibold uppercase tracking-wide text-primary mb-1.5">Endereço de Entrega</h3>
-                    {linha("Endereço", [addr?.address, addr?.number].filter(Boolean).join(", "))}
-                    {linha("Complemento", addr?.floor)}
-                    {linha("Bairro", addr?.locality)}
-                    {linha("CEP", addr?.zipcode)}
-                    {linha("Cidade", addr?.city)}
-                    {linha("Estado", addr?.province)}
-                  </div>
-                </div>
-              );
-            })()}
+            {/* Produtos */}
+            <section className="space-y-3">
+              <h3 className="text-sm font-semibold text-primary border-b pb-2">Produtos</h3>
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Produto</TableHead>
+                      <TableHead className="text-center w-[60px]">Qtd</TableHead>
+                      <TableHead className="text-right w-[110px]">Preço Un.</TableHead>
+                      <TableHead className="text-right w-[110px]">Subtotal</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {(orderDetails?.products || (selectedOrder?.products as any[]) || []).map((p: any, i: number) => {
+                      const qty = Number(p.quantity || 1);
+                      const price = Number(parseFloat(p.price) || p.price || 0);
+                      return (
+                        <TableRow key={i}>
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              {p.image && (
+                                <img src={p.image} alt={p.name} className="w-10 h-10 object-cover border" />
+                              )}
+                              <div>
+                                <p className="text-sm font-medium">{p.name || "—"}</p>
+                                {p.variant && <p className="text-xs text-muted-foreground">{p.variant}</p>}
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center">{qty}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(price)}</TableCell>
+                          <TableCell className="text-right font-medium">{formatCurrency(p.subtotal ?? price * qty)}</TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </section>
 
             {/* Valores */}
             <section className="space-y-2">
@@ -734,46 +739,41 @@ export default function SalesDashboard() {
               })()}
             </section>
 
-            {/* Produtos */}
-            <section className="space-y-3">
-              <h3 className="text-sm font-semibold text-primary border-b pb-2">Produtos</h3>
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Produto</TableHead>
-                      <TableHead className="text-center w-[60px]">Qtd</TableHead>
-                      <TableHead className="text-right w-[110px]">Preço Un.</TableHead>
-                      <TableHead className="text-right w-[110px]">Subtotal</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {(orderDetails?.products || (selectedOrder?.products as any[]) || []).map((p: any, i: number) => {
-                      const qty = Number(p.quantity || 1);
-                      const price = Number(parseFloat(p.price) || p.price || 0);
-                      return (
-                        <TableRow key={i}>
-                          <TableCell>
-                            <div className="flex items-center gap-3">
-                              {p.image && (
-                                <img src={p.image} alt={p.name} className="w-10 h-10 object-cover border" />
-                              )}
-                              <div>
-                                <p className="text-sm font-medium">{p.name || "—"}</p>
-                                {p.variant && <p className="text-xs text-muted-foreground">{p.variant}</p>}
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-center">{qty}</TableCell>
-                          <TableCell className="text-right">{formatCurrency(price)}</TableCell>
-                          <TableCell className="text-right font-medium">{formatCurrency(p.subtotal ?? price * qty)}</TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-            </section>
+            {/* Dados do Cliente + Endereço */}
+            {(() => {
+              const addr = orderDetails?.address;
+              const linha = (label: string, value?: string | number | null) =>
+                value ? (
+                  <div className="flex justify-between gap-3 py-1 text-sm border-b border-border/50 last:border-0">
+                    <span className="text-muted-foreground shrink-0">{label}</span>
+                    <span className="text-foreground text-right truncate">{value}</span>
+                  </div>
+                ) : null;
+              return (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Cliente */}
+                  <div className="rounded-md border p-3 space-y-0.5">
+                    <h3 className="text-xs font-semibold uppercase tracking-wide text-primary mb-1.5">Cliente</h3>
+                    <p className="text-sm font-semibold text-foreground">{orderDetails?.customer_name || selectedOrder?.customer_name || "—"}</p>
+                    {(orderDetails?.phone || selectedOrder?.customer_phone) && (
+                      <p className="text-sm text-muted-foreground pb-1">{orderDetails?.phone || selectedOrder?.customer_phone}</p>
+                    )}
+                    {linha("CPF/CNPJ", orderDetails?.identification)}
+                    {linha("Nº do Pedido", selectedOrder?.order_number || selectedOrder?.nuvemshop_order_id)}
+                  </div>
+                  {/* Endereço */}
+                  <div className="rounded-md border p-3 space-y-0.5">
+                    <h3 className="text-xs font-semibold uppercase tracking-wide text-primary mb-1.5">Endereço de Entrega</h3>
+                    {linha("Endereço", [addr?.address, addr?.number].filter(Boolean).join(", "))}
+                    {linha("Complemento", addr?.floor)}
+                    {linha("Bairro", addr?.locality)}
+                    {linha("CEP", addr?.zipcode)}
+                    {linha("Cidade", addr?.city)}
+                    {linha("Estado", addr?.province)}
+                  </div>
+                </div>
+              );
+            })()}
 
             {selectedOrder?.customer_phone && (
               <Button
