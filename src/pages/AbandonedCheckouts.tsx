@@ -775,19 +775,6 @@ export default function AbandonedCheckouts() {
             <DialogTitle>Carrinho Abandonado</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              <span className="text-muted-foreground">Cliente</span>
-              <span>{selectedCheckout?.customer_name || "Anônimo"}</span>
-              <span className="text-muted-foreground">E-mail</span>
-              <span>{selectedCheckout?.customer_email || "—"}</span>
-              <span className="text-muted-foreground">Telefone</span>
-              <span>{selectedCheckout?.customer_phone || "—"}</span>
-              <span className="text-muted-foreground">Data</span>
-              <span>{selectedCheckout ? new Date(selectedCheckout.created_at_nuvemshop || selectedCheckout.created_at).toLocaleDateString("pt-BR") : ""}</span>
-              <span className="text-muted-foreground">Total</span>
-              <span className="font-bold text-destructive">{selectedCheckout ? formatCurrency(selectedCheckout.total || 0) : ""}</span>
-            </div>
-
             <div>
               <h4 className="text-sm font-semibold mb-2">Produtos no Carrinho</h4>
               <div className="rounded-md border">
@@ -809,6 +796,28 @@ export default function AbandonedCheckouts() {
                     ))}
                   </TableBody>
                 </Table>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="text-sm font-semibold mb-2">Valores</h4>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <span className="text-muted-foreground">Total</span>
+                <span className="font-bold text-destructive text-right">{selectedCheckout ? formatCurrency(selectedCheckout.total || 0) : ""}</span>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="text-sm font-semibold mb-2">Cliente</h4>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <span className="text-muted-foreground">Nome</span>
+                <span className="text-right">{selectedCheckout?.customer_name || "Anônimo"}</span>
+                <span className="text-muted-foreground">E-mail</span>
+                <span className="text-right">{selectedCheckout?.customer_email || "—"}</span>
+                <span className="text-muted-foreground">Telefone</span>
+                <span className="text-right">{selectedCheckout?.customer_phone || "—"}</span>
+                <span className="text-muted-foreground">Data</span>
+                <span className="text-right">{selectedCheckout ? new Date(selectedCheckout.created_at_nuvemshop || selectedCheckout.created_at).toLocaleDateString("pt-BR") : ""}</span>
               </div>
             </div>
           </div>
