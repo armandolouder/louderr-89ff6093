@@ -783,17 +783,33 @@ export default function AbandonedCheckouts() {
                     <TableRow>
                       <TableHead>Produto</TableHead>
                       <TableHead className="text-center w-[60px]">Qtd</TableHead>
-                      <TableHead className="text-right w-[100px]">Preço</TableHead>
+                      <TableHead className="text-right w-[110px]">Preço Un.</TableHead>
+                      <TableHead className="text-right w-[110px]">Subtotal</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {(selectedCheckout?.products as any[] || []).map((p: any, i: number) => (
-                      <TableRow key={i}>
-                        <TableCell className="text-sm">{p.name || "—"}</TableCell>
-                        <TableCell className="text-center">{p.quantity || 1}</TableCell>
-                        <TableCell className="text-right">{formatCurrency(parseFloat(p.price) || 0)}</TableCell>
-                      </TableRow>
-                    ))}
+                    {(selectedCheckout?.products as any[] || []).map((p: any, i: number) => {
+                      const qty = Number(p.quantity || 1);
+                      const price = Number(parseFloat(p.price) || p.price || 0);
+                      return (
+                        <TableRow key={i}>
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              {p.image && (
+                                <img src={p.image} alt={p.name} className="w-10 h-10 object-cover border" />
+                              )}
+                              <div>
+                                <p className="text-sm font-medium">{p.name || "—"}</p>
+                                {p.variant && <p className="text-xs text-muted-foreground">{p.variant}</p>}
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center">{qty}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(price)}</TableCell>
+                          <TableCell className="text-right font-medium">{formatCurrency(p.subtotal ?? price * qty)}</TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
@@ -820,6 +836,21 @@ export default function AbandonedCheckouts() {
                 <span className="text-right">{selectedCheckout ? new Date(selectedCheckout.created_at_nuvemshop || selectedCheckout.created_at).toLocaleDateString("pt-BR") : ""}</span>
               </div>
             </div>
+
+            {selectedCheckout?.customer_phone && (
+              <Button
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+                disabled={sendingId === selectedCheckout.id}
+                onClick={() => sendWhatsApp(selectedCheckout)}
+              >
+                {sendingId === selectedCheckout.id ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Send className="w-4 h-4 mr-2" />
+                )}
+                ENVIAR MENSAGEM WHATSAPP
+              </Button>
+            )}
           </div>
         </DialogContent>
       </Dialog>
