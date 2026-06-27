@@ -530,6 +530,7 @@ serve(async (req) => {
     if (claimsError || !claimsData?.claims) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
+    const ownerUserId = claimsData.claims.sub as string;
 
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -574,6 +575,7 @@ serve(async (req) => {
         filename: "analysis_job",
         status: "processing",
         total_rows: 0,
+        user_id: ownerUserId,
       })
       .select()
       .single();
@@ -586,11 +588,11 @@ serve(async (req) => {
     // @ts-ignore - EdgeRuntime is available in Supabase Edge Functions
     if (typeof EdgeRuntime !== "undefined" && EdgeRuntime.waitUntil) {
       // @ts-ignore
-      EdgeRuntime.waitUntil(processAnalysis(supabase, job.id));
+      EdgeRuntime.waitUntil(processAnalysis(supabase, job.id, ownerUserId));
     } else {
       // Fallback for environments without EdgeRuntime.waitUntil
       // Process synchronously but with a quick response first
-      processAnalysis(supabase, job.id).catch(console.error);
+      processAnalysis(supabase, job.id, ownerUserId).catch(console.error);
     }
 
     // Return immediately with job ID
