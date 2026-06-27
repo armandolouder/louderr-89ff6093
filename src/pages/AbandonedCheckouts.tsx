@@ -582,7 +582,8 @@ export default function AbandonedCheckouts() {
                                 const products = (checkout.products as any[]) || [];
                                 const productsList = products.map((p: any) => `• ${p.name}`).join("\n");
                                 const msg = `Olá ${firstName}! 👋\nVi que você se interessou por:\n${productsList}\n\nPosso te ajudar com alguma dúvida?`;
-                                navigate(`/campaigns?tab=individual&phone=${encodeURIComponent(phone)}&msg=${encodeURIComponent(msg)}`);
+                                const link = checkout.recovery_url || "";
+                                navigate(`/campaigns?tab=individual&phone=${encodeURIComponent(phone)}&msg=${encodeURIComponent(msg)}&link=${encodeURIComponent(link)}`);
                               }}
                             >
                               <MessageCircle className="w-3.5 h-3.5 text-emerald-400" />
