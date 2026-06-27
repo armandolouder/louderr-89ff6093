@@ -520,18 +520,6 @@ serve(async (req) => {
   }
 
   try {
-    // Auth check
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
-    const anonClient = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: authHeader } } });
-    const { data: claimsData, error: claimsError } = await anonClient.auth.getClaims(authHeader.replace('Bearer ', ''));
-    if (claimsError || !claimsData?.claims) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
-    const ownerUserId = claimsData.claims.sub as string;
-
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
@@ -540,6 +528,26 @@ serve(async (req) => {
     }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    // Resolve owner: prefer authenticated user, fall back to store owner (single-tenant / cron)
+    let ownerUserId: string | null = null;
+    const authHeader = req.headers.get('Authorization');
+    if (authHeader?.startsWith('Bearer ')) {
+      try {
+        const anonClient = createClient(SUPABASE_URL, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: authHeader } } });
+        const { data: claimsData } = await anonClient.auth.getClaims(authHeader.replace('Bearer ', ''));
+        ownerUserId = (claimsData?.claims?.sub as string) ?? null;
+      } catch (_e) {
+        ownerUserId = null;
+      }
+    }
+    if (!ownerUserId) {
+      const { data: ownerData } = await supabase.rpc('get_webhook_owner_user_id');
+      ownerUserId = ownerData as string | null;
+    }
+    if (!ownerUserId) {
+      return new Response(JSON.stringify({ error: 'Could not resolve owner user' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
 
     // Check if this is a status check request
     const url = new URL(req.url);
