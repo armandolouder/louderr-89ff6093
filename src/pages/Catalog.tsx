@@ -331,17 +331,32 @@ export default function Catalog() {
       let page = 1;
       let totalSynced = 0;
       let hasMore = true;
+      let consecutiveErrors = 0;
       while (hasMore) {
         setProgress({ synced: totalSynced, page, status: `Importando página ${page}...` });
-        const response = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-catalog?page=${page}&per_page=50`,
-          { headers: { Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` } }
-        );
-        if (!response.ok) {
-          const errData = await response.json().catch(() => ({}));
-          throw new Error(errData.error || "Erro ao sincronizar");
+        let result: any;
+        try {
+          const response = await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-catalog?page=${page}&per_page=50`,
+            { headers: { Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` } }
+          );
+          result = await response.json().catch(() => ({}));
+          if (!response.ok || result?.success === false) {
+            throw new Error(result?.error || "Erro ao sincronizar");
+          }
+        } catch (pageErr: any) {
+          // Não aborta o catálogo inteiro: tenta a mesma página até 3x e segue.
+          consecutiveErrors++;
+          if (consecutiveErrors <= 3) {
+            await new Promise((r) => setTimeout(r, 1500));
+            continue;
+          }
+          // Após 3 tentativas, pula a página e continua para não travar a importação.
+          consecutiveErrors = 0;
+          page++;
+          continue;
         }
-        const result = await response.json();
+        consecutiveErrors = 0;
         totalSynced += result.synced || 0;
         hasMore = result.has_more || false;
         page++;
