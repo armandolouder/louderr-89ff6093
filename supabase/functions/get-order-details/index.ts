@@ -31,6 +31,9 @@ Deno.serve(async (req) => {
     }
     const o = await r.json()
     const addr = o.shipping_address || o.billing_address || {}
+    const coupons = (o.coupon || []).map((c: any) => c?.code).filter(Boolean)
+    const gatewayName = o.gateway_name || o.gateway || null
+    const shippingName = o.shipping_option || o.shipping || null
 
     const details = {
       number: o.number,
@@ -55,12 +58,16 @@ Deno.serve(async (req) => {
         price: Number(p.price || 0),
         subtotal: Number(p.price || 0) * Number(p.quantity || 1),
       })),
-    const coupons = (o.coupon || []).map((c: any) => c?.code).filter(Boolean)
       subtotal: Number(o.subtotal || 0),
       shipping_cost: Number(o.shipping_cost_customer ?? o.shipping_cost_owner ?? 0),
+      shipping_name: shippingName,
       discount: Number(o.discount || 0),
+      promotional_discount: Number(o.promotional_discount?.total_discount_amount || o.promotional_discount || 0),
+      coupons,
+      interest: Number(o.payment_details?.installments_info?.interest || 0),
       total: Number(o.total || 0),
       payment_method: o.payment_details?.method || o.gateway || null,
+      gateway_name: gatewayName,
     }
 
     return new Response(JSON.stringify({ success: true, details }), {
