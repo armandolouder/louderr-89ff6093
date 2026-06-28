@@ -5,11 +5,33 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Mail, Send, Eye, MousePointer, Ban, Clock, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
+import { Mail, Send, Eye, MousePointer, Ban, Clock, ShoppingBag, DollarSign } from "lucide-react";
 import { format } from "date-fns";
 
 export function EmailDashboard() {
   const [filter, setFilter] = useState("all");
+  const [attrWindow, setAttrWindow] = useState("7");
+
+  const { data: attribution } = useQuery({
+    queryKey: ["email-attribution", attrWindow],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_email_attribution", {
+        p_window_days: Number(attrWindow),
+      });
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const attrTotals = (attribution || []).reduce(
+    (acc, r: any) => ({
+      orders: acc.orders + Number(r.attributed_orders || 0),
+      revenue: acc.revenue + Number(r.revenue || 0),
+    }),
+    { orders: 0, revenue: 0 }
+  );
+  const fmtBRL = (v: number) =>
+    `R$ ${Number(v || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   const { data: stats } = useQuery({
     queryKey: ["email-stats"],
