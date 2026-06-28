@@ -80,7 +80,7 @@ function renderBlock(block: EmailBlock): string {
     case "columns": {
       const columns = block.content.columns || [];
       const cells = columns.map((col: any) =>
-        `<td style="padding:8px;vertical-align:top;width:${100 / columns.length}%;">
+        `<td class="stack-col" style="padding:8px;vertical-align:top;width:${100 / columns.length}%;">
           <h3 style="margin:0 0 8px;font-size:16px;color:${s.textColor};">${escapeHtml(col.title)}</h3>
           <p style="margin:0;font-size:14px;color:${s.textColor};line-height:1.5;">${escapeHtml(col.text)}</p>
         </td>`
