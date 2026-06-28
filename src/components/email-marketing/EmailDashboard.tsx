@@ -15,7 +15,7 @@ export function EmailDashboard() {
   const { data: attribution } = useQuery({
     queryKey: ["email-attribution", attrWindow],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("get_email_attribution", {
+      const { data, error } = await (supabase.rpc as any)("get_email_attribution", {
         p_window_days: Number(attrWindow),
       });
       if (error) throw error;
