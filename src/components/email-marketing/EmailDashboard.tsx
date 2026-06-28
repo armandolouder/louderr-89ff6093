@@ -5,11 +5,33 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Mail, Send, Eye, MousePointer, Ban, Clock, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
+import { Mail, Send, Eye, MousePointer, Ban, Clock, ShoppingBag, DollarSign } from "lucide-react";
 import { format } from "date-fns";
 
 export function EmailDashboard() {
   const [filter, setFilter] = useState("all");
+  const [attrWindow, setAttrWindow] = useState("7");
+
+  const { data: attribution } = useQuery({
+    queryKey: ["email-attribution", attrWindow],
+    queryFn: async () => {
+      const { data, error } = await (supabase.rpc as any)("get_email_attribution", {
+        p_window_days: Number(attrWindow),
+      });
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const attrTotals = (attribution || []).reduce(
+    (acc, r: any) => ({
+      orders: acc.orders + Number(r.attributed_orders || 0),
+      revenue: acc.revenue + Number(r.revenue || 0),
+    }),
+    { orders: 0, revenue: 0 }
+  );
+  const fmtBRL = (v: number) =>
+    `R$ ${Number(v || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   const { data: stats } = useQuery({
     queryKey: ["email-stats"],
@@ -98,6 +120,101 @@ export function EmailDashboard() {
             </CardContent>
           </Card>
         ))}
+      </div>
+
+      {/* Atribuição de receita por email */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+              <DollarSign className="w-4 h-4 text-emerald-400" />
+              Receita Atribuída ao Email
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Pedidos pagos de clientes que receberam o email e compraram dentro da janela escolhida.
+            </p>
+          </div>
+          <Select value={attrWindow} onValueChange={setAttrWindow}>
+            <SelectTrigger className="w-36 h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="1">Janela: 1 dia</SelectItem>
+              <SelectItem value="3">Janela: 3 dias</SelectItem>
+              <SelectItem value="7">Janela: 7 dias</SelectItem>
+              <SelectItem value="14">Janela: 14 dias</SelectItem>
+              <SelectItem value="30">Janela: 30 dias</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="grid gap-4 grid-cols-2 md:grid-cols-3">
+          <Card>
+            <CardHeader className="pb-2 px-4 pt-4">
+              <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                <ShoppingBag className="w-3.5 h-3.5 text-cyan-400" /> Pedidos Atribuídos
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pb-4">
+              <p className="text-xl font-bold text-foreground">{attrTotals.orders}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2 px-4 pt-4">
+              <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                <DollarSign className="w-3.5 h-3.5 text-emerald-400" /> Receita Gerada
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pb-4">
+              <p className="text-xl font-bold text-emerald-400">{fmtBRL(attrTotals.revenue)}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2 px-4 pt-4">
+              <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                <Send className="w-3.5 h-3.5 text-blue-400" /> Receita / Email
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pb-4">
+              <p className="text-xl font-bold text-foreground">
+                {fmtBRL(stats?.sent ? attrTotals.revenue / stats.sent : 0)}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card>
+          <div className="overflow-auto max-h-[360px]">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Campanha</TableHead>
+                  <TableHead className="text-right">Enviados</TableHead>
+                  <TableHead className="text-right">Pedidos</TableHead>
+                  <TableHead className="text-right">Receita</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {!attribution?.length ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                      Nenhuma campanha com dados de atribuição
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  attribution.map((r: any) => (
+                    <TableRow key={r.campaign_id}>
+                      <TableCell className="font-medium text-sm max-w-[240px] truncate">{r.campaign_name}</TableCell>
+                      <TableCell className="text-right text-sm text-muted-foreground">{r.emails_sent}</TableCell>
+                      <TableCell className="text-right text-sm">{r.attributed_orders}</TableCell>
+                      <TableCell className="text-right text-sm font-semibold text-emerald-400">{fmtBRL(r.revenue)}</TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </Card>
       </div>
 
       {/* Queue history */}

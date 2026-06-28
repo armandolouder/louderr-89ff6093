@@ -8,6 +8,20 @@ const corsHeaders = {
 const DAILY_LIMIT = 250;
 const BATCH_SIZE = 10;
 
+// Adiciona UTM em todos os links http(s) do email para rastrear conversões na Nuvemshop
+function addUtmToLinks(html: string, campaignId: string | null): string {
+  if (!html) return html;
+  const campaign = campaignId || "manual";
+  return html.replace(/href="(https?:\/\/[^"]+)"/gi, (match, url) => {
+    // Não mexe em links de descadastro nem em links que já têm UTM
+    if (/utm_source=/i.test(url) || /unsubscribe|descadastr|email-unsubscribe/i.test(url)) {
+      return match;
+    }
+    const sep = url.includes("?") ? "&" : "?";
+    return `href="${url}${sep}utm_source=email&utm_medium=email&utm_campaign=${campaign}"`;
+  });
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -98,7 +112,7 @@ Deno.serve(async (req) => {
             sender: { name: "LOUDER.ink", email: senderEmail },
             to: [{ email: email.email, name: email.customer_name || undefined }],
             subject: email.subject,
-            htmlContent: email.html_content,
+            htmlContent: addUtmToLinks(email.html_content, email.campaign_id),
             tags: ["email-marketing", email.campaign_id || "manual"],
           }),
         });

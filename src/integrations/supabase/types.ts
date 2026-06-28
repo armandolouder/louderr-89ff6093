@@ -2492,6 +2492,16 @@ export type Database = {
         Args: { _token: string }
         Returns: string
       }
+      get_email_attribution: {
+        Args: { p_window_days?: number }
+        Returns: {
+          attributed_orders: number
+          campaign_id: string
+          campaign_name: string
+          emails_sent: number
+          revenue: number
+        }[]
+      }
       get_webhook_owner_user_id: { Args: never; Returns: string }
       increment_campaign_sent: {
         Args: { campaign_id_param: string }
