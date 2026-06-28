@@ -248,15 +248,17 @@ export function ChatView({ conversation, hideHeader }: ChatViewProps) {
 
     // Regular text message
     if (message.trim() && !sendMessage.isPending) {
+      const text = message.trim();
+      setMessage(""); // limpa o campo imediatamente para sensação instantânea
       sendMessage.mutate({
         conversationId: conversation.id,
-        content: message.trim(),
+        content: text,
         channel: conversation.channel,
       }, {
-        onSuccess: () => setMessage(""),
         onError: (error: any) => {
           console.error("Error sending message:", error);
           toast.error(error?.message || "Erro ao enviar mensagem");
+          setMessage(text); // restaura o texto se falhar
         },
       });
     }
