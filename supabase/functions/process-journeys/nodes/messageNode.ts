@@ -170,7 +170,8 @@ export class MessageNodeExecutor implements NodeExecutor {
         total: execDataObj.total,
         products: execDataObj.products,
         checkoutSuccessUrl: execDataObj.checkout_success_url,
-        checkoutUrl: execDataObj.checkout_url,
+        checkoutUrl: execDataObj.checkout_url || execDataObj.recovery_url,
+        recoveryUrl: execDataObj.recovery_url,
         boletoUrl: execDataObj.boleto_url,
         trackingCode: execDataObj.tracking_code,
       });
