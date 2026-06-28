@@ -6,9 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowLeft, Send, Users, Eye, MousePointer, XCircle, Search, RefreshCw, SkipForward } from "lucide-react";
+import { ArrowLeft, Send, Users, Eye, MousePointer, XCircle, Search, RefreshCw, SkipForward, ShoppingBag, DollarSign } from "lucide-react";
 import { format } from "date-fns";
 
 interface Props {
@@ -19,6 +20,21 @@ interface Props {
 export function CampaignDetailView({ campaignId, onBack }: Props) {
   const [previewHtml, setPreviewHtml] = useState("");
   const [search, setSearch] = useState("");
+  const [attrWindow, setAttrWindow] = useState("7");
+
+  const { data: attribution } = useQuery({
+    queryKey: ["email-attribution-campaign", campaignId, attrWindow],
+    queryFn: async () => {
+      const { data, error } = await (supabase.rpc as any)("get_email_attribution", {
+        p_window_days: Number(attrWindow),
+      });
+      if (error) throw error;
+      return (data || []).find((r: any) => r.campaign_id === campaignId) || null;
+    },
+  });
+
+  const fmtBRL = (v: number) =>
+    `R$ ${Number(v || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   const { data: campaign, isLoading } = useQuery({
     queryKey: ["email-campaign-detail", campaignId],
@@ -121,6 +137,68 @@ export function CampaignDetailView({ campaignId, onBack }: Props) {
             </CardContent>
           </Card>
         ))}
+      </div>
+
+      {/* Atribuição de receita */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+              <DollarSign className="w-4 h-4 text-emerald-400" />
+              Receita Atribuída
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Pedidos pagos de quem recebeu esta campanha e comprou dentro da janela escolhida.
+            </p>
+          </div>
+          <Select value={attrWindow} onValueChange={setAttrWindow}>
+            <SelectTrigger className="w-36 h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="1">Janela: 1 dia</SelectItem>
+              <SelectItem value="3">Janela: 3 dias</SelectItem>
+              <SelectItem value="7">Janela: 7 dias</SelectItem>
+              <SelectItem value="14">Janela: 14 dias</SelectItem>
+              <SelectItem value="30">Janela: 30 dias</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="grid gap-3 grid-cols-3">
+          <Card>
+            <CardContent className="pt-4 pb-3 px-4">
+              <div className="flex items-center gap-2 mb-1">
+                <ShoppingBag className="w-3.5 h-3.5 text-cyan-400" />
+                <span className="text-xs text-muted-foreground">Pedidos Atribuídos</span>
+              </div>
+              <p className="text-xl font-bold text-foreground">{Number(attribution?.attributed_orders || 0)}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4 pb-3 px-4">
+              <div className="flex items-center gap-2 mb-1">
+                <DollarSign className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="text-xs text-muted-foreground">Receita Gerada</span>
+              </div>
+              <p className="text-xl font-bold text-emerald-400">{fmtBRL(Number(attribution?.revenue || 0))}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4 pb-3 px-4">
+              <div className="flex items-center gap-2 mb-1">
+                <Send className="w-3.5 h-3.5 text-blue-400" />
+                <span className="text-xs text-muted-foreground">Receita / Email</span>
+              </div>
+              <p className="text-xl font-bold text-foreground">
+                {fmtBRL(
+                  attribution?.emails_sent
+                    ? Number(attribution.revenue || 0) / Number(attribution.emails_sent)
+                    : 0
+                )}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       {campaign.total_recipients === 0 && (
