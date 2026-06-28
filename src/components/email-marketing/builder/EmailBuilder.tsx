@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { SendTestEmail } from "../SendTestEmail";
-import { ArrowLeft, Eye, Save, Code, Palette, Send } from "lucide-react";
+import { ArrowLeft, Eye, Save, Code, Palette, Send, Monitor, Smartphone } from "lucide-react";
 
 const PRODUTOS_PREVIEW = `<table cellpadding="0" cellspacing="0" border="0" width="100%">
   <tr>
