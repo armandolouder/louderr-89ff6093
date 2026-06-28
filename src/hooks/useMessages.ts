@@ -272,7 +272,42 @@ export function useSendMessage() {
 
       return message;
     },
-    onSuccess: (_, variables) => {
+    // Optimistic update: mostra a mensagem no chat imediatamente, sem esperar a API.
+    onMutate: async (variables) => {
+      const key = ["messages", variables.conversationId];
+      await queryClient.cancelQueries({ queryKey: key });
+      const previous = queryClient.getQueryData(key);
+
+      const optimisticMessage: Message = {
+        id: `optimistic-${Date.now()}`,
+        conversation_id: variables.conversationId,
+        content: variables.content,
+        sender_type: "agent",
+        sender_id: null,
+        message_type: "text",
+        media_url: null,
+        metadata: { optimistic: true },
+        status: "sent",
+        created_at: new Date().toISOString(),
+      };
+
+      queryClient.setQueryData(key, (old: any) => {
+        if (!old?.pages?.length) {
+          return { pages: [[optimisticMessage]], pageParams: [0] };
+        }
+        const pages = old.pages.map((p: Message[]) => [...p]);
+        pages[0] = [optimisticMessage, ...pages[0]];
+        return { ...old, pages };
+      });
+
+      return { previous, key };
+    },
+    onError: (_err, _variables, context: any) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData(context.key, context.previous);
+      }
+    },
+    onSettled: (_data, _err, variables) => {
       queryClient.invalidateQueries({ queryKey: ["messages", variables.conversationId] });
       queryClient.invalidateQueries({ queryKey: ["conversations"] });
     },
