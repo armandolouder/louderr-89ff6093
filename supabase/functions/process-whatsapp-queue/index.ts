@@ -77,10 +77,7 @@ serve(async (req) => {
     if (queueError) throw queueError;
 
     if (!queueItems || queueItems.length === 0) {
-      return new Response(
-        JSON.stringify({ success: true, processed: 0, message: "No pending messages" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse({ success: true, processed: 0, message: "No pending messages" });
     }
 
     console.log(`Processing ${queueItems.length} messages from queue`);
