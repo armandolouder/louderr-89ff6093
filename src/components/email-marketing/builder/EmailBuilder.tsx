@@ -54,6 +54,7 @@ interface EmailBuilderProps {
 export function EmailBuilder({ initialBlocks, onSave, onCancel, templateName = "", templateSubject = "" }: EmailBuilderProps) {
   const { state, selectedBlock, addBlock, updateBlock, removeBlock, moveBlock, duplicateBlock, selectBlock, setGlobalStyles } = useEmailBuilder(initialBlocks);
   const [showPreview, setShowPreview] = useState(false);
+  const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">("desktop");
   const [showCode, setShowCode] = useState(false);
   const [showGlobalStyles, setShowGlobalStyles] = useState(false);
   const [showTestEmail, setShowTestEmail] = useState(false);
