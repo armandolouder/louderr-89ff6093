@@ -18,6 +18,7 @@ export interface VariableContext {
   products?: JourneyProduct[] | null;
   checkoutSuccessUrl?: string | null;
   checkoutUrl?: string | null;
+  recoveryUrl?: string | null;
   boletoUrl?: string | null;
   trackingCode?: string | null;
   /** Variáveis adicionais ad-hoc no formato `[chave]` → valor. */
@@ -48,6 +49,8 @@ function formatProductsList(products: JourneyProduct[] | null | undefined): stri
 export function replaceWhatsappVariables(content: string, ctx: VariableContext): string {
   if (!content) return "";
 
+  const paymentLink = ctx.checkoutUrl || ctx.recoveryUrl || "";
+
   const map: Record<string, string> = {
     nome_cliente: firstName(ctx.customerName),
     numero_pedido: ctx.orderNumber ?? "",
@@ -55,8 +58,9 @@ export function replaceWhatsappVariables(content: string, ctx: VariableContext):
     lista_produtos: formatProductsList(ctx.products),
     url_sucesso_pedido: ctx.checkoutSuccessUrl ?? "",
     url_sucesso: ctx.checkoutSuccessUrl ?? "",
-    link_pagamento: ctx.checkoutUrl ?? "",
-    link_recuperacao: ctx.checkoutUrl ?? "",
+    link_pagamento: paymentLink,
+    link_recuperacao: paymentLink,
+    link_checkout: paymentLink,
     link_boleto: ctx.boletoUrl ?? "",
     codigo_rastreio: ctx.trackingCode ?? "",
   };
@@ -68,7 +72,7 @@ export function replaceWhatsappVariables(content: string, ctx: VariableContext):
   let out = content;
   for (const [key, value] of Object.entries(map)) {
     // [chave] — escape de chave não é necessário pois são identificadores conhecidos
-    out = out.replace(new RegExp(`\\[${key}\\]`, "g"), value);
+    out = out.replace(new RegExp(`\\[${key}\\]`, "gi"), value);
   }
   return out;
 }
