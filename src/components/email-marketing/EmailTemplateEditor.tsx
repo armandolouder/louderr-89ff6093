@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Eye, Pencil, Trash2, FileText, Sparkles, Copy } from "lucide-react";
+import { Plus, Eye, Pencil, Trash2, FileText, Sparkles, Copy, Monitor, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 import { BRANDED_TEMPLATES } from "./brandedTemplates";
 import { EmailBuilder } from "./builder/EmailBuilder";
@@ -16,6 +16,7 @@ export function EmailTemplateEditor() {
   const [editing, setEditing] = useState<any>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [previewHtml, setPreviewHtml] = useState("");
+  const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">("desktop");
   const [showGallery, setShowGallery] = useState(false);
 
   const { data: templates, isLoading } = useQuery({
@@ -187,9 +188,26 @@ export function EmailTemplateEditor() {
       {/* Preview Dialog */}
       <Dialog open={showPreview} onOpenChange={setShowPreview}>
         <DialogContent className="max-w-3xl max-h-[80vh]">
-          <DialogHeader><DialogTitle>Preview do Email</DialogTitle></DialogHeader>
-          <div className="border rounded-lg overflow-auto max-h-[65vh]">
-            <iframe srcDoc={previewHtml} className="w-full min-h-[500px] border-0" title="Preview" />
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between gap-3 pr-6">
+              <span>Preview do Email</span>
+              <div className="flex items-center gap-1">
+                <Button variant={previewMode === "desktop" ? "default" : "outline"} size="sm" onClick={() => setPreviewMode("desktop")} className="gap-1.5">
+                  <Monitor className="w-4 h-4" /> Desktop
+                </Button>
+                <Button variant={previewMode === "mobile" ? "default" : "outline"} size="sm" onClick={() => setPreviewMode("mobile")} className="gap-1.5">
+                  <Smartphone className="w-4 h-4" /> Mobile
+                </Button>
+              </div>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="border rounded-lg overflow-auto max-h-[65vh] flex justify-center bg-muted/30 p-3">
+            <iframe
+              srcDoc={previewHtml}
+              title="Preview"
+              className="border-0 bg-white transition-all"
+              style={{ width: previewMode === "mobile" ? 375 : "100%", minHeight: 500 }}
+            />
           </div>
         </DialogContent>
       </Dialog>
