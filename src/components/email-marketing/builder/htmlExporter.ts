@@ -36,7 +36,7 @@ function renderBlock(block: EmailBlock): string {
       let rows = "";
       for (let i = 0; i < products.length; i += cols) {
         const cells = products.slice(i, i + cols).map((p: any) =>
-          `<td style="padding:4px;text-align:left;width:${100 / cols}%;vertical-align:top;">
+          `<td class="stack-col" style="padding:4px;text-align:left;width:${100 / cols}%;vertical-align:top;">
             <a href="${p.link || "#"}" style="text-decoration:none;color:inherit;display:block;">
               <div style="background:#f0f0f0;overflow:hidden;">
                 <img src="${p.image}" alt="${p.name}" style="width:100%;display:block;" />
@@ -80,7 +80,7 @@ function renderBlock(block: EmailBlock): string {
     case "columns": {
       const columns = block.content.columns || [];
       const cells = columns.map((col: any) =>
-        `<td style="padding:8px;vertical-align:top;width:${100 / columns.length}%;">
+        `<td class="stack-col" style="padding:8px;vertical-align:top;width:${100 / columns.length}%;">
           <h3 style="margin:0 0 8px;font-size:16px;color:${s.textColor};">${escapeHtml(col.title)}</h3>
           <p style="margin:0;font-size:14px;color:${s.textColor};line-height:1.5;">${escapeHtml(col.text)}</p>
         </td>`
@@ -99,11 +99,21 @@ export function exportToHtml(state: BuilderState): string {
 
   return `<!DOCTYPE html>
 <html lang="pt-BR">
-<head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /></head>
+<head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<style>
+  img { max-width:100% !important; height:auto !important; }
+  .email-container { width:${g.contentWidth}px; max-width:100%; }
+  @media only screen and (max-width:600px) {
+    .email-outer-cell { padding:16px 8px !important; }
+    .email-container { width:100% !important; }
+    .stack-col { display:block !important; width:100% !important; box-sizing:border-box; }
+  }
+</style>
+</head>
 <body style="margin:0;padding:0;background:${g.backgroundColor};font-family:${g.fontFamily};">
 <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:${g.backgroundColor};">
-<tr><td align="center" style="padding:40px 20px;">
-<table cellpadding="0" cellspacing="0" border="0" width="${g.contentWidth}" style="max-width:${g.contentWidth}px;background:#ffffff;overflow:hidden;">
+<tr><td align="center" class="email-outer-cell" style="padding:40px 20px;">
+<table cellpadding="0" cellspacing="0" border="0" width="100%" class="email-container" style="max-width:${g.contentWidth}px;background:#ffffff;overflow:hidden;">
 ${blocksHtml}
 </table>
 </td></tr>
