@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getNuvemshopCredentials } from "../_shared/nuvemshop.ts";
+import { replaceWhatsappVariables } from "../_shared/variables.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -205,7 +206,14 @@ Deno.serve(async (req) => {
                 status: "active",
                 started_at: new Date().toISOString(),
                 next_action_at: new Date().toISOString(),
-                execution_data: { trigger_checkout_id: checkout.id, trigger_event: "cart", recovery_url: recoveryUrl },
+                execution_data: {
+                  trigger_checkout_id: checkout.id,
+                  trigger_event: "cart",
+                  recovery_url: recoveryUrl,
+                  checkout_url: recoveryUrl,
+                  total,
+                  products,
+                },
               });
               console.log(`Journey execution created for cart: ${journey.id} for ${phone}`);
             }
@@ -234,12 +242,17 @@ Deno.serve(async (req) => {
 
                 const scheduledAt = new Date(now.getTime() + delayMs);
 
-                const messageContent = (flow.message_content || "")
-                  .replace(/\[nome_cliente\]/g, firstName)
-                  .replace(/\[lista_produtos\]/g, productsList)
-                  .replace(/\[total_pedido\]/g, `R$ ${total.toFixed(2).replace(".", ",")}`)
-                  .replace(/\[link_recuperacao\]/g, recoveryUrl)
-                  .replace(/\[link_checkout\]/g, recoveryUrl);
+                const messageContent = replaceWhatsappVariables(flow.message_content || "", {
+                  customerName,
+                  total,
+                  products,
+                  checkoutUrl: recoveryUrl,
+                  recoveryUrl,
+                  extras: {
+                    nome_cliente: firstName,
+                    lista_produtos: productsList,
+                  },
+                });
 
                 const { error: execError } = await supabase.from("automation_executions").insert({
                   flow_id: flow.id,
