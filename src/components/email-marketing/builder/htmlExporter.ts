@@ -99,11 +99,21 @@ export function exportToHtml(state: BuilderState): string {
 
   return `<!DOCTYPE html>
 <html lang="pt-BR">
-<head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /></head>
+<head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<style>
+  img { max-width:100% !important; height:auto !important; }
+  .email-container { width:${g.contentWidth}px; max-width:100%; }
+  @media only screen and (max-width:600px) {
+    .email-outer-cell { padding:16px 8px !important; }
+    .email-container { width:100% !important; }
+    .stack-col { display:block !important; width:100% !important; box-sizing:border-box; }
+  }
+</style>
+</head>
 <body style="margin:0;padding:0;background:${g.backgroundColor};font-family:${g.fontFamily};">
 <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:${g.backgroundColor};">
-<tr><td align="center" style="padding:40px 20px;">
-<table cellpadding="0" cellspacing="0" border="0" width="${g.contentWidth}" style="max-width:${g.contentWidth}px;background:#ffffff;overflow:hidden;">
+<tr><td align="center" class="email-outer-cell" style="padding:40px 20px;">
+<table cellpadding="0" cellspacing="0" border="0" width="100%" class="email-container" style="max-width:${g.contentWidth}px;background:#ffffff;overflow:hidden;">
 ${blocksHtml}
 </table>
 </td></tr>
