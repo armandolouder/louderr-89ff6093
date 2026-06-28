@@ -36,7 +36,7 @@ function renderBlock(block: EmailBlock): string {
       let rows = "";
       for (let i = 0; i < products.length; i += cols) {
         const cells = products.slice(i, i + cols).map((p: any) =>
-          `<td style="padding:4px;text-align:left;width:${100 / cols}%;vertical-align:top;">
+          `<td class="stack-col" style="padding:4px;text-align:left;width:${100 / cols}%;vertical-align:top;">
             <a href="${p.link || "#"}" style="text-decoration:none;color:inherit;display:block;">
               <div style="background:#f0f0f0;overflow:hidden;">
                 <img src="${p.image}" alt="${p.name}" style="width:100%;display:block;" />
