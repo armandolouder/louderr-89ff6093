@@ -112,7 +112,7 @@ Deno.serve(async (req) => {
             sender: { name: "LOUDER.ink", email: senderEmail },
             to: [{ email: email.email, name: email.customer_name || undefined }],
             subject: email.subject,
-            htmlContent: email.html_content,
+            htmlContent: addUtmToLinks(email.html_content, email.campaign_id),
             tags: ["email-marketing", email.campaign_id || "manual"],
           }),
         });
