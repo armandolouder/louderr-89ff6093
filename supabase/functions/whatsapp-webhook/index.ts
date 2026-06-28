@@ -93,6 +93,40 @@ async function handleEvolutionWebhook(supabase: any, payload: EvolutionPayload, 
       const msg = m.message;
       if (!msg) continue;
 
+      // Handle reactions that arrive inside messages.upsert (reactionMessage).
+      // These must be attached to the target message, not inserted as a new one.
+      if (msg.reactionMessage) {
+        const targetMessageId = msg.reactionMessage.key?.id || msg.reactionMessage.key?.ID;
+        const emoji = msg.reactionMessage.text || "";
+        if (targetMessageId) {
+          const existing = await getExistingMessage(supabase, targetMessageId);
+          if (existing) {
+            const reactions = existing.metadata?.reactions || [];
+            if (emoji === "") {
+              // Empty emoji means reaction was removed
+              await supabase.from("messages").update({
+                metadata: { ...existing.metadata, reactions: [] }
+              }).eq("id", existing.id);
+            } else {
+              const alreadyHasEmoji = reactions.some((r: any) =>
+                r.emoji === emoji &&
+                (r.from_webhook || (new Date().getTime() - new Date(r.sent_at).getTime() < 5000))
+              );
+              if (!alreadyHasEmoji) {
+                const newReactions = [...reactions, { emoji, sent_at: new Date().toISOString(), from_webhook: true }];
+                await supabase.from("messages").update({
+                  metadata: { ...existing.metadata, reactions: newReactions }
+                }).eq("id", existing.id);
+              }
+            }
+            console.log(`Applied reaction ${emoji} to message ${targetMessageId}`);
+          } else {
+            console.log(`Reaction target message not found: ${targetMessageId}`);
+          }
+        }
+        continue;
+      }
+
       const messageId = m.key?.id;
       const fromMeValue = m.key?.fromMe;
       const isFromMe = fromMeValue === true || fromMeValue === 1 || String(fromMeValue) === "true";
