@@ -771,7 +771,7 @@ export default function AbandonedCheckouts() {
 
       {/* Detail Modal */}
       <Dialog open={!!selectedCheckout} onOpenChange={() => setSelectedCheckout(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Carrinho Abandonado</DialogTitle>
           </DialogHeader>
