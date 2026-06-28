@@ -33,8 +33,16 @@ serve(async (req) => {
   if (preflight) return preflight;
 
   try {
-    const authResult = await verifyUserJwt(req);
-    if (!authResult.ok) return authResult.response;
+    // Allow two invocation modes:
+    //  1) Manual (frontend) — sends a user JWT in the Authorization header.
+    //  2) Cron — sends the anon key; no user context. We still process the
+    //     shared queue with the service-role client below.
+    const body = await req.json().catch(() => ({} as any));
+    const isCron = body?.cron === true || body?.triggered_by === "cron";
+    if (!isCron) {
+      const authResult = await verifyUserJwt(req);
+      if (!authResult.ok) return authResult.response;
+    }
 
      if (!hasWhatsAppCredentials()) throw new Error("WhatsApp credentials not configured");
 
@@ -49,7 +57,7 @@ serve(async (req) => {
     const { data: ownerData } = await supabase.rpc("get_webhook_owner_user_id");
     const ownerUserId = ownerData as string | null;
 
-    const { campaignId, limit = 10 } = await req.json().catch(() => ({}));
+    const { campaignId, limit = 10 } = body;
 
     // Build query for pending messages
     let query = supabase
@@ -69,10 +77,7 @@ serve(async (req) => {
     if (queueError) throw queueError;
 
     if (!queueItems || queueItems.length === 0) {
-      return new Response(
-        JSON.stringify({ success: true, processed: 0, message: "No pending messages" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse({ success: true, processed: 0, message: "No pending messages" });
     }
 
     console.log(`Processing ${queueItems.length} messages from queue`);
