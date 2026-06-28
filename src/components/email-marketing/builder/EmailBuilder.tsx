@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { SendTestEmail } from "../SendTestEmail";
-import { ArrowLeft, Eye, Save, Code, Palette, Send } from "lucide-react";
+import { ArrowLeft, Eye, Save, Code, Palette, Send, Monitor, Smartphone } from "lucide-react";
 
 const PRODUTOS_PREVIEW = `<table cellpadding="0" cellspacing="0" border="0" width="100%">
   <tr>
@@ -54,6 +54,7 @@ interface EmailBuilderProps {
 export function EmailBuilder({ initialBlocks, onSave, onCancel, templateName = "", templateSubject = "" }: EmailBuilderProps) {
   const { state, selectedBlock, addBlock, updateBlock, removeBlock, moveBlock, duplicateBlock, selectBlock, setGlobalStyles } = useEmailBuilder(initialBlocks);
   const [showPreview, setShowPreview] = useState(false);
+  const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">("desktop");
   const [showCode, setShowCode] = useState(false);
   const [showGlobalStyles, setShowGlobalStyles] = useState(false);
   const [showTestEmail, setShowTestEmail] = useState(false);
@@ -143,9 +144,26 @@ export function EmailBuilder({ initialBlocks, onSave, onCancel, templateName = "
       {/* Preview Dialog */}
       <Dialog open={showPreview} onOpenChange={setShowPreview}>
         <DialogContent className="max-w-3xl max-h-[85vh]">
-          <DialogHeader><DialogTitle>Preview do Email</DialogTitle></DialogHeader>
-          <div className="border rounded-lg overflow-auto max-h-[70vh]">
-            <iframe srcDoc={previewHtml} className="w-full min-h-[500px] border-0" title="Preview" />
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between gap-3 pr-6">
+              <span>Preview do Email</span>
+              <div className="flex items-center gap-1">
+                <Button variant={previewMode === "desktop" ? "default" : "outline"} size="sm" onClick={() => setPreviewMode("desktop")} className="gap-1.5">
+                  <Monitor className="w-4 h-4" /> Desktop
+                </Button>
+                <Button variant={previewMode === "mobile" ? "default" : "outline"} size="sm" onClick={() => setPreviewMode("mobile")} className="gap-1.5">
+                  <Smartphone className="w-4 h-4" /> Mobile
+                </Button>
+              </div>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="border rounded-lg overflow-auto max-h-[70vh] flex justify-center bg-muted/30 p-3">
+            <iframe
+              srcDoc={previewHtml}
+              title="Preview"
+              className="border-0 bg-white transition-all"
+              style={{ width: previewMode === "mobile" ? 375 : "100%", minHeight: 500 }}
+            />
           </div>
         </DialogContent>
       </Dialog>
