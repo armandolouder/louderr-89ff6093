@@ -7,6 +7,7 @@ import { Send, CheckCircle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 const PRODUTOS_TESTE_HTML = `<table cellpadding="0" cellspacing="0" border="0" width="100%"><tr><td width="50%" style="padding:6px;vertical-align:top;"><div style="border:1px solid #e5e5e5;overflow:hidden;background:#fff;"><img src="https://placehold.co/300x380/111111/ffffff?text=LOUDER" alt="Camiseta LOUDER Dark" style="width:100%;display:block;" /><div style="padding:8px 10px;"><div style="font-size:12px;font-weight:700;color:#111;text-transform:uppercase;line-height:1.3;">CAMISETA LOUDER DARK</div><div style="font-size:11px;color:#888;margin-top:3px;">Tam: G • Qtd: 1</div><div style="font-size:13px;font-weight:700;color:#000;margin-top:4px;">R$ 129,90</div></div></div></td><td width="50%" style="padding:6px;vertical-align:top;"><div style="border:1px solid #e5e5e5;overflow:hidden;background:#fff;"><img src="https://placehold.co/300x380/1a1a1a/ffffff?text=LOUDER" alt="Moletom LOUDER Post-Punk" style="width:100%;display:block;" /><div style="padding:8px 10px;"><div style="font-size:12px;font-weight:700;color:#111;text-transform:uppercase;line-height:1.3;">MOLETOM LOUDER POST-PUNK</div><div style="font-size:11px;color:#888;margin-top:3px;">Cor: Preto • Qtd: 1</div><div style="font-size:13px;font-weight:700;color:#000;margin-top:4px;">R$ 249,90</div></div></div></td></tr></table>`;
+const TOTAL_TESTE = "R$ 379,80";
 
 interface Props {
   open: boolean;
@@ -31,8 +32,8 @@ export function SendTestEmail({ open, onOpenChange, templateHtml, subject }: Pro
         .replace(/\{\{nome\}\}/gi, "Teste")
         .replace(/\{\{email\}\}/gi, testEmail)
         .replace(/\{\{unsubscribe_url\}\}/gi, unsubUrl)
-        .replace(/\{\{recovery_url\}\}/gi, "https://loja.com/checkout/exemplo")
-        .replace(/\{\{total\}\}/gi, "R$ 379,80")
+        .replace(/\{\{recovery_url\}\}/gi, "https://louder.ink/checkout/exemplo")
+        .replace(/\{\{total\}\}/gi, TOTAL_TESTE)
         .replace(/\{\{produtos\}\}/gi, PRODUTOS_TESTE_HTML);
 
       const renderedSubject = subject.replace(/\{\{nome\}\}/gi, "Teste");
@@ -86,8 +87,8 @@ export function SendTestEmail({ open, onOpenChange, templateHtml, subject }: Pro
                 .replace(/\{\{nome\}\}/gi, "Teste")
                 .replace(/\{\{email\}\}/gi, testEmail || "email@teste.com")
                 .replace(/\{\{unsubscribe_url\}\}/gi, "#")
-                .replace(/\{\{recovery_url\}\}/gi, "https://loja.com/checkout/exemplo")
-                .replace(/\{\{total\}\}/gi, "R$ 379,80")
+                .replace(/\{\{recovery_url\}\}/gi, "https://louder.ink/checkout/exemplo")
+                .replace(/\{\{total\}\}/gi, TOTAL_TESTE)
                 .replace(/\{\{produtos\}\}/gi, PRODUTOS_TESTE_HTML)}
               className="w-full h-48 border-0"
               title="Test Preview"
