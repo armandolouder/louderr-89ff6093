@@ -9,7 +9,7 @@ interface BrandedTemplate {
   blocks: EmailBlock[];
 }
 
-const LOGO_URL = "https://acdn-us.mitiendanube.com/stores/002/778/031/themes/common/logo-507807513-1674425349-aa10b3e5b7752a1b2b57c619e6ba49b41674425349-640-0.webp";
+const LOGO_URL = "https://acdn-us.mitiendanube.com/stores/002/778/031/themes/common/logo-8584365049838548503-1774153804-b5ca8e4d0619239bea7def6f263211ed1774153804-480-0.webp";
 
 export const BRANDED_TEMPLATES: BrandedTemplate[] = [
   {
