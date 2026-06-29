@@ -31,6 +31,10 @@ function renderBlock(block: EmailBlock): string {
       </td></tr>`;
 
     case "products": {
+      if (block.content.dynamic) {
+        // Bloco dinâmico: o motor de recuperação injeta os produtos reais do carrinho.
+        return `<tr><td style="background:${s.backgroundColor};padding:${s.padding};">{{produtos}}</td></tr>`;
+      }
       const cols = parseInt(s.columns || "2");
       const products = block.content.products || [];
       let rows = "";
