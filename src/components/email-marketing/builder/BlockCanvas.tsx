@@ -60,6 +60,11 @@ function BlockPreview({ block }: { block: EmailBlock }) {
     case "products":
       return (
         <div style={{ background: s.backgroundColor, padding: s.padding }}>
+          {c.dynamic && (
+            <div style={{ background: "#000", color: "#fff", fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", padding: "4px 8px", marginBottom: "8px", textAlign: "center" }}>
+              Produtos reais do carrinho (preview de exemplo)
+            </div>
+          )}
           <div style={{ display: "grid", gridTemplateColumns: `repeat(${s.columns || 2}, 1fr)`, gap: s.gap || "8px" }}>
             {(c.products || []).map((p: any, i: number) => (
               <div key={i} style={{ overflow: "hidden" }}>
