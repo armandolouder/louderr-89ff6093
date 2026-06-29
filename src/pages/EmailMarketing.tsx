@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Mail, FileText, BarChart3, Ban } from "lucide-react";
+import { Mail, FileText, BarChart3, Ban, ShoppingCart } from "lucide-react";
 import { EmailCampaignsList } from "@/components/email-marketing/EmailCampaignsList";
 import { EmailTemplateEditor } from "@/components/email-marketing/EmailTemplateEditor";
 import { EmailDashboard } from "@/components/email-marketing/EmailDashboard";
 import { EmailUnsubscribes } from "@/components/email-marketing/EmailUnsubscribes";
+import { RecoveryTemplatesManager } from "@/components/email-marketing/RecoveryTemplatesManager";
 
 export default function EmailMarketing() {
   const [activeTab, setActiveTab] = useState("campaigns");
@@ -27,7 +28,7 @@ export default function EmailMarketing() {
 
       <div className="flex-1 p-4 md:p-6 overflow-auto">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full">
-          <TabsList className="grid w-full grid-cols-4 mb-6">
+          <TabsList className="grid w-full grid-cols-5 mb-6">
             <TabsTrigger value="campaigns" className="flex items-center gap-2">
               <Mail className="w-4 h-4" />
               <span className="hidden sm:inline">Campanhas</span>
@@ -35,6 +36,10 @@ export default function EmailMarketing() {
             <TabsTrigger value="templates" className="flex items-center gap-2">
               <FileText className="w-4 h-4" />
               <span className="hidden sm:inline">Templates</span>
+            </TabsTrigger>
+            <TabsTrigger value="recovery" className="flex items-center gap-2">
+              <ShoppingCart className="w-4 h-4" />
+              <span className="hidden sm:inline">Recuperação</span>
             </TabsTrigger>
             <TabsTrigger value="dashboard" className="flex items-center gap-2">
               <BarChart3 className="w-4 h-4" />
@@ -51,6 +56,9 @@ export default function EmailMarketing() {
           </TabsContent>
           <TabsContent value="templates" className="mt-0">
             <EmailTemplateEditor />
+          </TabsContent>
+          <TabsContent value="recovery" className="mt-0">
+            <RecoveryTemplatesManager />
           </TabsContent>
           <TabsContent value="dashboard" className="mt-0">
             <EmailDashboard />

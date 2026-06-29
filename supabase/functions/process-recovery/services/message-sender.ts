@@ -1,7 +1,7 @@
  import { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
  import { sendWhatsAppMedia, sendWhatsAppText, hasWhatsAppCredentials } from "../../_shared/whatsapp.ts";
  import { replaceWhatsappVariables } from "../../_shared/variables.ts";
- import { buildRecoveryEmailHtml } from "../utils/email-builder.ts";
+import { buildRecoveryEmailHtml, applyRecoveryTemplate } from "../utils/email-builder.ts";
 import { registerInInbox } from "../../_shared/inbox-registry.ts";
  
  export async function sendWhatsappRecovery(supabase: SupabaseClient, exec: any, step: any, variant: string, msgRecordId: string) {
@@ -95,10 +95,28 @@ import { registerInInbox } from "../../_shared/inbox-registry.ts";
  
    const firstName = (exec.customer_name || "Cliente").split(" ")[0];
    const stepType = step.message_type || "emocional";
-   const emailContent = buildRecoveryEmailHtml(
-     stepType, firstName, (exec.cart_items as any[]) || [],
-     exec.cart_value || 0, exec.recovery_url
-   );
+  const products = (exec.cart_items as any[]) || [];
+  const cartValue = exec.cart_value || 0;
+
+  // Procura um template personalizado salvo no builder para este variante.
+  let emailContent: { subject: string; html: string };
+  const { data: customTpl } = await supabase
+    .from("email_templates")
+    .select("subject, html_content")
+    .eq("category", "recuperacao")
+    .eq("user_id", exec.user_id)
+    .filter("variables->>recovery_variant", "eq", stepType)
+    .limit(1)
+    .maybeSingle();
+
+  if (customTpl?.html_content) {
+    emailContent = {
+      subject: (customTpl.subject || "").replace(/\{\{nome\}\}/gi, firstName || "Cliente"),
+      html: applyRecoveryTemplate(customTpl.html_content, firstName, products, cartValue, exec.recovery_url),
+    };
+  } else {
+    emailContent = buildRecoveryEmailHtml(stepType, firstName, products, cartValue, exec.recovery_url);
+  }
  
    try {
      // Get sender
