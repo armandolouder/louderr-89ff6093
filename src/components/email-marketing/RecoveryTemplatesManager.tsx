@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -76,6 +76,35 @@ export function RecoveryTemplatesManager() {
 
   const findSaved = (key: string): SavedTemplate | undefined =>
     saved?.find((t) => (t.variables as any)?.recovery_variant === key);
+
+  // Migração automática: na primeira vez, salva os 5 modelos padrão no banco
+  // para que o motor de recuperação já use a versão do builder.
+  const seededRef = useRef(false);
+  useEffect(() => {
+    if (!saved || seededRef.current) return;
+    const missing = RECOVERY_VARIANTS.filter((v) => !findSaved(v.key));
+    if (missing.length === 0) return;
+    seededRef.current = true;
+    (async () => {
+      const rows = missing.map((v) => {
+        const blocks = buildRecoveryBlocks(v);
+        const html = exportToHtml({
+          blocks,
+          selectedBlockId: null,
+          globalStyles: { backgroundColor: "#f5f5f5", contentWidth: "600", fontFamily: "'Helvetica Neue',Arial,sans-serif", borderRadius: "0" },
+        });
+        return {
+          name: `${TEMPLATE_PREFIX} ${v.label}`,
+          subject: v.subject,
+          html_content: html,
+          category: "recuperacao",
+          variables: { blocks, recovery_variant: v.key } as any,
+        };
+      });
+      const { error } = await supabase.from("email_templates").insert(rows);
+      if (!error) queryClient.invalidateQueries({ queryKey: ["recovery-templates"] });
+    })();
+  }, [saved]);
 
   const getBlocks = (v: RecoveryVariant): EmailBlock[] => {
     const s = findSaved(v.key);
