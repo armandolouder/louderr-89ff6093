@@ -1,7 +1,6 @@
  import { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
  import { sendWhatsAppMedia, sendWhatsAppText, hasWhatsAppCredentials } from "../../_shared/whatsapp.ts";
  import { replaceWhatsappVariables } from "../../_shared/variables.ts";
- import { buildRecoveryEmailHtml } from "../utils/email-builder.ts";
 import { buildRecoveryEmailHtml, applyRecoveryTemplate } from "../utils/email-builder.ts";
 import { registerInInbox } from "../../_shared/inbox-registry.ts";
  
