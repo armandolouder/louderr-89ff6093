@@ -94,7 +94,7 @@ export function applyRecoveryTemplate(
  <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#f5f5f5;"><tr><td align="center">
  <table cellpadding="0" cellspacing="0" border="0" width="600" style="max-width:600px;background:#fff;">
    <tr><td style="background:#000;padding:24px 40px;text-align:center;">
-     <img src="https://acdn-us.mitiendanube.com/stores/002/778/031/themes/common/logo-507807513-1674425349-aa10b3e5b7752a1b2b57c619e6ba49b41674425349-640-0.webp" alt="LOUDER.ink" style="display:inline-block;max-width:280px;width:100%;height:auto;"/>
+     <img src="https://acdn-us.mitiendanube.com/stores/002/778/031/themes/common/logo-8584365049838548503-1774153804-b5ca8e4d0619239bea7def6f263211ed1774153804-480-0.webp" alt="LOUDER.ink" style="display:inline-block;max-width:280px;width:100%;height:auto;"/>
    </td></tr>
    <tr><td style="padding:40px 40px 20px;">
      <h2 style="margin:0 0 8px;font-size:24px;font-weight:700;color:#111;line-height:1.2;">${h.title}</h2>
