@@ -22,6 +22,17 @@ function formatCurrency(value: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 }
 
+function getRecoveryTemplateKey(template: any) {
+  const variant = template?.variables?.recovery_variant;
+  if (variant) return String(variant).trim().toLowerCase();
+
+  return String(template?.name || "")
+    .replace(/^\[recuperação\]\s*/i, "")
+    .replace(/^recupera(?:ç|c)[aã]o\s*[-:]?\s*/i, "")
+    .trim()
+    .toLowerCase() || template?.id;
+}
+
 export default function AbandonedCheckouts() {
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth());
@@ -47,12 +58,17 @@ export default function AbandonedCheckouts() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("email_templates")
-        .select("id, name, subject, category")
+        .select("id, name, subject, category, variables, updated_at")
         .eq("is_active", true)
         .or("category.eq.recuperacao,name.ilike.%Recupera%")
-        .order("name");
+        .order("updated_at", { ascending: false });
       if (error) throw error;
-      return data || [];
+      const uniqueTemplates = new Map<string, any>();
+      for (const template of data || []) {
+        const key = getRecoveryTemplateKey(template);
+        if (!uniqueTemplates.has(key)) uniqueTemplates.set(key, template);
+      }
+      return Array.from(uniqueTemplates.values()).sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
     },
   });
 
