@@ -5,9 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Eye, Pencil, Trash2, FileText, Sparkles, Copy, Monitor, Smartphone } from "lucide-react";
+import { Plus, Eye, Pencil, Trash2, FileText, Monitor, Smartphone } from "lucide-react";
 import { toast } from "sonner";
-import { BRANDED_TEMPLATES } from "./brandedTemplates";
 import { EmailBuilder } from "./builder/EmailBuilder";
 import { EmailBlock } from "./builder/types";
 
@@ -17,7 +16,6 @@ export function EmailTemplateEditor() {
   const [showPreview, setShowPreview] = useState(false);
   const [previewHtml, setPreviewHtml] = useState("");
   const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">("desktop");
-  const [showGallery, setShowGallery] = useState(false);
 
   const { data: templates, isLoading } = useQuery({
     queryKey: ["email-templates"],
@@ -73,23 +71,6 @@ export function EmailTemplateEditor() {
     },
   });
 
-  const useTemplateMutation = useMutation({
-    mutationFn: async (tpl: typeof BRANDED_TEMPLATES[0]) => {
-      const { error } = await supabase.from("email_templates").insert({
-        name: tpl.name, subject: tpl.subject, html_content: tpl.html_content,
-        preview_text: tpl.preview_text, category: tpl.category,
-        variables: { blocks: tpl.blocks } as any,
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["email-templates"] });
-      setShowGallery(false);
-      toast.success("Template adicionado à sua biblioteca!");
-    },
-    onError: (e: any) => toast.error(e.message),
-  });
-
   const handlePreview = (html: string) => {
     setPreviewHtml(html.replace(/\{\{nome\}\}/gi, "Maria").replace(/\{\{email\}\}/gi, "maria@email.com").replace(/\{\{unsubscribe_url\}\}/gi, "#"));
     setShowPreview(true);
@@ -102,11 +83,7 @@ export function EmailTemplateEditor() {
       return (variables as any).blocks as EmailBlock[];
     }
 
-    const galleryTemplate = BRANDED_TEMPLATES.find(
-      (tpl) => tpl.name === template?.name || tpl.subject === template?.subject
-    );
-
-    return galleryTemplate?.blocks;
+    return undefined;
   };
 
   if (isLoading) return <div className="flex items-center justify-center p-8"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
@@ -139,9 +116,6 @@ export function EmailTemplateEditor() {
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-foreground">Templates de Email</h2>
         <div className="flex gap-2">
-          <Button size="sm" variant="outline" onClick={() => setShowGallery(true)} className="gap-2">
-            <Sparkles className="w-4 h-4" /> Galeria LOUDER
-          </Button>
           <Button size="sm" onClick={() => setEditing({})} className="gap-2">
             <Plus className="w-4 h-4" /> Novo Template
           </Button>
@@ -153,9 +127,9 @@ export function EmailTemplateEditor() {
           <CardContent className="flex flex-col items-center justify-center py-12 text-center">
             <FileText className="w-12 h-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold">Nenhum template</h3>
-            <p className="text-sm text-muted-foreground mt-1 mb-4">Comece usando um template da galeria ou crie do zero.</p>
-            <Button variant="outline" onClick={() => setShowGallery(true)} className="gap-2">
-              <Sparkles className="w-4 h-4" /> Explorar Galeria LOUDER
+            <p className="text-sm text-muted-foreground mt-1 mb-4">Crie seu primeiro template do zero.</p>
+            <Button variant="outline" onClick={() => setEditing({})} className="gap-2">
+              <Plus className="w-4 h-4" /> Novo Template
             </Button>
           </CardContent>
         </Card>
@@ -208,49 +182,6 @@ export function EmailTemplateEditor() {
               className="border-0 bg-white transition-all"
               style={{ width: previewMode === "mobile" ? 375 : "100%", minHeight: 500 }}
             />
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Branded Templates Gallery */}
-      <Dialog open={showGallery} onOpenChange={setShowGallery}>
-        <DialogContent className="max-w-4xl max-h-[85vh] overflow-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-primary" /> Galeria de Templates LOUDER.ink
-            </DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 md:grid-cols-2 mt-4">
-            {BRANDED_TEMPLATES.map((tpl, i) => (
-              <Card key={i} className="hover:border-primary/30 transition-colors">
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm">{tpl.name}</CardTitle>
-                    <Badge variant="secondary" className="text-xs">{tpl.category}</Badge>
-                  </div>
-                  <p className="text-xs text-muted-foreground">{tpl.subject.replace("{{nome}}", "Maria")}</p>
-                </CardHeader>
-                <CardContent>
-                  <div className="border overflow-hidden mb-3 bg-white relative h-48" style={{ borderRadius: 0 }}>
-                    <iframe
-                      srcDoc={tpl.html_content.replace(/\{\{nome\}\}/gi, "Maria").replace(/\{\{unsubscribe_url\}\}/gi, "#")}
-                      className="border-0 pointer-events-none absolute top-0 left-0"
-                      style={{ width: 600, height: 1000, transform: "scale(0.5)", transformOrigin: "top left" }}
-                      scrolling="no"
-                      title={tpl.name}
-                    />
-                  </div>
-                  <div className="flex gap-2">
-                    <Button size="sm" variant="outline" className="flex-1 gap-1" onClick={() => handlePreview(tpl.html_content)}>
-                      <Eye className="w-3.5 h-3.5" /> Preview
-                    </Button>
-                    <Button size="sm" className="flex-1 gap-1" onClick={() => useTemplateMutation.mutate(tpl)} disabled={useTemplateMutation.isPending}>
-                      <Copy className="w-3.5 h-3.5" /> Usar Template
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
           </div>
         </DialogContent>
       </Dialog>
