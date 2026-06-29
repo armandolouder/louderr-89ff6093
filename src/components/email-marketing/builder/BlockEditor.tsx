@@ -89,6 +89,28 @@ export function BlockEditor({ block, onChange }: BlockEditorProps) {
 
       {block.type === "products" && (
         <div className="space-y-3">
+          <div className="flex items-start gap-2 rounded-lg border border-border p-3 bg-muted/40">
+            <input
+              type="checkbox"
+              checked={!!block.content.dynamic}
+              onChange={(e) => updateContent("dynamic", e.target.checked)}
+              className="mt-0.5"
+            />
+            <div className="space-y-0.5">
+              <p className="text-xs font-medium">Puxar produtos reais do carrinho</p>
+              <p className="text-[11px] text-muted-foreground leading-snug">
+                Ao enviar, o sistema substitui esta seção pelos produtos, nomes,
+                preços e imagens reais do carrinho abandonado da Nuvemshop.
+                Os produtos abaixo servem apenas como exemplo no preview.
+              </p>
+            </div>
+          </div>
+          {block.content.dynamic ? (
+            <p className="text-[11px] text-muted-foreground italic">
+              Modo automático ativado — a edição manual está desativada.
+            </p>
+          ) : (
+          <>
           {(block.content.products || []).map((p: any, i: number) => (
             <div key={i} className="border border-border rounded-lg p-3 space-y-2">
               <div className="flex items-center justify-between">
@@ -109,6 +131,8 @@ export function BlockEditor({ block, onChange }: BlockEditorProps) {
           <Button variant="outline" size="sm" className="w-full gap-1" onClick={() => {
             updateContent("products", [...(block.content.products || []), { image: "https://placehold.co/300x380/f5f5f5/333?text=Novo", name: "NOVO PRODUTO", price: "R$ 0,00", oldPrice: "", link: "#" }]);
           }}><Plus className="w-3 h-3" /> Adicionar Produto</Button>
+          </>
+          )}
         </div>
       )}
 
