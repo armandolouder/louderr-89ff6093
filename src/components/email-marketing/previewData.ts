@@ -38,18 +38,22 @@ interface PreviewOptions {
 }
 
 export function renderEmailPreview(html: string, options: PreviewOptions = {}) {
-  const name = options.name || PREVIEW_NAME;
-  const email = options.email || PREVIEW_EMAIL;
+  const name = options.name ?? PREVIEW_NAME;
+  const email = options.email ?? PREVIEW_EMAIL;
+  const unsubscribeUrl = options.unsubscribeUrl ?? "#";
+  const recoveryUrl = options.recoveryUrl ?? PREVIEW_RECOVERY_URL;
+  const total = options.total ?? PREVIEW_TOTAL;
+  const productsHtml = options.productsHtml ?? PRODUCTS_PREVIEW_HTML;
 
   return html
     .replace(/\{\{nome\}\}/gi, name)
     .replace(/\{\{email\}\}/gi, email)
-    .replace(/\{\{unsubscribe_url\}\}/gi, options.unsubscribeUrl || "#")
-    .replace(/\{\{recovery_url\}\}/gi, options.recoveryUrl || PREVIEW_RECOVERY_URL)
-    .replace(/\{\{total\}\}/gi, options.total || PREVIEW_TOTAL)
-    .replace(/\{\{produtos\}\}/gi, options.productsHtml || PRODUCTS_PREVIEW_HTML)
+    .replace(/\{\{unsubscribe_url\}\}/gi, unsubscribeUrl)
+    .replace(/\{\{recovery_url\}\}/gi, recoveryUrl)
+    .replace(/\{\{total\}\}/gi, total)
+    .replace(/\{\{produtos\}\}/gi, productsHtml)
     .replace(/\[nome_cliente\]/gi, name)
     .replace(/\[email_cliente\]/gi, email)
-    .replace(/\[link_recuperacao\]/gi, options.recoveryUrl || PREVIEW_RECOVERY_URL)
-    .replace(/\[total_pedido\]/gi, options.total || PREVIEW_TOTAL);
+    .replace(/\[link_recuperacao\]/gi, recoveryUrl)
+    .replace(/\[total_pedido\]/gi, total);
 }
