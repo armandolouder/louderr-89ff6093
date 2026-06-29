@@ -62,7 +62,7 @@ export function EmailBuilder({ initialBlocks, onSave, onCancel, templateName = "
     .replace(/\{\{nome\}\}/gi, "Maria")
     .replace(/\{\{email\}\}/gi, "maria@email.com")
     .replace(/\{\{unsubscribe_url\}\}/gi, "#")
-    .replace(/\{\{recovery_url\}\}/gi, "https://loja.com/checkout/exemplo")
+    .replace(/\{\{recovery_url\}\}/gi, "https://louder.ink/checkout/exemplo")
     .replace(/\{\{total\}\}/gi, "R$ 379,80")
     .replace(/\{\{produtos\}\}/gi, PRODUTOS_PREVIEW);
 
