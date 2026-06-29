@@ -9,6 +9,7 @@ import { Plus, Eye, Pencil, Trash2, FileText, Monitor, Smartphone } from "lucide
 import { toast } from "sonner";
 import { EmailBuilder } from "./builder/EmailBuilder";
 import { EmailBlock } from "./builder/types";
+import { renderEmailPreview } from "./previewData";
 
 export function EmailTemplateEditor() {
   const queryClient = useQueryClient();
@@ -72,7 +73,7 @@ export function EmailTemplateEditor() {
   });
 
   const handlePreview = (html: string) => {
-    setPreviewHtml(html.replace(/\{\{nome\}\}/gi, "Maria").replace(/\{\{email\}\}/gi, "maria@email.com").replace(/\{\{unsubscribe_url\}\}/gi, "#"));
+    setPreviewHtml(renderEmailPreview(html));
     setShowPreview(true);
   };
 

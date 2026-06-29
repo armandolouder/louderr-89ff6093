@@ -23,6 +23,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { CampaignDetailView } from "./CampaignDetailView";
 import { SendTestEmail } from "./SendTestEmail";
+import { renderEmailPreview } from "./previewData";
 
 const normalizeEmail = (email?: string | null) => email?.trim().toLowerCase() || "";
 
@@ -472,7 +473,7 @@ export function EmailCampaignsList() {
                   <div className="border rounded-lg overflow-hidden">
                     <p className="text-xs font-medium text-muted-foreground px-3 py-2 bg-muted/50">Preview do email</p>
                     <iframe
-                      srcDoc={selectedTemplate.html_content.replace(/\{\{nome\}\}/gi, "Maria").replace(/\{\{email\}\}/gi, "maria@email.com").replace(/\{\{unsubscribe_url\}\}/gi, "#")}
+                      srcDoc={renderEmailPreview(selectedTemplate.html_content)}
                       className="w-full h-64 border-0"
                       title="Preview"
                     />
