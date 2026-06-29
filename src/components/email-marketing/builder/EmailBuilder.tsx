@@ -16,26 +16,22 @@ import { ArrowLeft, Eye, Save, Code, Palette, Send, Monitor, Smartphone } from "
 const PRODUTOS_PREVIEW = `<table cellpadding="0" cellspacing="0" border="0" width="100%">
   <tr>
     <td width="50%" style="padding:6px;vertical-align:top;">
-      <div style="border:1px solid #e5e5e5;border-radius:8px;overflow:hidden;background:#fff;">
-        <div style="background:#f0f0f0;height:120px;text-align:center;display:flex;align-items:center;justify-content:center;">
-          <span style="font-size:32px;">👟</span>
-        </div>
+      <div style="border:1px solid #e5e5e5;overflow:hidden;background:#fff;">
+        <img src="https://placehold.co/300x380/111111/ffffff?text=LOUDER" alt="Camiseta LOUDER Dark" style="width:100%;display:block;" />
         <div style="padding:8px 10px;">
-          <div style="font-size:12px;font-weight:600;color:#333;">Tênis Runner Pro</div>
-          <div style="font-size:11px;color:#888;">Tam: 42 • Qtd: 1</div>
-          <div style="font-size:13px;font-weight:700;color:#111;margin-top:4px;">R$ 249,90</div>
+          <div style="font-size:12px;font-weight:700;color:#111;text-transform:uppercase;line-height:1.3;">CAMISETA LOUDER DARK</div>
+          <div style="font-size:11px;color:#888;margin-top:3px;">Tam: G • Qtd: 1</div>
+          <div style="font-size:13px;font-weight:700;color:#000;margin-top:4px;">R$ 129,90</div>
         </div>
       </div>
     </td>
     <td width="50%" style="padding:6px;vertical-align:top;">
-      <div style="border:1px solid #e5e5e5;border-radius:8px;overflow:hidden;background:#fff;">
-        <div style="background:#f0f0f0;height:120px;text-align:center;display:flex;align-items:center;justify-content:center;">
-          <span style="font-size:32px;">👕</span>
-        </div>
+      <div style="border:1px solid #e5e5e5;overflow:hidden;background:#fff;">
+        <img src="https://placehold.co/300x380/1a1a1a/ffffff?text=LOUDER" alt="Moletom LOUDER Post-Punk" style="width:100%;display:block;" />
         <div style="padding:8px 10px;">
-          <div style="font-size:12px;font-weight:600;color:#333;">Camiseta Básica</div>
-          <div style="font-size:11px;color:#888;">Cor: Preta • Qtd: 2</div>
-          <div style="font-size:13px;font-weight:700;color:#111;margin-top:4px;">R$ 129,90</div>
+          <div style="font-size:12px;font-weight:700;color:#111;text-transform:uppercase;line-height:1.3;">MOLETOM LOUDER POST-PUNK</div>
+          <div style="font-size:11px;color:#888;margin-top:3px;">Cor: Preto • Qtd: 1</div>
+          <div style="font-size:13px;font-weight:700;color:#000;margin-top:4px;">R$ 249,90</div>
         </div>
       </div>
     </td>
@@ -66,7 +62,7 @@ export function EmailBuilder({ initialBlocks, onSave, onCancel, templateName = "
     .replace(/\{\{nome\}\}/gi, "Maria")
     .replace(/\{\{email\}\}/gi, "maria@email.com")
     .replace(/\{\{unsubscribe_url\}\}/gi, "#")
-    .replace(/\{\{recovery_url\}\}/gi, "https://loja.com/checkout/exemplo")
+    .replace(/\{\{recovery_url\}\}/gi, "https://louder.ink/checkout/exemplo")
     .replace(/\{\{total\}\}/gi, "R$ 379,80")
     .replace(/\{\{produtos\}\}/gi, PRODUTOS_PREVIEW);
 

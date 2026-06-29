@@ -58,7 +58,7 @@ export function applyRecoveryTemplate(
     .replace(/\{\{unsubscribe_url\}\}/gi, "#");
 }
  
- export function buildRecoveryEmailHtml(
+  export function buildRecoveryEmailHtml(
    stepType: string,
    firstName: string,
    products: JourneyProduct[],
@@ -67,22 +67,7 @@ export function applyRecoveryTemplate(
  ) {
    const totalFormatted = `R$ ${Number(total || 0).toFixed(2).replace(".", ",")}`;
  
-   const productGrid = (products || []).map((p) => `
-     <tr>
-       <td style="padding: 12px 0; border-bottom: 1px solid #f0f0f0;">
-         <table cellpadding="0" cellspacing="0" border="0" width="100%"><tr>
-           ${p.image
-             ? `<td width="80" style="vertical-align: top; padding-right: 16px;"><img src="${p.image}" alt="${p.name || "Produto"}" width="80" height="80" style="display: block; border-radius: 8px; object-fit: cover; background: #f5f5f5;" /></td>`
-             : `<td width="80" style="vertical-align: top; padding-right: 16px;"><div style="width: 80px; height: 80px; background: #f5f5f5; border-radius: 8px;"></div></td>`
-           }
-           <td style="vertical-align: middle;">
-             <p style="margin: 0 0 4px; font-size: 15px; font-weight: 600; color: #111;">${p.name || "Produto"}</p>
-             ${p.variant ? `<p style="margin: 0 0 4px; font-size: 12px; color: #888;">${p.variant}</p>` : ""}
-             <p style="margin: 0; font-size: 14px; color: #111;">${p.quantity && p.quantity > 1 ? `${p.quantity}x ` : ""}R$ ${Number(p.price || 0).toFixed(2).replace(".", ",")}</p>
-           </td>
-         </tr></table>
-       </td>
-     </tr>`).join("");
+    const productGrid = buildProductGridHtml(products || []);
  
    const h = headlines[stepType] || headlines.emocional;
    
@@ -100,7 +85,7 @@ export function applyRecoveryTemplate(
      <h2 style="margin:0 0 8px;font-size:24px;font-weight:700;color:#111;line-height:1.2;">${h.title}</h2>
      <p style="margin:0 0 32px;font-size:15px;color:#666;line-height:1.5;">${firstName ? `Oi ${firstName}, ` : ""}${h.subtitle.charAt(0).toLowerCase() + h.subtitle.slice(1)}</p>
    </td></tr>
-   <tr><td style="padding:0 40px;"><table cellpadding="0" cellspacing="0" border="0" width="100%">${productGrid}</table></td></tr>
+    <tr><td style="padding:0 36px;">${productGrid}</td></tr>
    <tr><td style="padding:20px 40px 0;">
      <table cellpadding="0" cellspacing="0" border="0" width="100%" style="border-top:2px solid #111;"><tr><td style="padding:16px 0;">
        <table cellpadding="0" cellspacing="0" border="0" width="100%"><tr>
@@ -110,7 +95,7 @@ export function applyRecoveryTemplate(
      </td></tr></table>
    </td></tr>
    ${recoveryUrl ? `<tr><td style="padding:32px 40px;text-align:center;">
-     <a href="${recoveryUrl}" style="display:inline-block;background:${h.ctaColor};color:${h.ctaColor === "#f59e0b" ? "#000" : "#fff"};padding:16px 48px;border-radius:4px;text-decoration:none;font-weight:700;font-size:14px;letter-spacing:1.5px;text-transform:uppercase;">${h.ctaText} →</a>
+      <a href="${recoveryUrl}" style="display:inline-block;background:${h.ctaColor};color:${h.ctaColor === "#f59e0b" ? "#000" : "#fff"};padding:16px 48px;text-decoration:none;font-weight:700;font-size:14px;letter-spacing:1.5px;text-transform:uppercase;">${h.ctaText} →</a>
    </td></tr>` : ""}
    <tr><td style="padding:0 40px 40px;text-align:center;">
      <p style="margin:0;font-size:13px;color:#999;font-style:italic;">${stepType === "incentivo" ? "Esse carrinho libera algo exclusivo depois da compra." : "Isso não ficou aí por acaso."}</p>

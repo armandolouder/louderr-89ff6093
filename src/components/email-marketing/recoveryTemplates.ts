@@ -125,7 +125,7 @@ export function buildRecoveryBlocks(v: RecoveryVariant): EmailBlock[] {
       id: `${v.key}-cta`,
       type: "button",
       content: { text: v.ctaText, link: "{{recovery_url}}" },
-      styles: { backgroundColor: "#ffffff", buttonColor: v.ctaColor, buttonTextColor: v.ctaColor === "#f59e0b" ? "#000000" : "#ffffff", padding: "24px 40px", textAlign: "center", borderRadius: "4px", fontSize: "14px" },
+      styles: { backgroundColor: "#ffffff", buttonColor: v.ctaColor, buttonTextColor: v.ctaColor === "#f59e0b" ? "#000000" : "#ffffff", padding: "24px 40px", textAlign: "center", borderRadius: "0", fontSize: "14px" },
     },
     {
       id: `${v.key}-note`,
