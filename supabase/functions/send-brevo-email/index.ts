@@ -193,7 +193,7 @@ function buildRecoveryEmail(
             recoveryUrl
               ? `<tr>
                   <td style="padding: 32px 40px; text-align: center;">
-                    <a href="${recoveryUrl}" style="display: inline-block; background: ${h.ctaColor}; color: ${h.ctaColor === "#f59e0b" ? "#000" : "#fff"}; padding: 16px 48px; border-radius: 4px; text-decoration: none; font-weight: 700; font-size: 14px; letter-spacing: 1.5px; text-transform: uppercase;">
+                    <a href="${recoveryUrl}" style="display: inline-block; background: ${h.ctaColor}; color: ${h.ctaColor === "#f59e0b" ? "#000" : "#fff"}; padding: 16px 48px; text-decoration: none; font-weight: 700; font-size: 14px; letter-spacing: 1.5px; text-transform: uppercase;">
                       ${h.ctaText} →
                     </a>
                   </td>
