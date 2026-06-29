@@ -16,7 +16,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   Plus, Send, Clock, CheckCircle, XCircle, Mail, Users, Eye, ArrowRight,
-  ArrowLeft, CalendarDays, Sparkles, Trash2, BarChart3, TestTube, ChevronRight, Copy
+  ArrowLeft, CalendarDays, Sparkles, Trash2, BarChart3, TestTube, ChevronRight, Copy,
+  Pause, Play, Square
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -256,10 +257,68 @@ export function EmailCampaignsList() {
     },
   });
 
+  const pauseMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error: qErr } = await supabase
+        .from("email_queue")
+        .update({ status: "paused" })
+        .eq("campaign_id", id)
+        .eq("status", "pending");
+      if (qErr) throw qErr;
+      const { error } = await supabase.from("email_campaigns").update({ status: "paused" }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["email-campaigns"] });
+      toast.success("Campanha pausada. O envio foi interrompido.");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const resumeMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error: qErr } = await supabase
+        .from("email_queue")
+        .update({ status: "pending" })
+        .eq("campaign_id", id)
+        .eq("status", "paused");
+      if (qErr) throw qErr;
+      const { error } = await supabase.from("email_campaigns").update({ status: "sending" }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["email-campaigns"] });
+      toast.success("Campanha retomada. Os envios continuarão automaticamente.");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const stopMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error: qErr } = await supabase
+        .from("email_queue")
+        .update({ status: "cancelled" })
+        .eq("campaign_id", id)
+        .in("status", ["pending", "paused"]);
+      if (qErr) throw qErr;
+      const { error } = await supabase
+        .from("email_campaigns")
+        .update({ status: "completed", completed_at: new Date().toISOString() })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["email-campaigns"] });
+      toast.success("Envio interrompido. Os emails restantes foram cancelados.");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
     draft: { label: "Rascunho", color: "bg-muted text-muted-foreground", icon: Clock },
     scheduled: { label: "Agendada", color: "bg-amber-500/20 text-amber-400", icon: CalendarDays },
     sending: { label: "Enviando", color: "bg-blue-500/20 text-blue-400", icon: Send },
+    paused: { label: "Pausada", color: "bg-orange-500/20 text-orange-400", icon: Pause },
     completed: { label: "Concluída", color: "bg-emerald-500/20 text-emerald-400", icon: CheckCircle },
     failed: { label: "Falha", color: "bg-destructive/20 text-destructive", icon: XCircle },
   };
@@ -496,10 +555,43 @@ export function EmailCampaignsList() {
                     <CardTitle className="text-base">{campaign.name}</CardTitle>
                     <div className="flex items-center gap-2">
                       <Badge className={sc.color}><StatusIcon className="w-3 h-3 mr-1" />{sc.label}</Badge>
+                      {campaign.status === "sending" && (
+                        <Button size="icon" variant="ghost" className="h-7 w-7 text-orange-400" onClick={(e) => { e.stopPropagation(); pauseMutation.mutate(campaign.id); }} title="Pausar envio">
+                          <Pause className="w-3.5 h-3.5" />
+                        </Button>
+                      )}
+                      {campaign.status === "paused" && (
+                        <Button size="icon" variant="ghost" className="h-7 w-7 text-emerald-400" onClick={(e) => { e.stopPropagation(); resumeMutation.mutate(campaign.id); }} title="Retomar envio">
+                          <Play className="w-3.5 h-3.5" />
+                        </Button>
+                      )}
+                      {(campaign.status === "sending" || campaign.status === "paused") && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button size="icon" variant="ghost" onClick={(e) => e.stopPropagation()} className="text-destructive h-7 w-7" title="Parar envio">
+                              <Square className="w-3.5 h-3.5" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Parar envio?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Os emails já enviados serão mantidos, mas os restantes da campanha "{campaign.name}" serão cancelados. Esta ação não pode ser desfeita.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => stopMutation.mutate(campaign.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                Parar envio
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
                       <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); duplicateMutation.mutate(campaign); }} title="Duplicar">
                         <Copy className="w-3.5 h-3.5" />
                       </Button>
-                      {campaign.status !== "sending" && (
+                      {campaign.status !== "sending" && campaign.status !== "paused" && (
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button size="icon" variant="ghost" onClick={(e) => e.stopPropagation()} className="text-destructive h-7 w-7">
