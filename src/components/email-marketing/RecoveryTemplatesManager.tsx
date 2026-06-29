@@ -104,7 +104,6 @@ export function RecoveryTemplatesManager() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["recovery-templates"] });
-      setEditing(null);
       toast.success("Template de recuperação salvo! O motor já usará esta versão.");
     },
     onError: (e: any) => toast.error(e.message),
