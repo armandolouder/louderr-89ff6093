@@ -8,6 +8,10 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+function getCheckoutRecoveryUrl(checkout: any): string | null {
+  return checkout.abandoned_checkout_url || checkout.checkout_url || checkout.recovery_url || null;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -106,7 +110,7 @@ Deno.serve(async (req) => {
           customer_name: customerName,
           customer_email: customerEmail,
           customer_phone: customerPhone,
-          recovery_url: checkout.checkout_url || checkout.recovery_url || null,
+          recovery_url: getCheckoutRecoveryUrl(checkout),
           total,
           currency: checkout.currency || "BRL",
           products,
@@ -169,7 +173,7 @@ Deno.serve(async (req) => {
           const phone = customerPhone.replace(/\D/g, "");
           const firstName = (customerName || "Cliente").split(" ")[0];
           const productsList = products.map((p: any) => `${p.quantity}x ${p.name}`).join("\n");
-          const recoveryUrl = checkout.checkout_url || checkout.recovery_url || "";
+          const recoveryUrl = getCheckoutRecoveryUrl(checkout) || "";
 
           // ── Journey trigger (priority over automations) ──
           let journeyHandled = false;

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -199,6 +199,12 @@ export function IndividualSender({ initialPhone, initialMessage, initialLink, in
   const [improvingAI, setImprovingAI] = useState(false);
   const [variantsOpen, setVariantsOpen] = useState(false);
   const [aiVariants, setAiVariants] = useState<string[]>([]);
+
+  useEffect(() => {
+    setPhone(initialPhone || "");
+    setContent(replaceLinkTags(initialMessage || "", initialLink));
+    setMediaUrl(initialImage || "");
+  }, [initialPhone, initialMessage, initialLink, initialImage]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
