@@ -301,7 +301,13 @@ export default function AbandonedCheckouts() {
         .replace(/\[lista_produtos\]/g, productsList)
         .replace(/\[total_pedido\]/g, `R$ ${total.toFixed(2).replace(".", ",")}`)
         .replace(/\[link_recuperacao\]/g, recoveryUrl)
-        .replace(/\[link_checkout\]/g, recoveryUrl);
+        .replace(/\[link_checkout\]/g, recoveryUrl)
+        .replace(/\[link_pagamento\]/g, recoveryUrl);
+
+      // Imagem: usa a mídia do fluxo ou, na ausência, a foto do primeiro produto do carrinho
+      const productImage = products.find((p: any) => p.image)?.image || null;
+      const mediaUrl = flow.media_url || productImage;
+      const mediaType = flow.media_url ? flow.media_type : (productImage ? "image" : null);
 
       // Schedule immediate execution
       const { error: execError } = await supabase.from("automation_executions").insert({
@@ -312,8 +318,8 @@ export default function AbandonedCheckouts() {
           customer_name: checkout.customer_name,
           customer_phone: phone,
           message_content: messageContent,
-          media_url: flow.media_url,
-          media_type: flow.media_type,
+          media_url: mediaUrl,
+          media_type: mediaType,
         },
         scheduled_at: new Date().toISOString(),
         phone,
