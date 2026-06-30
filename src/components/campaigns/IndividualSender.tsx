@@ -187,10 +187,10 @@ const replaceLinkTags = (text: string, link?: string) =>
         .replace(/\[link_checkout\]/gi, link)
     : text;
 
-export function IndividualSender({ initialPhone, initialMessage, initialLink }: { initialPhone?: string; initialMessage?: string; initialLink?: string }) {
+export function IndividualSender({ initialPhone, initialMessage, initialLink, initialImage }: { initialPhone?: string; initialMessage?: string; initialLink?: string; initialImage?: string }) {
   const [phone, setPhone] = useState(initialPhone || "");
   const [content, setContent] = useState(replaceLinkTags(initialMessage || "", initialLink));
-  const [mediaUrl, setMediaUrl] = useState("");
+  const [mediaUrl, setMediaUrl] = useState(initialImage || "");
   const [uploading, setUploading] = useState(false);
   const [sending, setSending] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
