@@ -190,6 +190,58 @@ export default function Bot() {
             <Card>
               <CardHeader>
                 <div className="flex items-center gap-2">
+                  <Zap className="w-5 h-5 text-primary" />
+                  <CardTitle>Gatilhos de Acionamento</CardTitle>
+                </div>
+                <CardDescription>Defina quando o Bot deve enviar a mensagem automaticamente (respeitando 1 envio por dia por cliente).</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <Label className="text-sm">Acionar na primeira mensagem</Label>
+                    <p className="text-xs text-muted-foreground mt-0.5">Envia quando o cliente manda a primeira mensagem na conversa.</p>
+                  </div>
+                  <Switch
+                    checked={config.trigger_first_message}
+                    onCheckedChange={(v) => setConfig((prev) => ({ ...prev, trigger_first_message: v }))}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm">Palavras-chave</Label>
+                  <p className="text-xs text-muted-foreground">Se a mensagem do cliente contiver qualquer uma destas palavras, o Bot é acionado.</p>
+                  <div className="flex gap-2">
+                    <Input
+                      value={newKeyword}
+                      onChange={(e) => setNewKeyword(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addKeyword(); } }}
+                      placeholder="Ex: oi, pedido, menu..."
+                    />
+                    <Button type="button" variant="outline" onClick={addKeyword}>
+                      <Plus className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  {config.trigger_keywords.length > 0 ? (
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      {config.trigger_keywords.map((kw) => (
+                        <Badge key={kw} variant="secondary" className="gap-1 text-xs">
+                          {kw}
+                          <button type="button" onClick={() => removeKeyword(kw)} className="hover:text-destructive">
+                            <X className="w-3 h-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground pt-1">Nenhuma palavra-chave cadastrada.</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
                   <BotIcon className="w-5 h-5 text-primary" />
                   <CardTitle>Mensagem de Boas-vindas</CardTitle>
                 </div>
