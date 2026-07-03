@@ -321,6 +321,92 @@ export default function Bot() {
             </Card>
 
             <Button onClick={handleSave} disabled={isSaving} className="w-full">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <ListOrdered className="w-5 h-5 text-primary" />
+                  <CardTitle>Sequência de Mensagens</CardTitle>
+                </div>
+                <CardDescription>
+                  Depois da boas-vindas, o Bot aguarda o cliente responder. Se a resposta contiver
+                  uma das palavras-chave do passo, ele envia a próxima mensagem (após o atraso definido).
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {config.steps.length === 0 && (
+                  <p className="text-xs text-muted-foreground">Nenhum passo cadastrado ainda.</p>
+                )}
+                {config.steps.map((step, index) => (
+                  <div key={index} className="border border-border rounded-md p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-foreground">Passo {index + 1}</span>
+                      <Button type="button" variant="ghost" size="sm" onClick={() => removeStep(index)}>
+                        <Trash2 className="w-4 h-4 text-destructive" />
+                      </Button>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-sm">Mensagem</Label>
+                      <Textarea
+                        value={step.message}
+                        onChange={(e) => updateStep(index, { message: e.target.value })}
+                        placeholder="Mensagem enviada neste passo..."
+                        rows={3}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-sm">Palavras-chave para acionar este passo</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          value={newStepKeyword[index] || ""}
+                          onChange={(e) => setNewStepKeyword((prev) => ({ ...prev, [index]: e.target.value }))}
+                          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addStepKeyword(index); } }}
+                          placeholder="Ex: sim, quero, mais..."
+                        />
+                        <Button type="button" variant="outline" onClick={() => addStepKeyword(index)}>
+                          <Plus className="w-4 h-4" />
+                        </Button>
+                      </div>
+                      {step.keywords.length > 0 && (
+                        <div className="flex flex-wrap gap-2 pt-1">
+                          {step.keywords.map((kw) => (
+                            <Badge key={kw} variant="secondary" className="gap-1 text-xs">
+                              {kw}
+                              <button type="button" onClick={() => removeStepKeyword(index, kw)} className="hover:text-destructive">
+                                <X className="w-3 h-3" />
+                              </button>
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-sm flex items-center gap-1">
+                        <Clock className="w-3.5 h-3.5" /> Atraso antes de enviar (segundos)
+                      </Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={20}
+                        value={step.delay_seconds}
+                        onChange={(e) => updateStep(index, { delay_seconds: Math.min(20, Math.max(0, Number(e.target.value) || 0)) })}
+                        className="w-32"
+                      />
+                    </div>
+                  </div>
+                ))}
+
+                {config.steps.length < 6 && (
+                  <Button type="button" variant="outline" onClick={addStep} className="w-full">
+                    <Plus className="w-4 h-4 mr-2" /> Adicionar passo
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+
+            <Button onClick={handleSave} disabled={isSaving} className="w-full">
               {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
               Salvar Configurações
             </Button>
