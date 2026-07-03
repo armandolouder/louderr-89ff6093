@@ -96,7 +96,13 @@ function matchesKeywords(content: string, keywords: string[]): boolean {
 
 // Substitui variáveis básicas na mensagem.
 function renderBotText(template: string, customerName: string): string {
-  const hour = new Date().getHours();
+  const hour = Number(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/Sao_Paulo",
+      hour: "numeric",
+      hour12: false,
+    }).format(new Date()),
+  ) % 24;
   const saudacao = hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
   const firstName = (customerName || "").split(" ")[0] || customerName || "";
   return (template || "").replace(/\{nome\}/g, firstName).replace(/\{saudacao\}/g, saudacao);
