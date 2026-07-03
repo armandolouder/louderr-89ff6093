@@ -320,7 +320,6 @@ export default function Bot() {
               </CardContent>
             </Card>
 
-            <Button onClick={handleSave} disabled={isSaving} className="w-full">
             <Card>
               <CardHeader>
                 <div className="flex items-center gap-2">
