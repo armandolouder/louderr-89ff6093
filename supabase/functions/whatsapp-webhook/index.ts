@@ -465,6 +465,15 @@ serve(async (req) => {
            unread_count: isFromMe ? (convCurrent?.unread_count || 0) : (convCurrent?.unread_count || 0) + 1,
           is_archived: false,
         }).eq("id", conv?.id);
+
+        if (!isFromMe && conv?.id) {
+          await maybeSendBotWelcome(supabase, ownerUserId, {
+            conversationId: conv.id,
+            phone,
+            customerName: contactName,
+            content,
+          });
+        }
       }
       return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
     }
