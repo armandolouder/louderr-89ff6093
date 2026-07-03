@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Bot as BotIcon, Save, Loader2, MessageSquare, Variable, Zap, Plus, X } from "lucide-react";
+import { Bot as BotIcon, Save, Loader2, MessageSquare, Variable, Zap, Plus, X, ListOrdered, Clock, Trash2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -10,12 +10,19 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
+interface BotStep {
+  message: string;
+  keywords: string[];
+  delay_seconds: number;
+}
+
 interface MenuConfig {
   welcome_message: string;
   fallback_message: string;
   menu_items: any[];
   trigger_first_message: boolean;
   trigger_keywords: string[];
+  steps: BotStep[];
 }
 
 const RE_NOME = /\{nome\}/g;
@@ -29,6 +36,7 @@ const defaultConfig: MenuConfig = {
   menu_items: [],
   trigger_first_message: true,
   trigger_keywords: [],
+  steps: [],
 };
 
 export default function Bot() {
@@ -37,6 +45,7 @@ export default function Bot() {
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [newKeyword, setNewKeyword] = useState("");
+  const [newStepKeyword, setNewStepKeyword] = useState<Record<number, string>>({});
 
   useEffect(() => {
     fetchBotSettings();
@@ -60,6 +69,13 @@ export default function Bot() {
             menu_items: [],
             trigger_first_message: val.trigger_first_message !== false,
             trigger_keywords: Array.isArray(val.trigger_keywords) ? val.trigger_keywords : [],
+            steps: Array.isArray(val.steps)
+              ? val.steps.map((s: any) => ({
+                  message: s.message || "",
+                  keywords: Array.isArray(s.keywords) ? s.keywords : [],
+                  delay_seconds: Number(s.delay_seconds) || 0,
+                }))
+              : [],
           });
         }
       }
@@ -97,6 +113,7 @@ export default function Bot() {
             menu_items: [],
             trigger_first_message: config.trigger_first_message,
             trigger_keywords: config.trigger_keywords,
+            steps: config.steps,
           } as any,
           updated_at: new Date().toISOString(),
         })
@@ -128,6 +145,49 @@ export default function Bot() {
 
   const removeKeyword = (kw: string) => {
     setConfig((prev) => ({ ...prev, trigger_keywords: prev.trigger_keywords.filter((k) => k !== kw) }));
+  };
+
+  const MAX_STEPS = 6;
+
+  const addStep = () => {
+    setConfig((prev) => {
+      if (prev.steps.length >= MAX_STEPS) return prev;
+      return { ...prev, steps: [...prev.steps, { message: "", keywords: [], delay_seconds: 5 }] };
+    });
+  };
+
+  const removeStep = (index: number) => {
+    setConfig((prev) => ({ ...prev, steps: prev.steps.filter((_, i) => i !== index) }));
+  };
+
+  const updateStep = (index: number, patch: Partial<BotStep>) => {
+    setConfig((prev) => ({
+      ...prev,
+      steps: prev.steps.map((s, i) => (i === index ? { ...s, ...patch } : s)),
+    }));
+  };
+
+  const addStepKeyword = (index: number) => {
+    const kw = (newStepKeyword[index] || "").trim();
+    if (!kw) return;
+    setConfig((prev) => ({
+      ...prev,
+      steps: prev.steps.map((s, i) => {
+        if (i !== index) return s;
+        if (s.keywords.some((k) => k.toLowerCase() === kw.toLowerCase())) return s;
+        return { ...s, keywords: [...s.keywords, kw] };
+      }),
+    }));
+    setNewStepKeyword((prev) => ({ ...prev, [index]: "" }));
+  };
+
+  const removeStepKeyword = (index: number, kw: string) => {
+    setConfig((prev) => ({
+      ...prev,
+      steps: prev.steps.map((s, i) =>
+        i === index ? { ...s, keywords: s.keywords.filter((k) => k !== kw) } : s,
+      ),
+    }));
   };
 
   const previewText = () => {
