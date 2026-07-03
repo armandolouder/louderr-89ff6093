@@ -453,7 +453,7 @@ Deno.serve(async (req) => {
     await supabase.from("catalog_variants").delete().eq("product_id", productUuid);
     await supabase
       .from("catalog_products")
-      .update({ variant_count: applied })
+      .update({ variant_count: applied, variations_applied_at: new Date().toISOString() })
       .eq("id", productUuid);
 
     const productUrl: string | null = (prod as any)?.raw?.canonical_url || null;

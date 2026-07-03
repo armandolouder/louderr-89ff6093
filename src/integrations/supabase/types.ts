@@ -336,6 +336,7 @@ export type Database = {
           updated_at: string
           user_id: string | null
           variant_count: number
+          variations_applied_at: string | null
         }
         Insert: {
           brand?: string | null
@@ -352,6 +353,7 @@ export type Database = {
           updated_at?: string
           user_id?: string | null
           variant_count?: number
+          variations_applied_at?: string | null
         }
         Update: {
           brand?: string | null
@@ -368,6 +370,7 @@ export type Database = {
           updated_at?: string
           user_id?: string | null
           variant_count?: number
+          variations_applied_at?: string | null
         }
         Relationships: []
       }
