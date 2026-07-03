@@ -111,7 +111,7 @@ export default function Catalog() {
       const to = from + PAGE_SIZE - 1;
       let query = (supabase as any)
         .from("catalog_products")
-        .select("id, nuvemshop_product_id, name, category, status, image_count, variant_count, product_url:raw->>canonical_url, catalog_images(image_url, position)", { count: "exact" })
+        .select("id, nuvemshop_product_id, name, category, status, image_count, variant_count, variations_applied_at, product_url:raw->>canonical_url, catalog_images(image_url, position)", { count: "exact" })
         .order("name", { ascending: true })
         .range(from, to);
       if (debouncedSearch.trim()) {
@@ -121,6 +121,16 @@ export default function Catalog() {
       if (error) throw error;
       setProducts(data || []);
       setTotal(count || 0);
+      // Selo verde vem do banco (persistente entre dispositivos/cache).
+      if (data) {
+        setApplyStatus((s) => {
+          const next = { ...s };
+          for (const p of data as CatalogProduct[]) {
+            if (p.variations_applied_at && next[p.id] !== "applying") next[p.id] = "done";
+          }
+          return next;
+        });
+      }
     } catch (err: any) {
       toast.error(err.message || "Erro ao carregar produtos");
     } finally {
