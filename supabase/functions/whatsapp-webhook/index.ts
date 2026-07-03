@@ -82,6 +82,93 @@ interface EvolutionPayload {
    return data;
  }
 
+// Normaliza texto para comparação de palavras-chave (sem acento, minúsculo).
+function normalizeText(s: string): string {
+  return (s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+}
+
+// Aciona o Bot de boas-vindas quando o gatilho configurado bate.
+// Regras: respeita 1 envio por dia por conversa (memória do projeto),
+// gatilho por primeira mensagem e/ou por palavras-chave.
+async function maybeSendBotWelcome(
+  supabase: any,
+  ownerUserId: string | null,
+  args: { conversationId: string; phone: string; customerName: string; content: string },
+) {
+  try {
+    const { conversationId, phone, customerName, content } = args;
+    if (!conversationId || !phone) return;
+    if (!hasWhatsAppCredentials()) return;
+
+    const { data: setting } = await supabase
+      .from("bot_settings")
+      .select("value, is_active")
+      .eq("key", "chatbot_nuvemshop")
+      .maybeSingle();
+    if (!setting || !setting.is_active) return;
+
+    const val = (setting.value || {}) as any;
+    const welcomeMessage: string = val.welcome_message || "";
+    if (!welcomeMessage.trim()) return;
+    const triggerFirst: boolean = val.trigger_first_message !== false;
+    const keywords: string[] = Array.isArray(val.trigger_keywords) ? val.trigger_keywords : [];
+
+    // Avalia o gatilho
+    let shouldSend = false;
+    if (keywords.length > 0) {
+      const normContent = normalizeText(content);
+      if (keywords.some((k) => normContent.includes(normalizeText(k)))) shouldSend = true;
+    }
+    if (!shouldSend && triggerFirst) {
+      const { count } = await supabase
+        .from("messages")
+        .select("id", { count: "exact", head: true })
+        .eq("conversation_id", conversationId)
+        .eq("sender_type", "contact");
+      if ((count || 0) <= 1) shouldSend = true;
+    }
+    if (!shouldSend) return;
+
+    // Limite: 1 envio por dia por conversa
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const { data: recent } = await supabase
+      .from("messages")
+      .select("id")
+      .eq("conversation_id", conversationId)
+      .eq("sender_type", "agent")
+      .gte("created_at", since)
+      .contains("metadata", { source: "bot_welcome" })
+      .limit(1);
+    if (recent && recent.length > 0) return;
+
+    // Monta a mensagem
+    const hour = new Date().getHours();
+    const saudacao = hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
+    const firstName = (customerName || "").split(" ")[0] || customerName || "";
+    const text = welcomeMessage
+      .replace(/\{nome\}/g, firstName)
+      .replace(/\{saudacao\}/g, saudacao);
+
+    const result = await sendWhatsAppText(phone, text);
+    if (result.ok) {
+      await supabase.from("messages").insert({
+        conversation_id: conversationId,
+        content: text,
+        sender_type: "agent",
+        message_type: "text",
+        status: "sent",
+        user_id: ownerUserId,
+        metadata: { source: "bot_welcome" },
+      });
+      console.log(`Bot welcome sent to ${phone}`);
+    } else {
+      console.error("Bot welcome send failed:", result.raw?.substring?.(0, 300));
+    }
+  } catch (err) {
+    console.error("maybeSendBotWelcome error:", err);
+  }
+}
+
 async function handleEvolutionWebhook(supabase: any, payload: EvolutionPayload, ownerUserId: string | null) {
   console.log(`Processing Evolution Webhook: ${payload.event}`);
   
