@@ -336,6 +336,15 @@ async function handleEvolutionWebhook(supabase: any, payload: EvolutionPayload, 
         is_archived: false,
         status: conversation.status === "finalizado" ? "novo" : conversation.status
       }).eq("id", conversation.id);
+
+      if (!isFromMe) {
+        await maybeSendBotWelcome(supabase, ownerUserId, {
+          conversationId: conversation.id,
+          phone,
+          customerName: contactName,
+          content,
+        });
+      }
     }
   }
   
