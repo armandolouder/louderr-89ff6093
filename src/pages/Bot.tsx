@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Bot as BotIcon, Save, Loader2, MessageSquare, Variable, Zap, Plus, X } from "lucide-react";
+import { Bot as BotIcon, Save, Loader2, MessageSquare, Variable, Zap, Plus, X, ListOrdered, Clock, Trash2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -10,12 +10,19 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
+interface BotStep {
+  message: string;
+  keywords: string[];
+  delay_seconds: number;
+}
+
 interface MenuConfig {
   welcome_message: string;
   fallback_message: string;
   menu_items: any[];
   trigger_first_message: boolean;
   trigger_keywords: string[];
+  steps: BotStep[];
 }
 
 const RE_NOME = /\{nome\}/g;
@@ -29,6 +36,7 @@ const defaultConfig: MenuConfig = {
   menu_items: [],
   trigger_first_message: true,
   trigger_keywords: [],
+  steps: [],
 };
 
 export default function Bot() {
@@ -37,6 +45,7 @@ export default function Bot() {
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [newKeyword, setNewKeyword] = useState("");
+  const [newStepKeyword, setNewStepKeyword] = useState<Record<number, string>>({});
 
   useEffect(() => {
     fetchBotSettings();
@@ -60,6 +69,13 @@ export default function Bot() {
             menu_items: [],
             trigger_first_message: val.trigger_first_message !== false,
             trigger_keywords: Array.isArray(val.trigger_keywords) ? val.trigger_keywords : [],
+            steps: Array.isArray(val.steps)
+              ? val.steps.map((s: any) => ({
+                  message: s.message || "",
+                  keywords: Array.isArray(s.keywords) ? s.keywords : [],
+                  delay_seconds: Number(s.delay_seconds) || 0,
+                }))
+              : [],
           });
         }
       }
@@ -97,6 +113,7 @@ export default function Bot() {
             menu_items: [],
             trigger_first_message: config.trigger_first_message,
             trigger_keywords: config.trigger_keywords,
+            steps: config.steps,
           } as any,
           updated_at: new Date().toISOString(),
         })
@@ -128,6 +145,49 @@ export default function Bot() {
 
   const removeKeyword = (kw: string) => {
     setConfig((prev) => ({ ...prev, trigger_keywords: prev.trigger_keywords.filter((k) => k !== kw) }));
+  };
+
+  const MAX_STEPS = 6;
+
+  const addStep = () => {
+    setConfig((prev) => {
+      if (prev.steps.length >= MAX_STEPS) return prev;
+      return { ...prev, steps: [...prev.steps, { message: "", keywords: [], delay_seconds: 5 }] };
+    });
+  };
+
+  const removeStep = (index: number) => {
+    setConfig((prev) => ({ ...prev, steps: prev.steps.filter((_, i) => i !== index) }));
+  };
+
+  const updateStep = (index: number, patch: Partial<BotStep>) => {
+    setConfig((prev) => ({
+      ...prev,
+      steps: prev.steps.map((s, i) => (i === index ? { ...s, ...patch } : s)),
+    }));
+  };
+
+  const addStepKeyword = (index: number) => {
+    const kw = (newStepKeyword[index] || "").trim();
+    if (!kw) return;
+    setConfig((prev) => ({
+      ...prev,
+      steps: prev.steps.map((s, i) => {
+        if (i !== index) return s;
+        if (s.keywords.some((k) => k.toLowerCase() === kw.toLowerCase())) return s;
+        return { ...s, keywords: [...s.keywords, kw] };
+      }),
+    }));
+    setNewStepKeyword((prev) => ({ ...prev, [index]: "" }));
+  };
+
+  const removeStepKeyword = (index: number, kw: string) => {
+    setConfig((prev) => ({
+      ...prev,
+      steps: prev.steps.map((s, i) =>
+        i === index ? { ...s, keywords: s.keywords.filter((k) => k !== kw) } : s,
+      ),
+    }));
   };
 
   const previewText = () => {
@@ -257,6 +317,91 @@ export default function Bot() {
                     rows={4}
                   />
                 </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <ListOrdered className="w-5 h-5 text-primary" />
+                  <CardTitle>Sequência de Mensagens</CardTitle>
+                </div>
+                <CardDescription>
+                  Depois da boas-vindas, o Bot aguarda o cliente responder. Se a resposta contiver
+                  uma das palavras-chave do passo, ele envia a próxima mensagem (após o atraso definido).
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {config.steps.length === 0 && (
+                  <p className="text-xs text-muted-foreground">Nenhum passo cadastrado ainda.</p>
+                )}
+                {config.steps.map((step, index) => (
+                  <div key={index} className="border border-border rounded-md p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-foreground">Passo {index + 1}</span>
+                      <Button type="button" variant="ghost" size="sm" onClick={() => removeStep(index)}>
+                        <Trash2 className="w-4 h-4 text-destructive" />
+                      </Button>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-sm">Mensagem</Label>
+                      <Textarea
+                        value={step.message}
+                        onChange={(e) => updateStep(index, { message: e.target.value })}
+                        placeholder="Mensagem enviada neste passo..."
+                        rows={3}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-sm">Palavras-chave para acionar este passo</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          value={newStepKeyword[index] || ""}
+                          onChange={(e) => setNewStepKeyword((prev) => ({ ...prev, [index]: e.target.value }))}
+                          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addStepKeyword(index); } }}
+                          placeholder="Ex: sim, quero, mais..."
+                        />
+                        <Button type="button" variant="outline" onClick={() => addStepKeyword(index)}>
+                          <Plus className="w-4 h-4" />
+                        </Button>
+                      </div>
+                      {step.keywords.length > 0 && (
+                        <div className="flex flex-wrap gap-2 pt-1">
+                          {step.keywords.map((kw) => (
+                            <Badge key={kw} variant="secondary" className="gap-1 text-xs">
+                              {kw}
+                              <button type="button" onClick={() => removeStepKeyword(index, kw)} className="hover:text-destructive">
+                                <X className="w-3 h-3" />
+                              </button>
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-sm flex items-center gap-1">
+                        <Clock className="w-3.5 h-3.5" /> Atraso antes de enviar (segundos)
+                      </Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={20}
+                        value={step.delay_seconds}
+                        onChange={(e) => updateStep(index, { delay_seconds: Math.min(20, Math.max(0, Number(e.target.value) || 0)) })}
+                        className="w-32"
+                      />
+                    </div>
+                  </div>
+                ))}
+
+                {config.steps.length < 6 && (
+                  <Button type="button" variant="outline" onClick={addStep} className="w-full">
+                    <Plus className="w-4 h-4 mr-2" /> Adicionar passo
+                  </Button>
+                )}
               </CardContent>
             </Card>
 

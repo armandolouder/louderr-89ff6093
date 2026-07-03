@@ -87,9 +87,25 @@ function normalizeText(s: string): string {
   return (s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 }
 
-// Aciona o Bot de boas-vindas quando o gatilho configurado bate.
-// Regras: respeita 1 envio por dia por conversa (memória do projeto),
-// gatilho por primeira mensagem e/ou por palavras-chave.
+// Verifica se o texto do cliente contém alguma das palavras-chave.
+function matchesKeywords(content: string, keywords: string[]): boolean {
+  if (!Array.isArray(keywords) || keywords.length === 0) return false;
+  const norm = normalizeText(content);
+  return keywords.some((k) => norm.includes(normalizeText(k)));
+}
+
+// Substitui variáveis básicas na mensagem.
+function renderBotText(template: string, customerName: string): string {
+  const hour = new Date().getHours();
+  const saudacao = hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
+  const firstName = (customerName || "").split(" ")[0] || customerName || "";
+  return (template || "").replace(/\{nome\}/g, firstName).replace(/\{saudacao\}/g, saudacao);
+}
+
+// Aciona o Bot: envia a mensagem de boas-vindas (passo 0) e, conforme o
+// cliente vai respondendo, avança pelos passos configurados (cada passo
+// possui palavras-chave e um pequeno atraso antes do envio).
+// Regras: respeita 1 envio por dia por conversa na boas-vindas.
 async function maybeSendBotWelcome(
   supabase: any,
   ownerUserId: string | null,
@@ -109,16 +125,64 @@ async function maybeSendBotWelcome(
 
     const val = (setting.value || {}) as any;
     const welcomeMessage: string = val.welcome_message || "";
-    if (!welcomeMessage.trim()) return;
     const triggerFirst: boolean = val.trigger_first_message !== false;
     const keywords: string[] = Array.isArray(val.trigger_keywords) ? val.trigger_keywords : [];
+    const steps: Array<{ message?: string; keywords?: string[]; delay_seconds?: number }> =
+      Array.isArray(val.steps) ? val.steps : [];
+
+    // Descobre em qual passo esta conversa está (última mensagem do Bot).
+    const { data: botMsgs } = await supabase
+      .from("messages")
+      .select("metadata, created_at")
+      .eq("conversation_id", conversationId)
+      .eq("sender_type", "agent")
+      .order("created_at", { ascending: false })
+      .limit(30);
+
+    let currentStep = -1; // -1 = nada enviado ainda
+    for (const m of botMsgs || []) {
+      const src = m.metadata?.source;
+      if (src === "bot_welcome") { currentStep = 0; break; }
+      if (src === "bot_step") { currentStep = Number(m.metadata?.step_index ?? 0); break; }
+    }
+
+    // ===== Fluxo de continuação: cliente respondeu após um envio do Bot =====
+    if (currentStep >= 0) {
+      const nextStepNumber = currentStep + 1; // 1-based
+      const step = steps[nextStepNumber - 1];
+      if (!step || !(step.message || "").trim()) return;
+
+      // Cada passo exige que a resposta do cliente contenha alguma palavra-chave.
+      if (!matchesKeywords(content, step.keywords || [])) return;
+
+      const delayMs = Math.min(Math.max(Number(step.delay_seconds) || 0, 0), 20) * 1000;
+      if (delayMs > 0) await new Promise((r) => setTimeout(r, delayMs));
+
+      const stepText = renderBotText(step.message || "", customerName);
+      const stepResult = await sendWhatsAppText(phone, stepText);
+      if (stepResult.ok) {
+        await supabase.from("messages").insert({
+          conversation_id: conversationId,
+          content: stepText,
+          sender_type: "agent",
+          message_type: "text",
+          status: "sent",
+          user_id: ownerUserId,
+          metadata: { source: "bot_step", step_index: nextStepNumber },
+        });
+        console.log(`Bot step ${nextStepNumber} sent to ${phone}`);
+      } else {
+        console.error("Bot step send failed:", stepResult.raw?.substring?.(0, 300));
+      }
+      return;
+    }
+
+    // ===== Boas-vindas (passo 0) =====
+    if (!welcomeMessage.trim()) return;
 
     // Avalia o gatilho
     let shouldSend = false;
-    if (keywords.length > 0) {
-      const normContent = normalizeText(content);
-      if (keywords.some((k) => normContent.includes(normalizeText(k)))) shouldSend = true;
-    }
+    if (matchesKeywords(content, keywords)) shouldSend = true;
     if (!shouldSend && triggerFirst) {
       const { count } = await supabase
         .from("messages")
@@ -142,12 +206,7 @@ async function maybeSendBotWelcome(
     if (recent && recent.length > 0) return;
 
     // Monta a mensagem
-    const hour = new Date().getHours();
-    const saudacao = hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
-    const firstName = (customerName || "").split(" ")[0] || customerName || "";
-    const text = welcomeMessage
-      .replace(/\{nome\}/g, firstName)
-      .replace(/\{saudacao\}/g, saudacao);
+    const text = renderBotText(welcomeMessage, customerName);
 
     const result = await sendWhatsAppText(phone, text);
     if (result.ok) {
@@ -158,7 +217,7 @@ async function maybeSendBotWelcome(
         message_type: "text",
         status: "sent",
         user_id: ownerUserId,
-        metadata: { source: "bot_welcome" },
+        metadata: { source: "bot_welcome", step_index: 0 },
       });
       console.log(`Bot welcome sent to ${phone}`);
     } else {
