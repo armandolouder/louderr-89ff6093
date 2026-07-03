@@ -30,6 +30,7 @@ interface CatalogProduct {
   variant_count: number;
   catalog_images?: { image_url: string; position: number | null }[];
   product_url?: string | null;
+  variations_applied_at?: string | null;
 }
 
 interface VariationModelOption {
