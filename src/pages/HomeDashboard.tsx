@@ -448,7 +448,20 @@ function MiniCard({ title, value, icon: Icon, onClick, subtitle }: {
   title: string; value: number; icon: any; onClick?: () => void; subtitle?: string;
 }) {
   return (
-    <Card className={`fintech-card ${onClick ? "cursor-pointer hover:border-primary/30 transition-all" : ""}`} onClick={onClick}>
+    <Card
+      className={`fintech-card ${onClick ? "cursor-pointer hover:border-primary/30 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background" : ""}`}
+      onClick={onClick}
+      {...(onClick
+        ? {
+            role: "button" as const,
+            tabIndex: 0,
+            "aria-label": title,
+            onKeyDown: (e: React.KeyboardEvent) => {
+              if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); }
+            },
+          }
+        : {})}
+    >
       <CardContent className="pt-5">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-lg bg-primary/5 border border-primary/10">
