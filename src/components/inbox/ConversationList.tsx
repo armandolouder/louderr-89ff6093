@@ -120,7 +120,7 @@ export function ConversationList({ selectedId, onSelect, filterTabId, showArchiv
 
   return (
     <div className="flex flex-col h-full border-r border-border bg-sidebar/50">
-      <div className="p-4 md:p-5 p-3 border-b border-border space-y-4">
+      <div className="p-3 md:p-5 border-b border-border space-y-4">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
@@ -228,12 +228,22 @@ export function ConversationList({ selectedId, onSelect, filterTabId, showArchiv
             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
           </div>
         ) : error ? (
-          <div className="p-4 text-center text-destructive">
-            Erro ao carregar conversas
+          <div className="flex flex-col items-center justify-center gap-2 px-4 py-12 text-center">
+            <div className="p-3 rounded-full bg-destructive/10">
+              <InboxIcon className="w-6 h-6 text-destructive" />
+            </div>
+            <p className="text-sm font-medium text-destructive">Erro ao carregar conversas</p>
+            <p className="text-xs text-muted-foreground">Verifique sua conexão e tente novamente.</p>
           </div>
         ) : filteredConversations.length === 0 ? (
-          <div className="p-4 text-center text-muted-foreground">
-            Nenhuma conversa encontrada
+          <div className="flex flex-col items-center justify-center gap-2 px-4 py-12 text-center">
+            <div className="p-3 rounded-full bg-muted">
+              <InboxIcon className="w-6 h-6 text-muted-foreground" />
+            </div>
+            <p className="text-sm font-medium text-foreground">Nenhuma conversa encontrada</p>
+            <p className="text-xs text-muted-foreground">
+              {searchQuery ? "Tente ajustar sua busca ou filtros." : "Novas conversas aparecerão aqui."}
+            </p>
           </div>
         ) : (
           filteredConversations.map((conversation) => (
