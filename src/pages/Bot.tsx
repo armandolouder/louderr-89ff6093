@@ -191,8 +191,13 @@ export default function Bot() {
   };
 
   const previewText = () => {
-    const now = new Date();
-    const hour = now.getHours();
+    const hour = Number(
+      new Intl.DateTimeFormat("en-US", {
+        timeZone: "America/Sao_Paulo",
+        hour: "numeric",
+        hour12: false,
+      }).format(new Date()),
+    ) % 24;
     const saudacao = hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
     return config.welcome_message
       .replace(RE_NOME, "João")
