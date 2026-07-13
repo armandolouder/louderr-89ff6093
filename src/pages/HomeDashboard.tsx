@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type KeyboardEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -140,7 +140,7 @@ export default function HomeDashboard() {
   const now = new Date();
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth());
-  const { data, isLoading } = useHomeDashboard(selectedYear, selectedMonth);
+  const { data, isLoading, isFetching, refetch } = useHomeDashboard(selectedYear, selectedMonth);
   const navigate = useNavigate();
 
   const monthLabel = new Date(selectedYear, selectedMonth).toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
@@ -185,17 +185,24 @@ export default function HomeDashboard() {
         <div>
           <h1 className="text-3xl font-bold text-foreground">Resumo Geral</h1>
           <div className="flex items-center gap-2 mt-1">
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={goToPrevMonth}>
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={goToPrevMonth} aria-label="Mês anterior">
               <ChevronLeft className="w-4 h-4" />
             </Button>
             <p className="text-muted-foreground capitalize font-medium min-w-[160px] text-center">{monthLabel}</p>
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={goToNextMonth} disabled={isCurrentMonth}>
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={goToNextMonth} disabled={isCurrentMonth} aria-label="Próximo mês">
               <ChevronRight className="w-4 h-4" />
             </Button>
           </div>
         </div>
-        <Button variant="outline" size="icon" onClick={() => window.location.reload()}>
-          <RefreshCw className="w-4 h-4" />
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => refetch()}
+          disabled={isFetching}
+          aria-label="Atualizar dados"
+          aria-busy={isFetching}
+        >
+          <RefreshCw className={`w-4 h-4 ${isFetching ? "animate-spin" : ""}`} />
         </Button>
       </div>
 
@@ -332,7 +339,14 @@ export default function HomeDashboard() {
       </div>
 
       {/* Acesso rápido ao módulo de Despesas */}
-      <Card className="fintech-card cursor-pointer hover:border-primary/30 transition-all hover:shadow-glow" onClick={() => navigate("/expenses")}>
+      <Card
+        role="button"
+        tabIndex={0}
+        aria-label="Abrir gestão de despesas"
+        className="fintech-card cursor-pointer hover:border-primary/30 transition-all hover:shadow-glow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background"
+        onClick={() => navigate("/expenses")}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate("/expenses"); } }}
+      >
         <CardContent className="pt-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="p-3 bg-primary/10">
@@ -434,7 +448,20 @@ function MiniCard({ title, value, icon: Icon, onClick, subtitle }: {
   title: string; value: number; icon: any; onClick?: () => void; subtitle?: string;
 }) {
   return (
-    <Card className={`fintech-card ${onClick ? "cursor-pointer hover:border-primary/30 transition-all" : ""}`} onClick={onClick}>
+    <Card
+      className={`fintech-card ${onClick ? "cursor-pointer hover:border-primary/30 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background" : ""}`}
+      onClick={onClick}
+      {...(onClick
+        ? {
+            role: "button" as const,
+            tabIndex: 0,
+            "aria-label": title,
+            onKeyDown: (e: KeyboardEvent) => {
+              if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); }
+            },
+          }
+        : {})}
+    >
       <CardContent className="pt-5">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-lg bg-primary/5 border border-primary/10">
