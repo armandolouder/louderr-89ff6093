@@ -99,13 +99,22 @@ export function ConversationItem({ conversation, isActive, onClick }: Conversati
 
   return (
     <div
+      role="button"
+      tabIndex={0}
+      aria-label={`Abrir conversa com ${conversation.contact.name}`}
       className={cn(
-        "conversation-item group",
+        "conversation-item group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
         isActive && "active",
         // Animação pulsante para mensagens recém-chegadas (10 segundos)
         isNewMessage && "border-2 border-primary rounded-lg animate-pulse-border bg-primary/5"
       )}
       onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
+          e.preventDefault();
+          onClick?.();
+        }
+      }}
     >
       <div className="relative">
         <Avatar className="w-12 h-12">

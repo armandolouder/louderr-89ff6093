@@ -191,8 +191,13 @@ export default function Bot() {
   };
 
   const previewText = () => {
-    const now = new Date();
-    const hour = now.getHours();
+    const hour = Number(
+      new Intl.DateTimeFormat("en-US", {
+        timeZone: "America/Sao_Paulo",
+        hour: "numeric",
+        hour12: false,
+      }).format(new Date()),
+    ) % 24;
     const saudacao = hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
     return config.welcome_message
       .replace(RE_NOME, "João")
@@ -277,7 +282,7 @@ export default function Bot() {
                       onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addKeyword(); } }}
                       placeholder="Ex: oi, pedido, menu..."
                     />
-                    <Button type="button" variant="outline" onClick={addKeyword}>
+                    <Button type="button" variant="outline" onClick={addKeyword} aria-label="Adicionar palavra-chave">
                       <Plus className="w-4 h-4" />
                     </Button>
                   </div>
@@ -286,7 +291,7 @@ export default function Bot() {
                       {config.trigger_keywords.map((kw) => (
                         <Badge key={kw} variant="secondary" className="gap-1 text-xs">
                           {kw}
-                          <button type="button" onClick={() => removeKeyword(kw)} className="hover:text-destructive">
+                          <button type="button" onClick={() => removeKeyword(kw)} aria-label={`Remover palavra-chave ${kw}`} className="hover:text-destructive">
                             <X className="w-3 h-3" />
                           </button>
                         </Badge>
@@ -340,6 +345,7 @@ export default function Bot() {
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium text-foreground">Passo {index + 1}</span>
                       <Button type="button" variant="ghost" size="sm" onClick={() => removeStep(index)}>
+                        <span className="sr-only">Remover passo {index + 1}</span>
                         <Trash2 className="w-4 h-4 text-destructive" />
                       </Button>
                     </div>
@@ -363,7 +369,7 @@ export default function Bot() {
                           onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addStepKeyword(index); } }}
                           placeholder="Ex: sim, quero, mais..."
                         />
-                        <Button type="button" variant="outline" onClick={() => addStepKeyword(index)}>
+                        <Button type="button" variant="outline" onClick={() => addStepKeyword(index)} aria-label="Adicionar palavra-chave do passo">
                           <Plus className="w-4 h-4" />
                         </Button>
                       </div>
@@ -372,7 +378,7 @@ export default function Bot() {
                           {step.keywords.map((kw) => (
                             <Badge key={kw} variant="secondary" className="gap-1 text-xs">
                               {kw}
-                              <button type="button" onClick={() => removeStepKeyword(index, kw)} className="hover:text-destructive">
+                              <button type="button" onClick={() => removeStepKeyword(index, kw)} aria-label={`Remover palavra-chave ${kw}`} className="hover:text-destructive">
                                 <X className="w-3 h-3" />
                               </button>
                             </Badge>
