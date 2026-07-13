@@ -495,7 +495,7 @@ export function CreateCampaignView({ onBack }: CreateCampaignViewProps) {
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="flex items-center gap-4 px-6 py-4 border-b shrink-0">
-        <Button variant="ghost" size="icon" onClick={onBack}>
+        <Button variant="ghost" size="icon" onClick={onBack} aria-label="Voltar">
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <div className="flex-1">
