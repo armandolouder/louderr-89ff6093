@@ -553,6 +553,7 @@ export function CarouselBuilder() {
                       disabled={isUploading}
                     >
                       <label htmlFor={`carousel-upload-${activeCardIdx}`} className="cursor-pointer">
+                        <span className="sr-only">Enviar imagem do card</span>
                         {isUploading ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
                         ) : (

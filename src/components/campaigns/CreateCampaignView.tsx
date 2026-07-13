@@ -761,6 +761,7 @@ export function CreateCampaignView({ onBack }: CreateCampaignViewProps) {
                                   disabled={isUploading}
                                 >
                                   <label htmlFor={`media-upload-${activeMessageIdx}`} className="cursor-pointer">
+                                    <span className="sr-only">Anexar mídia</span>
                                     {isUploading ? (
                                       <Loader2 className="w-4 h-4 animate-spin" />
                                     ) : (
@@ -773,6 +774,8 @@ export function CreateCampaignView({ onBack }: CreateCampaignViewProps) {
                                 <Button
                                   variant="ghost"
                                   size="icon"
+                                  aria-label="Remover mídia"
+                                  title="Remover mídia"
                                   onClick={() => {
                                     updateMessage(activeMessageIdx, "mediaUrl", "");
                                     updateMessage(activeMessageIdx, "mediaType", "none");
