@@ -291,7 +291,7 @@ export default function Bot() {
                       {config.trigger_keywords.map((kw) => (
                         <Badge key={kw} variant="secondary" className="gap-1 text-xs">
                           {kw}
-                          <button type="button" onClick={() => removeKeyword(kw)} className="hover:text-destructive">
+                          <button type="button" onClick={() => removeKeyword(kw)} aria-label={`Remover palavra-chave ${kw}`} className="hover:text-destructive">
                             <X className="w-3 h-3" />
                           </button>
                         </Badge>
@@ -345,6 +345,7 @@ export default function Bot() {
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium text-foreground">Passo {index + 1}</span>
                       <Button type="button" variant="ghost" size="sm" onClick={() => removeStep(index)}>
+                        <span className="sr-only">Remover passo {index + 1}</span>
                         <Trash2 className="w-4 h-4 text-destructive" />
                       </Button>
                     </div>
@@ -377,7 +378,7 @@ export default function Bot() {
                           {step.keywords.map((kw) => (
                             <Badge key={kw} variant="secondary" className="gap-1 text-xs">
                               {kw}
-                              <button type="button" onClick={() => removeStepKeyword(index, kw)} className="hover:text-destructive">
+                              <button type="button" onClick={() => removeStepKeyword(index, kw)} aria-label={`Remover palavra-chave ${kw}`} className="hover:text-destructive">
                                 <X className="w-3 h-3" />
                               </button>
                             </Badge>
