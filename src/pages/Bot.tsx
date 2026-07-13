@@ -282,7 +282,7 @@ export default function Bot() {
                       onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addKeyword(); } }}
                       placeholder="Ex: oi, pedido, menu..."
                     />
-                    <Button type="button" variant="outline" onClick={addKeyword}>
+                    <Button type="button" variant="outline" onClick={addKeyword} aria-label="Adicionar palavra-chave">
                       <Plus className="w-4 h-4" />
                     </Button>
                   </div>
@@ -369,7 +369,7 @@ export default function Bot() {
                           onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addStepKeyword(index); } }}
                           placeholder="Ex: sim, quero, mais..."
                         />
-                        <Button type="button" variant="outline" onClick={() => addStepKeyword(index)}>
+                        <Button type="button" variant="outline" onClick={() => addStepKeyword(index)} aria-label="Adicionar palavra-chave do passo">
                           <Plus className="w-4 h-4" />
                         </Button>
                       </div>
