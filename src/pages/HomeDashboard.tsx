@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type KeyboardEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -456,7 +456,7 @@ function MiniCard({ title, value, icon: Icon, onClick, subtitle }: {
             role: "button" as const,
             tabIndex: 0,
             "aria-label": title,
-            onKeyDown: (e: React.KeyboardEvent) => {
+            onKeyDown: (e: KeyboardEvent) => {
               if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); }
             },
           }
