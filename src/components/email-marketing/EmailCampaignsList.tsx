@@ -595,7 +595,7 @@ export function EmailCampaignsList() {
                       {campaign.status !== "sending" && campaign.status !== "paused" && (
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button size="icon" variant="ghost" onClick={(e) => e.stopPropagation()} className="text-destructive h-7 w-7">
+                            <Button size="icon" variant="ghost" onClick={(e) => e.stopPropagation()} className="text-destructive h-7 w-7" aria-label="Excluir campanha" title="Excluir">
                               <Trash2 className="w-3.5 h-3.5" />
                             </Button>
                           </AlertDialogTrigger>
