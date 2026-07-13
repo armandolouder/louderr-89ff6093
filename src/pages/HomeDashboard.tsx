@@ -339,7 +339,14 @@ export default function HomeDashboard() {
       </div>
 
       {/* Acesso rápido ao módulo de Despesas */}
-      <Card className="fintech-card cursor-pointer hover:border-primary/30 transition-all hover:shadow-glow" onClick={() => navigate("/expenses")}>
+      <Card
+        role="button"
+        tabIndex={0}
+        aria-label="Abrir gestão de despesas"
+        className="fintech-card cursor-pointer hover:border-primary/30 transition-all hover:shadow-glow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background"
+        onClick={() => navigate("/expenses")}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate("/expenses"); } }}
+      >
         <CardContent className="pt-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="p-3 bg-primary/10">
