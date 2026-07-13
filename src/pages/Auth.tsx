@@ -89,7 +89,7 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <div className="min-h-dvh bg-background flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">Bem-vindo</CardTitle>
@@ -114,6 +114,7 @@ export default function Auth() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="pl-10"
+                    autoComplete="email"
                   />
                 </div>
               </div>
@@ -128,6 +129,7 @@ export default function Auth() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="pl-10"
+                    autoComplete="current-password"
                     onKeyDown={(e) => e.key === "Enter" && handleSignIn()}
                   />
                 </div>
@@ -160,6 +162,7 @@ export default function Auth() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="pl-10"
+                    autoComplete="email"
                   />
                 </div>
               </div>
@@ -174,6 +177,7 @@ export default function Auth() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="pl-10"
+                    autoComplete="new-password"
                     onKeyDown={(e) => e.key === "Enter" && handleSignUp()}
                   />
                 </div>
