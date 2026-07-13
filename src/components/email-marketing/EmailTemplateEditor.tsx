@@ -149,9 +149,9 @@ export function EmailTemplateEditor() {
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">Usado {t.use_count || 0}x</span>
                   <div className="flex gap-1">
-                    <Button size="icon" variant="ghost" onClick={() => handlePreview(t.html_content)}><Eye className="w-4 h-4" /></Button>
-                    <Button size="icon" variant="ghost" onClick={() => setEditing(t)}><Pencil className="w-4 h-4" /></Button>
-                    <Button size="icon" variant="ghost" onClick={() => deleteMutation.mutate(t.id)} className="text-destructive"><Trash2 className="w-4 h-4" /></Button>
+                    <Button size="icon" variant="ghost" aria-label="Pré-visualizar template" title="Pré-visualizar" onClick={() => handlePreview(t.html_content)}><Eye className="w-4 h-4" /></Button>
+                    <Button size="icon" variant="ghost" aria-label="Editar template" title="Editar" onClick={() => setEditing(t)}><Pencil className="w-4 h-4" /></Button>
+                    <Button size="icon" variant="ghost" aria-label="Excluir template" title="Excluir" onClick={() => deleteMutation.mutate(t.id)} className="text-destructive"><Trash2 className="w-4 h-4" /></Button>
                   </div>
                 </div>
               </CardContent>
