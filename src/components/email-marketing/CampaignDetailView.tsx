@@ -106,7 +106,7 @@ export function CampaignDetailView({ campaignId, onBack }: Props) {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={onBack}>
+        <Button variant="ghost" size="icon" onClick={onBack} aria-label="Voltar">
           <ArrowLeft className="w-4 h-4" />
         </Button>
         <div className="flex-1">

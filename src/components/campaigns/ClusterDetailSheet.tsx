@@ -620,6 +620,8 @@ export function ClusterDetailSheet({ cluster, open, onOpenChange }: ClusterDetai
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8"
+                              aria-label="Editar cliente"
+                              title="Editar"
                               onClick={() => handleOpenEdit(customer)}
                             >
                               <Pencil className="w-4 h-4" />
@@ -628,6 +630,8 @@ export function ClusterDetailSheet({ cluster, open, onOpenChange }: ClusterDetai
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                              aria-label="Excluir cliente"
+                              title="Excluir"
                               onClick={() => handleOpenDelete(customer)}
                             >
                               <Trash2 className="w-4 h-4" />

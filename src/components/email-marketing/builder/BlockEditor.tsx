@@ -115,7 +115,7 @@ export function BlockEditor({ block, onChange }: BlockEditorProps) {
             <div key={i} className="border border-border rounded-lg p-3 space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-medium">Produto {i + 1}</span>
-                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => {
+                <Button variant="ghost" size="icon" className="h-6 w-6" aria-label={`Remover produto ${i + 1}`} onClick={() => {
                   const products = [...block.content.products];
                   products.splice(i, 1);
                   updateContent("products", products);
@@ -151,7 +151,7 @@ export function BlockEditor({ block, onChange }: BlockEditorProps) {
               <div className="flex items-center justify-between">
                 <span className="text-xs font-medium">Coluna {i + 1}</span>
                 {block.content.columns.length > 1 && (
-                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => {
+                  <Button variant="ghost" size="icon" className="h-6 w-6" aria-label={`Remover coluna ${i + 1}`} onClick={() => {
                     const columns = [...block.content.columns];
                     columns.splice(i, 1);
                     updateContent("columns", columns);

@@ -495,7 +495,7 @@ export function CreateCampaignView({ onBack }: CreateCampaignViewProps) {
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="flex items-center gap-4 px-6 py-4 border-b shrink-0">
-        <Button variant="ghost" size="icon" onClick={onBack}>
+        <Button variant="ghost" size="icon" onClick={onBack} aria-label="Voltar">
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <div className="flex-1">
@@ -761,6 +761,7 @@ export function CreateCampaignView({ onBack }: CreateCampaignViewProps) {
                                   disabled={isUploading}
                                 >
                                   <label htmlFor={`media-upload-${activeMessageIdx}`} className="cursor-pointer">
+                                    <span className="sr-only">Anexar mídia</span>
                                     {isUploading ? (
                                       <Loader2 className="w-4 h-4 animate-spin" />
                                     ) : (
@@ -773,6 +774,8 @@ export function CreateCampaignView({ onBack }: CreateCampaignViewProps) {
                                 <Button
                                   variant="ghost"
                                   size="icon"
+                                  aria-label="Remover mídia"
+                                  title="Remover mídia"
                                   onClick={() => {
                                     updateMessage(activeMessageIdx, "mediaUrl", "");
                                     updateMessage(activeMessageIdx, "mediaType", "none");

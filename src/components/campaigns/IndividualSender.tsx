@@ -413,6 +413,7 @@ export function IndividualSender({ initialPhone, initialMessage, initialLink, in
                       disabled={uploading}
                     >
                       <label htmlFor="image-upload" className="cursor-pointer">
+                        <span className="sr-only">Anexar imagem</span>
                         {uploading ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
                         ) : (
@@ -468,6 +469,8 @@ export function IndividualSender({ initialPhone, initialMessage, initialLink, in
                           size="icon"
                           variant="ghost"
                           className="h-7 w-7 opacity-0 group-hover:opacity-100 shrink-0"
+                          aria-label={`Editar mensagem ${msg.title}`}
+                          title="Editar"
                           onClick={(e) => { e.stopPropagation(); openEdit(msg); }}
                         >
                           <Pencil className="w-3.5 h-3.5" />
@@ -476,6 +479,8 @@ export function IndividualSender({ initialPhone, initialMessage, initialLink, in
                           size="icon"
                           variant="ghost"
                           className="h-7 w-7 opacity-0 group-hover:opacity-100 text-destructive shrink-0"
+                          aria-label={`Excluir mensagem ${msg.title}`}
+                          title="Excluir"
                           onClick={(e) => { e.stopPropagation(); deleteMutation.mutate(msg.id); }}
                         >
                           <Trash2 className="w-3.5 h-3.5" />

@@ -190,6 +190,7 @@ export function RecoveryTemplatesManager() {
                       size="icon"
                       variant="ghost"
                       className="text-muted-foreground"
+                      aria-label="Restaurar padrão"
                       title="Restaurar padrão"
                       onClick={() => resetMutation.mutate(v)}
                     >
