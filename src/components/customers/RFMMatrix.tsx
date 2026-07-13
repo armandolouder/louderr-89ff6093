@@ -747,6 +747,8 @@ export function RFMMatrix() {
                                   size="icon"
                                   variant="ghost"
                                   className="h-7 w-7 text-emerald-400 hover:text-emerald-300"
+                                  aria-label={`Enviar WhatsApp para ${c.name}`}
+                                  title="Enviar WhatsApp"
                                   onClick={(e) => { e.stopPropagation(); sendWhatsApp(c.phone!, c.name); }}
                                 >
                                   <MessageCircle className="w-3.5 h-3.5" />
@@ -756,6 +758,8 @@ export function RFMMatrix() {
                                 size="icon"
                                 variant="ghost"
                                 className="h-7 w-7"
+                                aria-label={`Ver detalhes de ${c.name}`}
+                                title="Ver detalhes"
                                 onClick={(e) => { e.stopPropagation(); openCustomerDetail(c); }}
                               >
                                 <ExternalLink className="w-3.5 h-3.5" />
