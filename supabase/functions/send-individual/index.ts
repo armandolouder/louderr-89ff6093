@@ -128,7 +128,9 @@ serve(async (req) => {
         if (mediaRejected) {
           console.log(`Media rejected for ${candidate}, retrying as text-only`);
           mediaFailed = true;
-          const textResult = await sendWhatsAppText(candidate, mediaUrl ? `${content}\n\n${mediaUrl}` : content);
+          const isHttpUrl = typeof mediaUrl === "string" && /^https?:\/\//i.test(mediaUrl.trim());
+          const fallbackText = isHttpUrl ? `${content}\n\n${mediaUrl.trim()}` : content;
+          const textResult = await sendWhatsAppText(candidate, fallbackText);
           console.log(`Text fallback status for ${candidate}:`, textResult.status);
           if (textResult.ok) {
             successfulCandidate = candidate;

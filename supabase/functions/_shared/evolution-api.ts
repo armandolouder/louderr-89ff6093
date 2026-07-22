@@ -88,10 +88,17 @@
      document: "document"
    };
  
+   // Evolution expects `media` as an http(s) URL or raw base64 (no data: prefix).
+   let media = params.fileUrl;
+   const dataUrlMatch = media.match(/^data:[^;]+;base64,(.+)$/i);
+   if (dataUrlMatch) {
+     media = dataUrlMatch[1];
+   }
+
     return postToEvolution("/message/sendMedia/{instance}", {
       number: digitsOnly(params.phone),
       mediatype: mediaTypeMap[params.mediaType] || "image",
-      media: params.fileUrl,
+     media,
       caption: params.caption || "",
       delay: 1200
     });
