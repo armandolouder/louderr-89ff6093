@@ -14,7 +14,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 
-async function padImageToSquare(src: string, bg = "#ffffff"): Promise<string> {
+async function padImageToSquare(src: string, bg = "#000000"): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new window.Image();
     img.crossOrigin = "anonymous";
