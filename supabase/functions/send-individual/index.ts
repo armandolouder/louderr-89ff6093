@@ -90,10 +90,12 @@ serve(async (req) => {
     let successfulCandidate: string | null = null;
      let apiData: any = null;
      let lastErrorMessage = "";
+     let mediaFailed = false;
+     let sentWithoutMedia = false;
  
      for (const candidate of phoneCandidates) {
-       const result = mediaUrl
-         ? await sendWhatsAppMedia({ phone: candidate, mediaType: "image", fileUrl: mediaUrl, caption: content })
+       let result = mediaUrl && !mediaFailed
+         ? await sendWhatsAppMedia({ phone: candidate, mediaType: "image", fileUrl: mediaUrl.trim(), caption: content })
          : await sendWhatsAppText(candidate, content);
  
        console.log(`WhatsApp API response status for ${candidate}:`, result.status);
@@ -102,6 +104,7 @@ serve(async (req) => {
        if (result.ok) {
          successfulCandidate = candidate;
          apiData = result.data;
+          sentWithoutMedia = mediaFailed;
          break;
        }
  
@@ -114,6 +117,30 @@ serve(async (req) => {
          responseText.includes("não está no whatsapp") ||
          responseText.includes("not found");
  
+        const mediaRejected =
+          mediaUrl && !mediaFailed && (
+            responseText.includes("owned media") ||
+            responseText.includes("must be a url") ||
+            responseText.includes("invalid media") ||
+            responseText.includes("media") && result.status === 400
+          );
+
+        if (mediaRejected) {
+          console.log(`Media rejected for ${candidate}, retrying as text-only`);
+          mediaFailed = true;
+          const textResult = await sendWhatsAppText(candidate, mediaUrl ? `${content}\n\n${mediaUrl}` : content);
+          console.log(`Text fallback status for ${candidate}:`, textResult.status);
+          if (textResult.ok) {
+            successfulCandidate = candidate;
+            apiData = textResult.data;
+            sentWithoutMedia = true;
+            break;
+          }
+          lastErrorMessage = `WhatsApp API error (fallback): ${textResult.status} - ${textResult.raw}`;
+          apiData = textResult.data;
+          continue;
+        }
+
        if (!notFoundOnWhatsApp) {
          break;
        }
@@ -123,8 +150,11 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({
           success: false,
-          error:
-            "Não consegui localizar esse número no WhatsApp. Confira o DDD, o 9º dígito e se o telefone do carrinho não é um dado de teste.",
+          error: mediaFailed
+            ? "A imagem foi rejeitada pelo WhatsApp (URL inválida ou inacessível). Tente outra imagem ou envie sem mídia."
+            : lastErrorMessage.toLowerCase().includes("not on whatsapp") || lastErrorMessage.toLowerCase().includes("not found")
+              ? "Não consegui localizar esse número no WhatsApp. Confira o DDD, o 9º dígito e se o telefone do carrinho não é um dado de teste."
+              : `Falha ao enviar via WhatsApp: ${lastErrorMessage.substring(0, 300)}`,
           details: lastErrorMessage,
           triedNumbers: phoneCandidates,
         }),
@@ -210,7 +240,8 @@ serve(async (req) => {
       }
 
       if (conversation) {
-        const messageType = mediaUrl ? "image" : "text";
+        const effectiveMediaUrl = sentWithoutMedia ? null : (mediaUrl || null);
+        const messageType = effectiveMediaUrl ? "image" : "text";
 
         // Extract Evolution message ID
         const metadata: any = {
@@ -227,7 +258,7 @@ serve(async (req) => {
           content,
           sender_type: "agent",
           message_type: messageType,
-          media_url: mediaUrl || null,
+          media_url: effectiveMediaUrl,
           status: "sent",
           user_id: authenticatedUserId,
           metadata: metadata,
