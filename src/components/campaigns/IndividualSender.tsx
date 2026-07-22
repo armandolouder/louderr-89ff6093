@@ -460,6 +460,15 @@ export function IndividualSender({ initialPhone, initialMessage, initialLink, in
                     </Button>
                   </div>
                 </div>
+                {mediaUrl && (
+                  <div className="flex items-center justify-between rounded-md border border-border/60 px-3 py-2">
+                    <div className="text-xs">
+                      <p className="font-medium">Ajustar para quadrado (1:1)</p>
+                      <p className="text-muted-foreground">Preenche as bordas com branco para o formato padrão do WhatsApp.</p>
+                    </div>
+                    <Switch checked={squareMedia} onCheckedChange={setSquareMedia} />
+                  </div>
+                )}
               </div>
 
               <Button onClick={handleSend} disabled={sending || !phone || !content} className="w-full">
