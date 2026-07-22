@@ -12,6 +12,34 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Switch } from "@/components/ui/switch";
+
+async function padImageToSquare(src: string, bg = "#ffffff"): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new window.Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const size = Math.max(img.width, img.height);
+      const canvas = document.createElement("canvas");
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return reject(new Error("canvas context"));
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, size, size);
+      const dx = Math.floor((size - img.width) / 2);
+      const dy = Math.floor((size - img.height) / 2);
+      ctx.drawImage(img, dx, dy);
+      try {
+        resolve(canvas.toDataURL("image/jpeg", 0.92));
+      } catch (err) {
+        reject(err);
+      }
+    };
+    img.onerror = () => reject(new Error("Falha ao carregar imagem para ajustar formato"));
+    img.src = src;
+  });
+}
 
 function PhonePreview({ message, mediaUrl }: { message: string; mediaUrl?: string }) {
   const currentTime = format(new Date(), "HH:mm");
@@ -191,6 +219,7 @@ export function IndividualSender({ initialPhone, initialMessage, initialLink, in
   const [phone, setPhone] = useState(initialPhone || "");
   const [content, setContent] = useState(replaceLinkTags(initialMessage || "", initialLink));
   const [mediaUrl, setMediaUrl] = useState(initialImage || "");
+  const [squareMedia, setSquareMedia] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [sending, setSending] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -307,8 +336,16 @@ export function IndividualSender({ initialPhone, initialMessage, initialLink, in
     }
     setSending(true);
     try {
+      let finalMedia = mediaUrl || undefined;
+      if (finalMedia && squareMedia) {
+        try {
+          finalMedia = await padImageToSquare(finalMedia);
+        } catch (err) {
+          console.warn("Falha ao ajustar imagem para quadrado, enviando original:", err);
+        }
+      }
       const { data, error } = await supabase.functions.invoke("send-individual", {
-        body: { phone, content, mediaUrl: mediaUrl || undefined },
+        body: { phone, content, mediaUrl: finalMedia },
       });
       if (error) throw error;
       if (!data.success) throw new Error(data.error);
@@ -423,6 +460,15 @@ export function IndividualSender({ initialPhone, initialMessage, initialLink, in
                     </Button>
                   </div>
                 </div>
+                {mediaUrl && (
+                  <div className="flex items-center justify-between rounded-md border border-border/60 px-3 py-2">
+                    <div className="text-xs">
+                      <p className="font-medium">Ajustar para quadrado (1:1)</p>
+                      <p className="text-muted-foreground">Preenche as bordas com branco para o formato padrão do WhatsApp.</p>
+                    </div>
+                    <Switch checked={squareMedia} onCheckedChange={setSquareMedia} />
+                  </div>
+                )}
               </div>
 
               <Button onClick={handleSend} disabled={sending || !phone || !content} className="w-full">
