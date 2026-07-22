@@ -240,7 +240,8 @@ serve(async (req) => {
       }
 
       if (conversation) {
-        const messageType = mediaUrl ? "image" : "text";
+        const effectiveMediaUrl = sentWithoutMedia ? null : (mediaUrl || null);
+        const messageType = effectiveMediaUrl ? "image" : "text";
 
         // Extract Evolution message ID
         const metadata: any = {
@@ -257,7 +258,7 @@ serve(async (req) => {
           content,
           sender_type: "agent",
           message_type: messageType,
-          media_url: mediaUrl || null,
+          media_url: effectiveMediaUrl,
           status: "sent",
           user_id: authenticatedUserId,
           metadata: metadata,
