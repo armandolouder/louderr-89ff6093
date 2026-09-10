@@ -37,27 +37,39 @@ Responda APENAS com um JSON válido no formato: {"variants":["texto corrigido"]}
 
     const userMessage = `Corrija este texto:\n\n${message}`;
 
-    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "llama-3.1-8b-instant",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userMessage },
-        ],
-        max_tokens: 800,
-        temperature: 0.9,
-        response_format: { type: "json_object" },
-      }),
-    });
+    const models = ["openai/gpt-oss-20b", "openai/gpt-oss-120b", "llama-3.1-8b-instant"];
+    let response: Response | null = null;
+    let lastErr = "";
 
-    if (!response.ok) {
-      const err = await response.text();
-      throw new Error(`Groq error: ${err}`);
+    for (const m of models) {
+      response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: m,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userMessage },
+          ],
+          max_tokens: 800,
+          temperature: 0.9,
+          response_format: { type: "json_object" },
+        }),
+      });
+
+      if (response.ok) break;
+
+      lastErr = await response.text();
+      // tenta próximo modelo em caso de modelo inexistente ou limite
+      if (response.status !== 404 && response.status !== 400 && response.status !== 429) break;
+      response = null;
+    }
+
+    if (!response || !response.ok) {
+      throw new Error(`Groq error: ${lastErr}`);
     }
 
     const data = await response.json();
