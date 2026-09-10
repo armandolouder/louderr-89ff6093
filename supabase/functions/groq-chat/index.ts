@@ -57,20 +57,25 @@ serve(async (req) => {
 
     console.log(`Groq request: model=${model}, messages=${messages.length}, stream=${stream}`);
 
-    const groqResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${GROQ_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model,
-        messages,
-        temperature,
-        max_tokens,
-        stream,
-      }),
-    });
+    const callGroq = (m: string) =>
+      fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${GROQ_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ model: m, messages, temperature, max_tokens, stream }),
+      });
+
+    // Fallbacks caso o modelo pedido não exista/esteja indisponível para a chave
+    const candidates = [model, "llama-3.1-8b-instant", "openai/gpt-oss-20b"].filter(
+      (m, i, arr) => arr.indexOf(m) === i,
+    );
+    let groqResponse = await callGroq(candidates[0]);
+    for (let i = 1; i < candidates.length && groqResponse.status === 404; i++) {
+      console.warn(`Modelo ${candidates[i - 1]} indisponível, tentando ${candidates[i]}...`);
+      groqResponse = await callGroq(candidates[i]);
+    }
 
     if (!groqResponse.ok) {
       const errorText = await groqResponse.text();
