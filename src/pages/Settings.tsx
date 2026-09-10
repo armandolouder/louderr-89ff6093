@@ -39,7 +39,7 @@ export default function Settings() {
   const [botActive, setBotActive] = useState(false);
   const [botConfig, setBotConfig] = useState<BotConfig>({
     system_prompt: "Você é um assistente de atendimento ao cliente da loja. Seja educado, prestativo e responda de forma concisa. Responda em português brasileiro.",
-    model: "llama-3.3-70b-versatile",
+    model: "llama-3.1-8b-instant",
     max_tokens: 512,
   });
   const [isSavingBot, setIsSavingBot] = useState(false);

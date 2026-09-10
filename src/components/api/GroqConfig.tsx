@@ -28,7 +28,7 @@ export function GroqConfig({ status, onStatusChange }: GroqConfigProps) {
       const { data, error } = await supabase.functions.invoke("groq-chat", {
         body: {
           messages: [{ role: "user", content: "ping" }],
-          model: "llama-3.3-70b-versatile",
+          model: "llama-3.1-8b-instant",
           max_tokens: 5,
         },
       });
@@ -53,9 +53,9 @@ export function GroqConfig({ status, onStatusChange }: GroqConfigProps) {
   };
 
   const availableModels = [
-    { name: "Llama 3.3 70B Versatile", id: "llama-3.3-70b-versatile", description: "Modelo mais capaz, ideal para tarefas complexas" },
     { name: "Llama 3.1 8B Instant", id: "llama-3.1-8b-instant", description: "Rápido e eficiente para respostas simples" },
-    { name: "Mixtral 8x7B", id: "mixtral-8x7b-32768", description: "Ótimo equilíbrio entre velocidade e qualidade" },
+    { name: "GPT-OSS 120B", id: "openai/gpt-oss-120b", description: "Modelo mais capaz, ideal para tarefas complexas" },
+    { name: "GPT-OSS 20B", id: "openai/gpt-oss-20b", description: "Ótimo equilíbrio entre velocidade e qualidade" },
   ];
 
   return (
@@ -77,7 +77,7 @@ export function GroqConfig({ status, onStatusChange }: GroqConfigProps) {
               <div className="flex-1">
                 <p className="font-medium text-foreground">API Conectada</p>
                 <p className="text-sm text-muted-foreground">
-                  Modelo ativo: {status.model || "llama-3.3-70b-versatile"}
+                  Modelo ativo: {status.model || "llama-3.1-8b-instant"}
                 </p>
               </div>
               <Badge variant="default">
