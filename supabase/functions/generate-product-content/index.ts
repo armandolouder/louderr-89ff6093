@@ -81,7 +81,7 @@ Quantidade de fotos: ${images.length}`;
       });
 
     // Modelo principal + fallbacks (usados quando o principal atinge rate limit/erro)
-    const models = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"];
+    const models = ["llama-3.1-8b-instant", "llama-3.1-8b-instant"];
     let resp: Response | null = null;
     let lastErr = "";
     for (const model of models) {

@@ -96,7 +96,7 @@ export default function Api() {
       const { data, error } = await supabase.functions.invoke("groq-chat", {
         body: {
           messages: [{ role: "user", content: "ping" }],
-          model: "llama-3.3-70b-versatile",
+          model: "llama-3.1-8b-instant",
           max_tokens: 5,
         },
       });
