@@ -80,8 +80,8 @@ Quantidade de fotos: ${images.length}`;
         }),
       });
 
-    // Modelo principal + fallbacks (usados quando o principal atinge rate limit/erro)
-    const models = ["llama-3.1-8b-instant", "llama-3.1-8b-instant"];
+    // Modelo principal + fallbacks (rate limit ou modelo indisponível)
+    const models = ["llama-3.1-8b-instant", "openai/gpt-oss-20b", "openai/gpt-oss-120b"];
     let resp: Response | null = null;
     let lastErr = "";
     for (const model of models) {
@@ -89,8 +89,8 @@ Quantidade de fotos: ${images.length}`;
       if (resp.ok) break;
       const txt = await resp.text();
       lastErr = `Groq ${resp.status}: ${txt}`;
-      // Só tenta o próximo modelo em caso de rate limit (429)
-      if (resp.status !== 429) break;
+      // Tenta o próximo modelo em rate limit (429) ou modelo inexistente (404)
+      if (resp.status !== 429 && resp.status !== 404) break;
       console.warn(`Modelo ${model} atingiu rate limit, tentando fallback...`);
       resp = null;
     }
