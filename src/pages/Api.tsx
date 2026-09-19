@@ -10,6 +10,9 @@ import { ZernioConfig } from "@/components/api/ZernioConfig";
 
 interface InstanceStatus {
   connected: boolean;
+  serverOnline?: boolean;
+  channelReady?: boolean;
+  unstable?: boolean;
   serverUrl?: string;
   phoneNumber?: string;
   name?: string;
@@ -75,6 +78,9 @@ export default function Api() {
       } else if (data) {
          const newStatus = {
            connected: data.connected,
+           serverOnline: data.serverOnline,
+           channelReady: data.channelReady,
+           unstable: data.unstable,
            serverUrl: data.serverUrl,
            phoneNumber: data.phoneNumber,
            name: data.name,
