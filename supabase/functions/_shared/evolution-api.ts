@@ -75,10 +75,19 @@
   }
 
   async function waitForOpen(maxAttempts = 6): Promise<boolean> {
+    // Evolution can keep reporting `open` from stale state immediately after a
+    // restart, while the Baileys socket is still being rebuilt.
+    await new Promise((resolve) => setTimeout(resolve, 6000));
+
     for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
       if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, 1500));
       const state = await requestEvolution("GET", "/instance/connectionState/{instance}");
-      if (state.ok && state.data?.instance?.state === "open") return true;
+      if (state.ok && state.data?.instance?.state === "open") {
+        // Require a second confirmation because the first `open` may be stale.
+        await new Promise((resolve) => setTimeout(resolve, 2500));
+        const confirmation = await requestEvolution("GET", "/instance/connectionState/{instance}");
+        if (confirmation.ok && confirmation.data?.instance?.state === "open") return true;
+      }
     }
     return false;
   }
