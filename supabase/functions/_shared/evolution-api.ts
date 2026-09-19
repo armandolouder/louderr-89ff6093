@@ -20,6 +20,7 @@
    status: number;
    data: any;
    raw: string;
+  recovered?: boolean;
  }
  
  function getCredentials() {
@@ -38,19 +39,23 @@
    };
  }
  
-  async function postToEvolution(path: string, body: Record<string, any>): Promise<EvolutionApiResult> {
+  async function requestEvolution(
+    method: "GET" | "POST",
+    path: string,
+    body?: Record<string, any>,
+  ): Promise<EvolutionApiResult> {
     const { serverUrl, apiKey, instance } = getCredentials();
     const fullUrl = `${serverUrl}${path.replace("{instance}", instance)}`;
     
-    console.log(`Evolution API Request: POST ${fullUrl}`);
+     console.log(`Evolution API Request: ${method} ${fullUrl}`);
   
     const res = await fetch(fullUrl, {
-      method: "POST",
+       method,
       headers: {
         "Content-Type": "application/json",
         "apikey": apiKey,
       },
-      body: JSON.stringify(body),
+       body: body ? JSON.stringify(body) : undefined,
     });
   
     const raw = await res.text();
@@ -64,15 +69,44 @@
  
    return { ok: res.ok, status: res.status, data, raw };
  }
+
+  function isConnectionClosed(result: EvolutionApiResult): boolean {
+    return !result.ok && result.raw.toLowerCase().includes("connection closed");
+  }
+
+  async function waitForOpen(maxAttempts = 6): Promise<boolean> {
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, 1500));
+      const state = await requestEvolution("GET", "/instance/connectionState/{instance}");
+      if (state.ok && state.data?.instance?.state === "open") return true;
+    }
+    return false;
+  }
+
+  async function postToEvolution(
+    path: string,
+    body: Record<string, any>,
+    recoverConnection = false,
+  ): Promise<EvolutionApiResult> {
+    const firstResult = await requestEvolution("POST", path, body);
+    if (!recoverConnection || !isConnectionClosed(firstResult)) return firstResult;
+
+    console.warn("Evolution channel reported Connection Closed; restarting instance once");
+    const restartResult = await requestEvolution("POST", "/instance/restart/{instance}", {});
+    if (!restartResult.ok || !(await waitForOpen())) return firstResult;
+
+    const retryResult = await requestEvolution("POST", path, body);
+    return { ...retryResult, recovered: retryResult.ok };
+  }
  
     export function sendEvolutionText(phone: string, text: string): Promise<EvolutionApiResult> {
       // Evolution API v2 - Strict format based on documentation
-      return postToEvolution("/message/sendText/{instance}", {
+       return postToEvolution("/message/sendText/{instance}", {
         number: digitsOnly(phone),
         text: text,
         delay: 1200,
         linkPreview: false
-      });
+       }, true);
     }
  
  export function sendEvolutionMedia(params: {
@@ -95,20 +129,20 @@
      media = dataUrlMatch[1];
    }
 
-    return postToEvolution("/message/sendMedia/{instance}", {
+     return postToEvolution("/message/sendMedia/{instance}", {
       number: digitsOnly(params.phone),
       mediatype: mediaTypeMap[params.mediaType] || "image",
      media,
       caption: params.caption || "",
       delay: 1200
-    });
+     }, true);
  }
  
  export function hasEvolutionCredentials(): boolean {
    return Boolean(
      Deno.env.get("EVOLUTION_API_URL") && 
-     Deno.env.get("EVOLUTION_API_KEY") && 
-      Deno.env.get("EVOLUTION_ACTIVE_INSTANCE") || Deno.env.get("EVOLUTION_INSTANCE_NAME")
+      Deno.env.get("EVOLUTION_API_KEY") && 
+       (Deno.env.get("EVOLUTION_ACTIVE_INSTANCE") || Deno.env.get("EVOLUTION_INSTANCE_NAME"))
    );
  }
 

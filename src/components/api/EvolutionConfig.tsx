@@ -1,5 +1,5 @@
  import { useState } from "react";
- import { Server, Key, RefreshCw, ExternalLink, CheckCircle, Wifi, WifiOff, Settings2 } from "lucide-react";
+ import { RefreshCw, ExternalLink, CheckCircle, Wifi, WifiOff, TriangleAlert } from "lucide-react";
  import { Button } from "@/components/ui/button";
  import { Badge } from "@/components/ui/badge";
  import { Separator } from "@/components/ui/separator";
@@ -10,6 +10,9 @@
  
  interface InstanceStatus {
    connected: boolean;
+    serverOnline?: boolean;
+    channelReady?: boolean;
+    unstable?: boolean;
    serverUrl?: string;
    phoneNumber?: string;
    name?: string;
@@ -81,6 +84,9 @@
       } else if (data) {
         onStatusChange({
           connected: data.connected,
+         serverOnline: data.serverOnline,
+         channelReady: data.channelReady,
+         unstable: data.unstable,
           serverUrl: data.serverUrl,
           phoneNumber: data.phoneNumber,
           name: data.name,
@@ -90,8 +96,10 @@
           provider: data.provider
         });
         
-        if (data.connected) {
-          toast.success("Evolution API conectada!");
+        if (data.connected && data.channelReady) {
+          toast.success("WhatsApp pronto para enviar!");
+        } else if (data.unstable) {
+          toast.warning("A instância aparece conectada, mas o canal está instável.");
         } else if (data.error) {
           toast.error(data.error);
         }
@@ -118,20 +126,31 @@
  
          {/* Status Card */}
          <div className="flex items-center gap-3 p-4 rounded-lg bg-secondary/50 border border-border">
-           {status?.connected && status?.provider === "evolution" ? (
+           {status?.connected && status?.channelReady && status?.provider === "evolution" ? (
              <>
                <Wifi className="w-5 h-5 text-primary" />
                <div className="flex-1">
-                 <p className="font-medium text-foreground">Instância Conectada</p>
+                  <p className="font-medium text-foreground">WhatsApp pronto para enviar</p>
                  <p className="text-sm text-muted-foreground">
                    {status.name && `Instância: ${status.name}`}
                  </p>
                </div>
                <Badge variant="default">
                  <CheckCircle className="w-3 h-3 mr-1" />
-                 Online
+                  Operacional
                </Badge>
              </>
+            ) : status?.unstable ? (
+              <>
+                <TriangleAlert className="w-5 h-5 text-destructive" />
+                <div className="flex-1">
+                  <p className="font-medium text-foreground">Conexão instável</p>
+                  <p className="text-sm text-muted-foreground">
+                    {status.error || "A instância aparece conectada, mas o canal não está respondendo."}
+                  </p>
+                </div>
+                <Badge variant="destructive">Instável</Badge>
+              </>
            ) : (
              <>
                <WifiOff className="w-5 h-5 text-muted-foreground" />

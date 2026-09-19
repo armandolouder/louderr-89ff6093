@@ -30,7 +30,7 @@ serve(async (req) => {
     const EVOLUTION_API_KEY = body.evolution_key || Deno.env.get("EVOLUTION_API_KEY");
     const EVOLUTION_INSTANCE = body.evolution_instance || Deno.env.get("EVOLUTION_ACTIVE_INSTANCE") || Deno.env.get("EVOLUTION_INSTANCE_NAME");
 
-    console.log(`Evolution Config - URL: ${EVOLUTION_API_URL}, Instance: ${EVOLUTION_INSTANCE}`);
+    console.log(`Checking Evolution instance: ${EVOLUTION_INSTANCE}`);
 
     if (!EVOLUTION_API_URL || !EVOLUTION_API_KEY || !EVOLUTION_INSTANCE) {
       return new Response(
@@ -40,57 +40,78 @@ serve(async (req) => {
     }
 
     const baseUrl = EVOLUTION_API_URL.endsWith("/") ? EVOLUTION_API_URL.slice(0, -1) : EVOLUTION_API_URL;
-    const endpoints = [
-      `/instance/connectionState/${EVOLUTION_INSTANCE}`,
-      `/instance/fetchInstances?instanceName=${EVOLUTION_INSTANCE}`,
-      `/instance/status/${EVOLUTION_INSTANCE}`,
-      `/instance/info/${EVOLUTION_INSTANCE}`,
-    ];
+    const headers = { apikey: EVOLUTION_API_KEY, "Content-Type": "application/json" };
+    const stateResponse = await fetch(
+      `${baseUrl}/instance/connectionState/${encodeURIComponent(EVOLUTION_INSTANCE)}`,
+      { headers },
+    );
+    const stateRaw = await stateResponse.text();
+    let stateData: any = null;
+    try { stateData = JSON.parse(stateRaw); } catch { stateData = null; }
 
-    let lastData = null;
-    let isConnected = false;
+    if (!stateResponse.ok) {
+      console.error(`Evolution connectionState failed [${stateResponse.status}]: ${stateRaw.substring(0, 500)}`);
+      return new Response(JSON.stringify({
+        success: false,
+        connected: false,
+        serverOnline: true,
+        channelReady: false,
+        status: "unavailable",
+        name: EVOLUTION_INSTANCE,
+        provider: "evolution",
+        error: "O servidor respondeu, mas não foi possível consultar esta instância.",
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
-    for (const endpoint of endpoints) {
-      try {
-        const checkUrl = `${baseUrl}${endpoint}`;
-        console.log(`Trying Evolution endpoint: ${checkUrl}`);
-        const response = await fetch(checkUrl, { headers: { apikey: EVOLUTION_API_KEY } });
-        if (response.ok) {
-          const data = await response.json();
-          console.log(`Evolution response from ${endpoint}:`, JSON.stringify(data));
-          lastData = data;
-          isConnected =
-            data.instance?.state === "open" ||
-            data.status === "open" ||
-            data.state === "open" ||
-            data.instance?.status === "connected" ||
-            data.instance?.connected === true ||
-            data.connected === true;
-          if (isConnected) break;
+    const reportedOpen = stateData?.instance?.state === "open";
+    let channelReady = false;
+    let phoneNumber: string | undefined;
+    let channelError: string | undefined;
+
+    if (reportedOpen) {
+      const instancesResponse = await fetch(
+        `${baseUrl}/instance/fetchInstances?instanceName=${encodeURIComponent(EVOLUTION_INSTANCE)}`,
+        { headers },
+      );
+      if (instancesResponse.ok) {
+        const instancesData = await instancesResponse.json().catch(() => null);
+        const instance = Array.isArray(instancesData) ? instancesData[0] : instancesData;
+        const ownerJid = instance?.ownerJid || instance?.instance?.ownerJid;
+        phoneNumber = typeof ownerJid === "string" ? ownerJid.split("@")[0].split(":")[0] : undefined;
+      }
+
+      if (phoneNumber) {
+        const probeResponse = await fetch(
+          `${baseUrl}/chat/whatsappNumbers/${encodeURIComponent(EVOLUTION_INSTANCE)}`,
+          { method: "POST", headers, body: JSON.stringify({ numbers: [phoneNumber] }) },
+        );
+        const probeRaw = await probeResponse.text();
+        channelReady = probeResponse.ok;
+        if (!probeResponse.ok) {
+          console.error(`Evolution channel probe failed [${probeResponse.status}]: ${probeRaw.substring(0, 500)}`);
+          channelError = probeRaw.toLowerCase().includes("connection closed")
+            ? "A Evolution informa conexão aberta, mas o canal do WhatsApp está fechado."
+            : "A instância aparece conectada, mas o canal não respondeu ao teste.";
         }
-      } catch (e) {
-        console.log(`Error on Evolution endpoint ${endpoint}:`, e.message);
+      } else {
+        channelError = "A instância aparece conectada, mas não informou o número para validar o canal.";
       }
     }
 
-    if (isConnected || lastData) {
-      return new Response(
-        JSON.stringify({
-          success: true,
-          connected: isConnected,
-          serverUrl: EVOLUTION_API_URL.replace(/https?:\/\//, "").split("/")[0],
-          name: EVOLUTION_INSTANCE,
-          status: isConnected ? "open" : (lastData?.instance?.state || "disconnected"),
-          provider: "evolution",
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    return new Response(
-      JSON.stringify({ success: false, connected: false, error: "Não foi possível obter o status da instância Evolution." }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    const connected = reportedOpen && channelReady;
+    return new Response(JSON.stringify({
+      success: connected,
+      connected,
+      serverOnline: true,
+      channelReady,
+      unstable: reportedOpen && !channelReady,
+      serverUrl: EVOLUTION_API_URL.replace(/https?:\/\//, "").split("/")[0],
+      phoneNumber,
+      name: EVOLUTION_INSTANCE,
+      status: connected ? "open" : reportedOpen ? "unstable" : (stateData?.instance?.state || "disconnected"),
+      provider: "evolution",
+      error: channelError || (!reportedOpen ? "A instância não está conectada ao WhatsApp." : undefined),
+    }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (error) {
     console.error("Error checking Evolution status:", error);
     return new Response(
