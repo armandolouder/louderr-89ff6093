@@ -83,9 +83,12 @@ serve(async (req) => {
 
     if (!result.ok) {
       console.error("WhatsApp API error:", result.raw);
+      const normalizedError = result.raw.toLowerCase();
       const friendlyError = result.status === 401
-        ? "A Evolution API recusou a chave configurada no backend. Atualize o secret EVOLUTION_API_KEY com a API Key correta dessa instância."
-        : `Falha ao enviar mensagem pelo WhatsApp (${result.status}).`;
+        ? "A Evolution API recusou a chave configurada no backend. Atualize a chave dessa instância."
+        : normalizedError.includes("connection closed")
+          ? "A instância do WhatsApp está desconectada na Evolution API. Reconecte o número pelo QR Code e tente novamente."
+          : `Falha ao enviar mensagem pelo WhatsApp (${result.status}).`;
 
       return jsonResponse({
         success: false,
