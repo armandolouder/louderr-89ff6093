@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { InfiniteData, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Message } from "./useMessages";
@@ -28,14 +28,17 @@ export function useDeleteMessage() {
       await queryClient.cancelQueries({ queryKey: ["messages", variables.conversationId] });
       
       // Snapshot previous value
-      const previousMessages = queryClient.getQueryData<Message[]>(["messages", variables.conversationId]);
+      const queryKey = ["messages", variables.conversationId];
+      const previousMessages = queryClient.getQueryData<InfiniteData<Message[], number>>(queryKey);
       
       // Optimistically remove the message
       if (previousMessages) {
-        queryClient.setQueryData<Message[]>(
-          ["messages", variables.conversationId],
-          previousMessages.filter((msg) => msg.id !== variables.messageId)
-        );
+        queryClient.setQueryData<InfiniteData<Message[], number>>(queryKey, {
+          ...previousMessages,
+          pages: previousMessages.pages.map((page) =>
+            page.filter((msg) => msg.id !== variables.messageId)
+          ),
+        });
       }
       
       return { previousMessages };
