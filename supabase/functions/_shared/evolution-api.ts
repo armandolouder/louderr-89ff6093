@@ -10,8 +10,8 @@
       fromMe: params.isFromMe ?? false,
       remoteJid: `${digitsOnly(params.phone)}@s.whatsapp.net`
     },
-    reaction: params.emoji
-   });
+     reaction: params.emoji
+    }, true);
  }
  import { digitsOnly } from "./phone.ts";
  

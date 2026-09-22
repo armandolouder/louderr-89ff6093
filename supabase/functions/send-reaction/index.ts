@@ -93,7 +93,15 @@ serve(async (req) => {
  
      if (!apiResult.ok) {
        console.error("WhatsApp API error:", apiResult.raw);
-       throw new Error(`Failed to send reaction via WhatsApp API: ${apiResult.status} - ${apiResult.raw}`);
+       const normalizedError = apiResult.raw.toLowerCase();
+       const friendlyError = normalizedError.includes("connection closed")
+         ? "A Evolution mostra a instância como conectada, mas o canal está instável. O reinício automático não conseguiu restaurá-lo; aguarde alguns segundos e tente novamente. Se persistir, reconecte o número pelo QR Code."
+         : `Falha ao enviar reação pelo WhatsApp (${apiResult.status}).`;
+
+       return new Response(
+         JSON.stringify({ success: false, error: friendlyError, details: apiResult.raw }),
+         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+       );
      }
  
      const apiData = apiResult.data;
