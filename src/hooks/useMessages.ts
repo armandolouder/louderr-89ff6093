@@ -20,6 +20,11 @@ import { MESSAGE_LIST_SELECT, restoreMessageMetadata } from "@/lib/messageListDa
 
 const PAGE_SIZE = 30;
 
+type MessageListRow = Omit<Message, "metadata"> & {
+  metadata_reactions: unknown;
+  metadata_transcription: string | null;
+};
+
 function deduplicate(data: Message[]): Message[] {
   return data.reduce((acc: Message[], current) => {
     const isDuplicate = acc.some((msg) => {
@@ -53,7 +58,8 @@ export function useMessages(conversationId: string | null) {
         .select(MESSAGE_LIST_SELECT)
         .eq("conversation_id", conversationId)
         .order("created_at", { ascending: false })
-        .range(from, to);
+        .range(from, to)
+        .returns<MessageListRow[]>();
 
       if (error) throw error;
       return (data ?? []).map(restoreMessageMetadata) as Message[];
