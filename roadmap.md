@@ -12,6 +12,7 @@
 - [x] Abrir troca de senha do banco solicitada pelo usuário e reenviar a alteração de índices.
 
 ## Acesso ao admin
-- [ ] Adicionar troca de senha da conta no admin.
-- [ ] Fazer o botão Sair encerrar a sessão e limpar os dados da conta em memória.
-- [ ] Validar formulário de senha e saída pela interface.
+- [x] Adicionar troca de senha da conta no admin.
+- [x] Fazer o botão Sair encerrar a sessão e limpar os dados da conta em memória.
+- [x] Validar confirmação, rejeição de senha atual incorreta e saída pela interface; testes automatizados passaram.
+- [x] Solicitar e-mail de recuperação após alteração indevida durante o teste; redefinição final depende do usuário.
