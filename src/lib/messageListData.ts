@@ -1,6 +1,6 @@
 // Fetch only presentation metadata; raw provider payloads remain stored for
 // server-side reactions/deduplication but must not travel with each chat page.
-export const MESSAGE_LIST_SELECT = "id, conversation_id, content, sender_type, sender_id, message_type, media_url, evolution_message_id, whatsapp_message_id, status, created_at, metadata_reactions:metadata->reactions, metadata_transcription:metadata->>transcription";
+export const MESSAGE_LIST_SELECT: string = "id, conversation_id, content, sender_type, sender_id, message_type, media_url, evolution_message_id, whatsapp_message_id, status, created_at, metadata_reactions:metadata->reactions, metadata_transcription:metadata->>transcription";
 
 export function restoreMessageMetadata<T extends {
   metadata_reactions?: unknown;
