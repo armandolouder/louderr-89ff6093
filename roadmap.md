@@ -6,7 +6,7 @@
 
 ## Otimização de banco e consumo
 - [x] Medir créditos registrados e saúde do banco.
-- [ ] Inspecionar consultas, índices, armazenamento e tarefas agendadas.
-- [ ] Aplicar otimizações comprovadas sem excluir dados ou alterar prazos.
-- [ ] Comparar desempenho e documentar limites de economia.
-- [ ] Abrir troca de senha do banco solicitada pelo usuário e reenviar a alteração de índices.
+- [x] Inspecionar consultas, índices, armazenamento e tarefas agendadas.
+- [x] Aplicar otimizações comprovadas sem excluir dados ou alterar prazos.
+- [x] Comparar desempenho e documentar limites de economia.
+- [x] Abrir troca de senha do banco solicitada pelo usuário e reenviar a alteração de índices.

@@ -1,6 +1,7 @@
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useMemo } from "react";
+import { MESSAGE_LIST_SELECT, restoreMessageMetadata } from "@/lib/messageListData";
 
  export interface Message {
    id: string;
@@ -18,6 +19,11 @@ import { useEffect, useMemo } from "react";
  }
 
 const PAGE_SIZE = 30;
+
+type MessageListRow = Omit<Message, "metadata"> & {
+  metadata_reactions: unknown;
+  metadata_transcription: string | null;
+};
 
 function deduplicate(data: Message[]): Message[] {
   return data.reduce((acc: Message[], current) => {
@@ -49,13 +55,14 @@ export function useMessages(conversationId: string | null) {
 
       const { data, error } = await supabase
         .from("messages")
-        .select("*")
+        .select(MESSAGE_LIST_SELECT)
         .eq("conversation_id", conversationId)
         .order("created_at", { ascending: false })
-        .range(from, to);
+        .range(from, to)
+        .returns<MessageListRow[]>();
 
       if (error) throw error;
-      return (data as Message[]) ?? [];
+      return (data ?? []).map(restoreMessageMetadata) as Message[];
     },
     getNextPageParam: (lastPage, allPages) =>
       lastPage.length === PAGE_SIZE ? allPages.length : undefined,

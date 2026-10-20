@@ -1,0 +1,2 @@
+CREATE INDEX IF NOT EXISTS idx_messages_evolution_message_id_column ON public.messages (evolution_message_id) WHERE evolution_message_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_messages_whatsapp_message_id_column ON public.messages (whatsapp_message_id) WHERE whatsapp_message_id IS NOT NULL;
