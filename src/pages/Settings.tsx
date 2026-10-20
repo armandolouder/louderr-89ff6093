@@ -11,6 +11,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import { ChangePasswordDialog } from "@/components/layout/ChangePasswordDialog";
+import { useAccountLogout } from "@/hooks/useAccountLogout";
 
 interface Profile {
   id: string;
@@ -28,6 +30,7 @@ interface BotConfig {
 
 export default function Settings() {
   const navigate = useNavigate();
+  const { logout, isLoggingOut } = useAccountLogout();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -176,17 +179,6 @@ export default function Settings() {
     } catch (error) {
       console.error("Error toggling bot:", error);
       setBotActive(!active);
-    }
-  };
-
-  const handleLogout = async () => {
-    try {
-      await supabase.auth.signOut();
-      toast.success("Logout realizado");
-      navigate("/auth");
-    } catch (error) {
-      console.error("Error logging out:", error);
-      toast.error("Erro ao fazer logout");
     }
   };
 
@@ -402,10 +394,11 @@ export default function Settings() {
         <CardHeader>
           <CardTitle className="text-base">Sessão</CardTitle>
         </CardHeader>
-        <CardContent>
-          <Button variant="destructive" onClick={handleLogout}>
+        <CardContent className="space-y-3">
+          <ChangePasswordDialog />
+          <Button variant="destructive" onClick={logout} disabled={isLoggingOut}>
             <LogOut className="w-4 h-4 mr-2" />
-            Sair da conta
+            {isLoggingOut ? "Saindo…" : "Sair da conta"}
           </Button>
         </CardContent>
       </Card>

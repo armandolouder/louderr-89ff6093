@@ -26,6 +26,8 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { ChangePasswordDialog } from "./ChangePasswordDialog";
+import { useAccountLogout } from "@/hooks/useAccountLogout";
 
 interface NavItem {
   name: string;
@@ -68,6 +70,7 @@ const navigation: NavItem[] = [
 
 export function AppSidebar() {
   const location = useLocation();
+  const { logout, isLoggingOut } = useAccountLogout();
   const [collapsed, setCollapsed] = useState(false);
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
 
@@ -276,15 +279,21 @@ export function AppSidebar() {
       </nav>
 
       <div className="p-2 border-t border-sidebar-border">
-        <button
+        <ChangePasswordDialog collapsed={collapsed} />
+        <Button
+          variant="ghost"
+          onClick={logout}
+          disabled={isLoggingOut}
+          aria-label="Sair"
+          title="Sair"
           className={cn(
-            "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium w-full",
+            "flex items-center justify-start gap-3 px-3 py-2.5 text-sm font-medium w-full",
             "text-muted-foreground hover:text-destructive hover:bg-sidebar-accent transition-all duration-200"
           )}
         >
           <LogOut className="w-5 h-5 flex-shrink-0" />
-          {!collapsed && <span>Sair</span>}
-        </button>
+          {!collapsed && <span>{isLoggingOut ? "Saindo…" : "Sair"}</span>}
+        </Button>
         {!collapsed && (
           <div className="px-3 pt-2 text-[10px] leading-tight text-muted-foreground/70 select-text">
             <span className="font-medium">v{String(import.meta.env.VITE_BUILD_DATE ?? new Date().toISOString()).slice(0, 10).replace(/-/g, ".")}</span>
