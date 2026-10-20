@@ -10,3 +10,8 @@
 - [x] Aplicar otimizações comprovadas sem excluir dados ou alterar prazos.
 - [x] Comparar desempenho e documentar limites de economia.
 - [x] Abrir troca de senha do banco solicitada pelo usuário e reenviar a alteração de índices.
+
+## Acesso ao admin
+- [ ] Adicionar troca de senha da conta no admin.
+- [ ] Fazer o botão Sair encerrar a sessão e limpar os dados da conta em memória.
+- [ ] Validar formulário de senha e saída pela interface.
