@@ -1,13 +1,19 @@
 type AccountAuth = {
+  getUser: () => Promise<{ data: { user: { email?: string } | null }; error: { message: string } | null }>;
+  signInWithPassword: (credentials: { email: string; password: string }) => Promise<{ error: { message: string } | null }>;
   updateUser: (attributes: { password: string; current_password: string }) => Promise<{ error: { code?: string; message: string } | null }>;
   signOut: (options: { scope: "local" }) => Promise<{ error: { message: string } | null }>;
 };
 
-export async function changeAccountPassword(auth: Pick<AccountAuth, "updateUser">, currentPassword: string, password: string, confirmation: string) {
+export async function changeAccountPassword(auth: Pick<AccountAuth, "updateUser" | "getUser" | "signInWithPassword">, currentPassword: string, password: string, confirmation: string) {
   if (!currentPassword || !password || !confirmation) throw new Error("Preencha todos os campos.");
   if (password.length < 6) throw new Error("A nova senha deve ter pelo menos 6 caracteres.");
   if (password !== confirmation) throw new Error("As senhas não coincidem.");
   if (password === currentPassword) throw new Error("Escolha uma senha diferente da atual.");
+  const { data, error: userError } = await auth.getUser();
+  if (userError || !data.user?.email) throw new Error("Entre novamente na conta para alterar a senha.");
+  const { error: verificationError } = await auth.signInWithPassword({ email: data.user.email, password: currentPassword });
+  if (verificationError) throw new Error("Não foi possível confirmar a senha atual. Confira e tente novamente.");
   const { error } = await auth.updateUser({ password, current_password: currentPassword });
   if (!error) return;
   if (error.code === "weak_password") throw new Error("Escolha uma senha mais forte e que não tenha sido exposta em vazamentos.");

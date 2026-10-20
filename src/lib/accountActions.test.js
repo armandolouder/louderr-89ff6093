@@ -1,19 +1,29 @@
 import { describe, expect, test } from "bun:test";
 import { changeAccountPassword, endAccountSession } from "./accountActions";
 
+const verifiedAuth = {
+  getUser: async () => ({ data: { user: { email: "account@example.test" } }, error: null }),
+  signInWithPassword: async () => ({ error: null }),
+};
+
 describe("account access", () => {
   test("password changes send current password for server validation", async () => {
     let attributes;
-    await changeAccountPassword({ updateUser: async (value) => { attributes = value; return { error: null }; } }, "old-test-password", "new-test-password", "new-test-password");
+    await changeAccountPassword({ ...verifiedAuth, updateUser: async (value) => { attributes = value; return { error: null }; } }, "old-test-password", "new-test-password", "new-test-password");
     expect(attributes).toEqual({ current_password: "old-test-password", password: "new-test-password" });
   });
   test("mismatched confirmation never updates the account", async () => {
     let called = false;
-    await expect(changeAccountPassword({ updateUser: async () => { called = true; return { error: null }; } }, "old-test-password", "new-test-password", "different")).rejects.toThrow();
+    await expect(changeAccountPassword({ ...verifiedAuth, updateUser: async () => { called = true; return { error: null }; } }, "old-test-password", "new-test-password", "different")).rejects.toThrow();
     expect(called).toBe(false);
   });
   test("server rejection is not treated as a successful password change", async () => {
-    await expect(changeAccountPassword({ updateUser: async () => ({ error: { code: "weak_password", message: "weak" } }) }, "old-test-password", "new-test-password", "new-test-password")).rejects.toThrow();
+    await expect(changeAccountPassword({ ...verifiedAuth, updateUser: async () => ({ error: { code: "weak_password", message: "weak" } }) }, "old-test-password", "new-test-password", "new-test-password")).rejects.toThrow();
+  });
+  test("incorrect current password cannot reach the password update endpoint", async () => {
+    let updated = false;
+    await expect(changeAccountPassword({ ...verifiedAuth, signInWithPassword: async () => ({ error: { message: "invalid" } }), updateUser: async () => { updated = true; return { error: null }; } }, "wrong-test-password", "new-test-password", "new-test-password")).rejects.toThrow();
+    expect(updated).toBe(false);
   });
   test("logout ends the current session before clearing account data and redirecting", async () => {
     const actions = [];
