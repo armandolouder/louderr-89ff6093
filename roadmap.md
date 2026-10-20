@@ -9,3 +9,4 @@
 - [ ] Inspecionar consultas, índices, armazenamento e tarefas agendadas.
 - [ ] Aplicar otimizações comprovadas sem excluir dados ou alterar prazos.
 - [ ] Comparar desempenho e documentar limites de economia.
+- [ ] Abrir troca de senha do banco solicitada pelo usuário e reenviar a alteração de índices.
