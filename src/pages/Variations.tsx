@@ -381,6 +381,9 @@ export default function Variations() {
                   </div>
                 </div>
                 <div className="flex gap-1">
+                  <Button variant="ghost" size="icon" title="Copiar modelo" onClick={() => openCopy(m)}>
+                    <Copy className="w-4 h-4" />
+                  </Button>
                   <Button variant="ghost" size="icon" onClick={() => openEdit(m)}>
                     <Pencil className="w-4 h-4" />
                   </Button>
@@ -476,6 +479,9 @@ export default function Variations() {
                 ))}
               </div>
               <div className="flex gap-1 shrink-0">
+                <Button variant="ghost" size="icon" title="Copiar modelo" onClick={() => openCopy(m)}>
+                  <Copy className="w-4 h-4" />
+                </Button>
                 <Button variant="ghost" size="icon" onClick={() => openEdit(m)}>
                   <Pencil className="w-4 h-4" />
                 </Button>
