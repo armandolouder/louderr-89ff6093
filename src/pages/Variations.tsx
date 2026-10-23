@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Plus, Trash2, Loader2, Save, Palette, Shirt, Ruler, Pencil, X, LayoutGrid, List, GripVertical } from "lucide-react";
+import { Plus, Trash2, Loader2, Save, Palette, Shirt, Ruler, Pencil, X, LayoutGrid, List, GripVertical, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -130,6 +130,21 @@ export default function Variations() {
     setColors([]);
     setMaterials([]);
     setSizes(DEFAULT_SIZES.map((s) => ({ ...s })));
+    setNewColor("");
+    setNewMaterial("");
+    setOpen(true);
+  };
+
+  const openCopy = (m: VariationModel) => {
+    setEditId(null);
+    setNome(`${m.nome} (cópia)`);
+    setColors([...m.colors]);
+    setMaterials([...m.materials]);
+    setSizes(
+      m.sizes.length
+        ? m.sizes.map((s) => ({ tamanho: s.tamanho, preco: formatPrice(s.preco), precoPromocional: formatPrice(s.precoPromocional), ativo: s.ativo }))
+        : DEFAULT_SIZES.map((s) => ({ ...s }))
+    );
     setNewColor("");
     setNewMaterial("");
     setOpen(true);
@@ -366,6 +381,9 @@ export default function Variations() {
                   </div>
                 </div>
                 <div className="flex gap-1">
+                  <Button variant="ghost" size="icon" title="Copiar modelo" onClick={() => openCopy(m)}>
+                    <Copy className="w-4 h-4" />
+                  </Button>
                   <Button variant="ghost" size="icon" onClick={() => openEdit(m)}>
                     <Pencil className="w-4 h-4" />
                   </Button>
@@ -461,6 +479,9 @@ export default function Variations() {
                 ))}
               </div>
               <div className="flex gap-1 shrink-0">
+                <Button variant="ghost" size="icon" title="Copiar modelo" onClick={() => openCopy(m)}>
+                  <Copy className="w-4 h-4" />
+                </Button>
                 <Button variant="ghost" size="icon" onClick={() => openEdit(m)}>
                   <Pencil className="w-4 h-4" />
                 </Button>
