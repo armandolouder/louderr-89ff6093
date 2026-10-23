@@ -40,6 +40,7 @@ interface VariationModel {
   id: string;
   nome: string;
   position: number;
+  ativo: boolean;
   colors: string[];
   materials: string[];
   sizes: { tamanho: string; preco: number | null; precoPromocional: number | null; ativo: boolean }[];
@@ -96,7 +97,7 @@ export default function Variations() {
       const { data, error } = await (supabase as any)
         .from("variation_models")
         .select(
-          "id, nome, position, variation_colors(nome_cor), variation_materials(nome_malha), variation_sizes(tamanho, preco, preco_promocional, ativo, position)"
+          "id, nome, position, ativo, variation_colors(nome_cor), variation_materials(nome_malha), variation_sizes(tamanho, preco, preco_promocional, ativo, position)"
         )
         .order("position", { ascending: true })
         .order("created_at", { ascending: false });
@@ -106,6 +107,7 @@ export default function Variations() {
           id: m.id,
           nome: m.nome,
           position: m.position ?? 0,
+          ativo: m.ativo ?? true,
           colors: (m.variation_colors || []).map((c: any) => c.nome_cor),
           materials: (m.variation_materials || []).map((c: any) => c.nome_malha),
           sizes: (m.variation_sizes || [])
@@ -253,6 +255,22 @@ export default function Variations() {
       toast.error(err.message || "Erro ao salvar modelo");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const toggleModelActive = async (m: VariationModel) => {
+    const novo = !m.ativo;
+    setModels((prev) => prev.map((x) => (x.id === m.id ? { ...x, ativo: novo } : x)));
+    try {
+      const { error } = await (supabase as any)
+        .from("variation_models")
+        .update({ ativo: novo })
+        .eq("id", m.id);
+      if (error) throw error;
+      toast.success(novo ? "Modelo ativado" : "Modelo desativado — não aparece mais ao aplicar variações");
+    } catch (err: any) {
+      setModels((prev) => prev.map((x) => (x.id === m.id ? { ...x, ativo: !novo } : x)));
+      toast.error(err.message || "Erro ao alterar status");
     }
   };
 
