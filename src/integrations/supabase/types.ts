@@ -2309,6 +2309,7 @@ export type Database = {
       }
       variation_models: {
         Row: {
+          ativo: boolean
           created_at: string
           id: string
           nome: string
@@ -2317,6 +2318,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          ativo?: boolean
           created_at?: string
           id?: string
           nome: string
@@ -2325,6 +2327,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          ativo?: boolean
           created_at?: string
           id?: string
           nome?: string

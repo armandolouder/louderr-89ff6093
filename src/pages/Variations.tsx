@@ -40,6 +40,7 @@ interface VariationModel {
   id: string;
   nome: string;
   position: number;
+  ativo: boolean;
   colors: string[];
   materials: string[];
   sizes: { tamanho: string; preco: number | null; precoPromocional: number | null; ativo: boolean }[];
@@ -96,7 +97,7 @@ export default function Variations() {
       const { data, error } = await (supabase as any)
         .from("variation_models")
         .select(
-          "id, nome, position, variation_colors(nome_cor), variation_materials(nome_malha), variation_sizes(tamanho, preco, preco_promocional, ativo, position)"
+          "id, nome, position, ativo, variation_colors(nome_cor), variation_materials(nome_malha), variation_sizes(tamanho, preco, preco_promocional, ativo, position)"
         )
         .order("position", { ascending: true })
         .order("created_at", { ascending: false });
@@ -106,6 +107,7 @@ export default function Variations() {
           id: m.id,
           nome: m.nome,
           position: m.position ?? 0,
+          ativo: m.ativo ?? true,
           colors: (m.variation_colors || []).map((c: any) => c.nome_cor),
           materials: (m.variation_materials || []).map((c: any) => c.nome_malha),
           sizes: (m.variation_sizes || [])
@@ -256,6 +258,22 @@ export default function Variations() {
     }
   };
 
+  const toggleModelActive = async (m: VariationModel) => {
+    const novo = !m.ativo;
+    setModels((prev) => prev.map((x) => (x.id === m.id ? { ...x, ativo: novo } : x)));
+    try {
+      const { error } = await (supabase as any)
+        .from("variation_models")
+        .update({ ativo: novo })
+        .eq("id", m.id);
+      if (error) throw error;
+      toast.success(novo ? "Modelo ativado" : "Modelo desativado — não aparece mais ao aplicar variações");
+    } catch (err: any) {
+      setModels((prev) => prev.map((x) => (x.id === m.id ? { ...x, ativo: !novo } : x)));
+      toast.error(err.message || "Erro ao alterar status");
+    }
+  };
+
   const handleDelete = async () => {
     if (!deleteId) return;
     try {
@@ -366,6 +384,7 @@ export default function Variations() {
               onDrop={() => handleDrop(m.id)}
               className={
                 "transition-all cursor-grab active:cursor-grabbing " +
+                (!m.ativo ? "opacity-60 " : "") +
                 (dragId === m.id ? "opacity-40 " : "") +
                 (overId === m.id && dragId !== m.id ? "ring-2 ring-primary " : "")
               }
@@ -374,13 +393,23 @@ export default function Variations() {
                 <div className="flex items-start gap-2">
                   <GripVertical className="w-4 h-4 text-muted-foreground mt-1 shrink-0" />
                   <div>
-                    <CardTitle className="text-base uppercase">{m.nome}</CardTitle>
+                    <CardTitle className="text-base uppercase flex items-center gap-2">
+                      {m.nome}
+                      {!m.ativo && <Badge variant="outline" className="text-[9px]">Inativo</Badge>}
+                    </CardTitle>
                     <CardDescription>
                       {m.colors.length} cores · {m.materials.length} malhas · {m.sizes.length} tamanhos
                     </CardDescription>
                   </div>
                 </div>
-                <div className="flex gap-1">
+                <div className="flex gap-1 items-center">
+                  <Switch
+                    checked={m.ativo}
+                    onCheckedChange={() => toggleModelActive(m)}
+                    aria-label={m.ativo ? `Desativar modelo ${m.nome}` : `Ativar modelo ${m.nome}`}
+                    title={m.ativo ? "Ativo — clique para desativar" : "Inativo — clique para ativar"}
+                    className="cursor-pointer"
+                  />
                   <Button variant="ghost" size="icon" title="Copiar modelo" onClick={() => openCopy(m)}>
                     <Copy className="w-4 h-4" />
                   </Button>
@@ -459,6 +488,7 @@ export default function Variations() {
               onDrop={() => handleDrop(m.id)}
               className={
                 "flex items-center gap-3 px-3 py-2.5 bg-card transition-all cursor-grab active:cursor-grabbing " +
+                (!m.ativo ? "opacity-60 " : "") +
                 (dragId === m.id ? "opacity-40 " : "") +
                 (overId === m.id && dragId !== m.id ? "ring-2 ring-inset ring-primary " : "hover:bg-accent/40 ")
               }
@@ -478,7 +508,14 @@ export default function Variations() {
                   </Badge>
                 ))}
               </div>
-              <div className="flex gap-1 shrink-0">
+              <div className="flex gap-1 shrink-0 items-center">
+                <Switch
+                  checked={m.ativo}
+                  onCheckedChange={() => toggleModelActive(m)}
+                  aria-label={m.ativo ? `Desativar modelo ${m.nome}` : `Ativar modelo ${m.nome}`}
+                  title={m.ativo ? "Ativo — clique para desativar" : "Inativo — clique para ativar"}
+                  className="cursor-pointer"
+                />
                 <Button variant="ghost" size="icon" title="Copiar modelo" onClick={() => openCopy(m)}>
                   <Copy className="w-4 h-4" />
                 </Button>
