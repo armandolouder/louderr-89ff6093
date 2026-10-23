@@ -384,6 +384,7 @@ export default function Variations() {
               onDrop={() => handleDrop(m.id)}
               className={
                 "transition-all cursor-grab active:cursor-grabbing " +
+                (!m.ativo ? "opacity-60 " : "") +
                 (dragId === m.id ? "opacity-40 " : "") +
                 (overId === m.id && dragId !== m.id ? "ring-2 ring-primary " : "")
               }
@@ -392,13 +393,23 @@ export default function Variations() {
                 <div className="flex items-start gap-2">
                   <GripVertical className="w-4 h-4 text-muted-foreground mt-1 shrink-0" />
                   <div>
-                    <CardTitle className="text-base uppercase">{m.nome}</CardTitle>
+                    <CardTitle className="text-base uppercase flex items-center gap-2">
+                      {m.nome}
+                      {!m.ativo && <Badge variant="outline" className="text-[9px]">Inativo</Badge>}
+                    </CardTitle>
                     <CardDescription>
                       {m.colors.length} cores · {m.materials.length} malhas · {m.sizes.length} tamanhos
                     </CardDescription>
                   </div>
                 </div>
-                <div className="flex gap-1">
+                <div className="flex gap-1 items-center">
+                  <Switch
+                    checked={m.ativo}
+                    onCheckedChange={() => toggleModelActive(m)}
+                    aria-label={m.ativo ? `Desativar modelo ${m.nome}` : `Ativar modelo ${m.nome}`}
+                    title={m.ativo ? "Ativo — clique para desativar" : "Inativo — clique para ativar"}
+                    className="cursor-pointer"
+                  />
                   <Button variant="ghost" size="icon" title="Copiar modelo" onClick={() => openCopy(m)}>
                     <Copy className="w-4 h-4" />
                   </Button>
@@ -477,6 +488,7 @@ export default function Variations() {
               onDrop={() => handleDrop(m.id)}
               className={
                 "flex items-center gap-3 px-3 py-2.5 bg-card transition-all cursor-grab active:cursor-grabbing " +
+                (!m.ativo ? "opacity-60 " : "") +
                 (dragId === m.id ? "opacity-40 " : "") +
                 (overId === m.id && dragId !== m.id ? "ring-2 ring-inset ring-primary " : "hover:bg-accent/40 ")
               }
@@ -496,7 +508,14 @@ export default function Variations() {
                   </Badge>
                 ))}
               </div>
-              <div className="flex gap-1 shrink-0">
+              <div className="flex gap-1 shrink-0 items-center">
+                <Switch
+                  checked={m.ativo}
+                  onCheckedChange={() => toggleModelActive(m)}
+                  aria-label={m.ativo ? `Desativar modelo ${m.nome}` : `Ativar modelo ${m.nome}`}
+                  title={m.ativo ? "Ativo — clique para desativar" : "Inativo — clique para ativar"}
+                  className="cursor-pointer"
+                />
                 <Button variant="ghost" size="icon" title="Copiar modelo" onClick={() => openCopy(m)}>
                   <Copy className="w-4 h-4" />
                 </Button>

@@ -160,6 +160,7 @@ export default function Catalog() {
     const { data } = await (supabase as any)
       .from("variation_models")
       .select("id, nome, variation_colors(count), variation_materials(nome_malha), variation_sizes(count)")
+      .eq("ativo", true)
       .order("created_at", { ascending: false });
     const mapped: VariationModelOption[] = (data || []).map((m: any) => ({
       id: m.id,
