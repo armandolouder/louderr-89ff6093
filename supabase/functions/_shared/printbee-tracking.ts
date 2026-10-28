@@ -32,15 +32,15 @@ export function projectTracking(value: unknown): TrackingData {
   const delivery = (val.deliveryAddress || val.shippingAddress || (typeof val.address === "object" ? val.address : null)) || {};
   const recipient = (val.recipient || val.customer) || {};
 
-  const street = val.street || delivery.street || delivery.address || delivery.logradouro || (typeof val.address === "string" ? val.address : null);
-  const number = val.number ? String(val.number) : (delivery.number ? String(delivery.number) : (delivery.numero ? String(delivery.numero) : null));
-  const complement = val.complement || delivery.complement || delivery.complemento || delivery.floor || null;
+  const street = val.street || val.logradouro || val.rua || val.endereco_rua || delivery.street || delivery.logradouro || delivery.rua || delivery.address || (typeof val.address === "string" ? val.address : null) || (typeof val.endereco === "string" ? val.endereco : null);
+  const number = val.number ? String(val.number) : (val.numero ? String(val.numero) : (delivery.number ? String(delivery.number) : (delivery.numero ? String(delivery.numero) : null)));
+  const complement = val.complement || val.complemento || delivery.complement || delivery.complemento || delivery.floor || null;
   const district = val.district || val.neighborhood || val.bairro || delivery.district || delivery.neighborhood || delivery.bairro || delivery.locality || null;
-  const city = val.city || delivery.city || delivery.cidade || null;
-  const state = val.state || delivery.state || delivery.uf || delivery.estado || delivery.province || null;
+  const city = val.city || val.cidade || val.municipio || delivery.city || delivery.cidade || delivery.municipio || null;
+  const state = val.state || val.uf || val.estado || delivery.state || delivery.uf || delivery.estado || delivery.province || null;
   const zipCode = val.zipCode ? String(val.zipCode) : (val.postalCode ? String(val.postalCode) : (val.cep ? String(val.cep) : (delivery.zipCode || delivery.postalCode || delivery.cep || delivery.zipcode || null)));
 
-  const recipientName = val.recipientName || val.customerName || recipient.name || recipient.recipientName || delivery.recipientName || delivery.name || [delivery.first_name, delivery.last_name].filter(Boolean).join(" ") || null;
+  const recipientName = val.recipientName || val.customerName || val.clientName || val.nome || val.nomeCliente || val.destinatario || recipient.name || recipient.nome || recipient.recipientName || delivery.recipientName || delivery.name || delivery.nome || [delivery.first_name, delivery.last_name].filter(Boolean).join(" ") || null;
   const customerName = val.customerName || recipientName;
 
   const data = trackingSchema.parse({

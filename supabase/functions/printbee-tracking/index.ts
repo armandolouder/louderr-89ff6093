@@ -2,6 +2,7 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { z } from "npm:zod@3";
 import { verifyUserJwt, createServiceClient } from "../_shared/auth.ts";
 import { orderIdentifierSchema, projectTracking } from "../_shared/printbee-tracking.ts";
+import { getNuvemshopCredentials } from "../_shared/nuvemshop.ts";
 
 const bodySchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("generate"), order: orderIdentifierSchema }),
@@ -56,24 +57,44 @@ async function lookup(order: string, retry = true) {
       const service = createServiceClient();
       const { data: nsOrder } = await service
         .from("nuvemshop_orders")
-        .select("customer_name, raw_data")
-        .or(`order_number.eq.${orderNum},nuvemshop_order_id.eq.${orderNum}`)
+        .select("nuvemshop_order_id, customer_name")
+        .or(`order_number.eq.${orderNum},order_number.eq.0000${orderNum},order_number.ilike.%${orderNum}%`)
+        .limit(1)
         .maybeSingle();
 
       if (nsOrder) {
-        const raw = nsOrder.raw_data && typeof nsOrder.raw_data === "object" ? (nsOrder.raw_data as any) : {};
-        const shipping = raw.shipping_address || {};
+        let shippingAddr: any = null;
+        if (nsOrder.nuvemshop_order_id) {
+          try {
+            const { accessToken: nsToken, storeId } = await getNuvemshopCredentials(service);
+            const r = await fetch(`https://api.tiendanube.com/v1/${storeId}/orders/${nsOrder.nuvemshop_order_id}`, {
+              headers: {
+                Authentication: `bearer ${nsToken}`,
+                "User-Agent": "LOUDER.ink (allvisualweb@gmail.com)",
+                "Content-Type": "application/json",
+              },
+              signal: AbortSignal.timeout(10000),
+            });
+            if (r.ok) {
+              const o = await r.json();
+              shippingAddr = o.shipping_address || o.billing_address || {};
+            }
+          } catch {
+            // Non-blocking Nuvemshop API fallback
+          }
+        }
+
         projected = projectTracking({
           ...projected,
-          customerName: projected.customerName || nsOrder.customer_name || [shipping.first_name, shipping.last_name].filter(Boolean).join(" ") || null,
-          recipientName: projected.recipientName || nsOrder.customer_name || [shipping.first_name, shipping.last_name].filter(Boolean).join(" ") || null,
-          street: projected.street || shipping.address || null,
-          number: projected.number || (shipping.number ? String(shipping.number) : null),
-          complement: projected.complement || shipping.floor || null,
-          district: projected.district || shipping.locality || null,
-          city: projected.city || shipping.city || null,
-          state: projected.state || shipping.province || null,
-          zipCode: projected.zipCode || (shipping.zipcode ? String(shipping.zipcode) : null),
+          customerName: projected.customerName || nsOrder.customer_name || shippingAddr?.name || null,
+          recipientName: projected.recipientName || nsOrder.customer_name || shippingAddr?.name || null,
+          street: projected.street || shippingAddr?.address || null,
+          number: projected.number || (shippingAddr?.number ? String(shippingAddr.number) : null),
+          complement: projected.complement || shippingAddr?.floor || null,
+          district: projected.district || shippingAddr?.locality || null,
+          city: projected.city || shippingAddr?.city || null,
+          state: projected.state || shippingAddr?.province || null,
+          zipCode: projected.zipCode || (shippingAddr?.zipcode ? String(shippingAddr.zipcode) : null),
         });
       }
     } catch {
@@ -111,7 +132,9 @@ Deno.serve(async req => {
     let tracking = projectTracking(data.tracking_data);
     let updatedAt = data.updated_at;
     let warning: string | undefined;
-    if (Date.now() - new Date(updatedAt).getTime() > 60000) {
+
+    const needsEnrichment = !tracking.customerName || !tracking.street;
+    if (needsEnrichment || Date.now() - new Date(updatedAt).getTime() > 60000) {
       try {
         tracking = await lookup(data.order_identifier);
         const now = new Date().toISOString();
