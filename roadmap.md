@@ -18,6 +18,6 @@
 - [x] Solicitar e-mail de recuperação após alteração indevida durante o teste; redefinição final depende do usuário.
 
 ## Gerador de rastreio Printbee
-- [ ] Confirmar consulta de pedido e autenticação na documentação Printbee/Vavie.
-- [ ] Conectar a Printbee e criar gerador no admin com link de acompanhamento.
-- [ ] Validar consulta real do pedido e visualização do link.
+- [x] Confirmar consulta de pedido e autenticação na documentação Printbee/Vavie.
+- [ ] Conectar a Printbee e criar gerador no admin com link de acompanhamento — aguarda confirmação para configurar Client ID e Client Secret com segurança.
+- [ ] Validar consulta real do pedido e visualização do link — depende das credenciais Printbee.
