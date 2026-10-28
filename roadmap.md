@@ -16,3 +16,8 @@
 - [x] Fazer o botão Sair encerrar a sessão e limpar os dados da conta em memória.
 - [x] Validar confirmação, rejeição de senha atual incorreta e saída pela interface; testes automatizados passaram.
 - [x] Solicitar e-mail de recuperação após alteração indevida durante o teste; redefinição final depende do usuário.
+
+## Gerador de rastreio Printbee
+- [ ] Confirmar consulta de pedido e autenticação na documentação Printbee/Vavie.
+- [ ] Conectar a Printbee e criar gerador no admin com link de acompanhamento.
+- [ ] Validar consulta real do pedido e visualização do link.
