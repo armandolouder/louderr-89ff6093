@@ -1,8 +1,7 @@
 import { describe, test, expect } from "bun:test";
 import { trackingStages } from "./trackingTimeline";
-import type { PrintbeeTracking } from "./printbeeTracking";
 
-const order: PrintbeeTracking = { orderNSU: "BEE00004696", orderStatus: "PRODUCTION", saleDate: "2026-10-23T15:32:00-03:00", deliveryDate: null, trackingCode: null, trackingUrl: null, shipmentStatus: null, carrierName: null, serviceName: null, postedAt: null, deliveredAt: null, city: null, state: null };
+const order = { orderNSU: "BEE00004696", orderStatus: "PRODUCTION", saleDate: "2026-10-23T15:32:00-03:00", deliveryDate: null, trackingCode: null, trackingUrl: null, shipmentStatus: null, carrierName: null, serviceName: null, postedAt: null, deliveredAt: null, city: null, state: null };
 describe("Etapa de coleta após cinco dias", () => {
   test("não ativa antes de cinco dias corridos", () => {
     expect(trackingStages(order, Date.parse("2026-10-28T15:31:59-03:00")).collection).toBe(false);
