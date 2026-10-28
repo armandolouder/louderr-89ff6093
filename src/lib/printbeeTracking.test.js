@@ -1,5 +1,7 @@
-import { describe, test, expect } from "bun:test";
-import { orderIdentifierSchema, projectTracking } from "../../supabase/functions/_shared/printbee-tracking";
+import { describe, test, expect, mock } from "bun:test";
+import { z } from "zod";
+mock.module("npm:zod@3", () => ({ z }));
+const { orderIdentifierSchema, projectTracking } = await import("../../supabase/functions/_shared/printbee-tracking");
 
 describe("Printbee order tracking", () => {
   test("accepts the user's BEE00004696 order identifier unchanged", () => {
