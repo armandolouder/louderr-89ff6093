@@ -17,7 +17,7 @@ export function trackingStages(tracking: PrintbeeTracking, now = Date.now()) {
   const sale = trackingTimestamp(tracking.saleDate);
   const collectionDueAt = sale === null ? null : sale + 5 * 24 * 60 * 60 * 1000;
   const collectionConfirmed = dispatched || ["DISPATCH", "PRODUCTIONCOMPLETED"].includes(order) || shipment === "DISPATCH";
-  const automaticCollection = !stopped && !collectionConfirmed && collectionDueAt !== null && now >= collectionDueAt;
+  const automaticCollection = !stopped && !dispatched && collectionDueAt !== null && now >= collectionDueAt;
   return {
     stopped, delivered, transit, dispatched,
     production: !stopped && (automaticCollection || collectionConfirmed || ["PRODUCTION", "PRODUCTIONQUEUE"].includes(order)),

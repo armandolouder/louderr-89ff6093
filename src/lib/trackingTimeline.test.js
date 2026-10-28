@@ -24,6 +24,9 @@ describe("Etapa de coleta após cinco dias", () => {
   test("data ausente não cria prazo fictício", () => {
     expect(trackingStages({ ...order, saleDate: null }, Date.parse("2026-11-01")).collection).toBe(false);
   });
+  test("aguardando coleta sem data real recebe a data derivada do quinto dia", () => {
+    expect(trackingStages({ ...order, orderStatus: "DISPATCH" }, Date.parse("2026-10-28T18:32:00Z")).automaticCollection).toBe(true);
+  });
   test("datas sem fuso usam horário brasileiro", () => {
     expect(trackingStages({ ...order, saleDate: "2026-10-23T15:32:00" }, Date.parse("2026-10-28T18:32:00Z")).collectionDueAt).toBe("2026-10-28T18:32:00.000Z");
   });
