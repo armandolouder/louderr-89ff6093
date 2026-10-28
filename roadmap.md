@@ -18,6 +18,8 @@
 - [x] Solicitar e-mail de recuperação após alteração indevida durante o teste; redefinição final depende do usuário.
 
 ## Gerador de rastreio Printbee
+- [ ] Reproduzir referências de rastreio com logo oficial e fundo branco.
+- [ ] Exibir etapa de coleta com ativação após cinco dias e testar a regra e a página pública.
 - [x] Confirmar consulta de pedido e autenticação na documentação Printbee/Vavie.
 - [x] Criar gerador no admin, histórico de links e página pública com dados de rastreio protegidos.
 - [x] Testar validação do pedido, proteção de dados, aviso de credenciais recusadas e link inexistente.
