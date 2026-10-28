@@ -21,4 +21,4 @@
 - [x] Confirmar consulta de pedido e autenticação na documentação Printbee/Vavie.
 - [x] Criar gerador no admin, histórico de links e página pública com dados de rastreio protegidos.
 - [x] Testar validação do pedido, proteção de dados, aviso de credenciais recusadas e link inexistente.
-- [ ] Validar consulta bem-sucedida de BEE00004696 e visualização do link — Printbee retornou 401; aguarda credenciais válidas.
+- [x] Corrigir credenciais e validar consulta bem-sucedida de BEE00004696, geração do link e visualização pública sem login.

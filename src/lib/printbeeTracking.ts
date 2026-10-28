@@ -10,6 +10,16 @@ export interface PrintbeeTracking {
   postedAt: string | null; deliveredAt: string | null; city: string | null; state: string | null;
 }
 export interface TrackingResult { linkId?: string; tracking: PrintbeeTracking; updatedAt: string; warning?: string }
+export function printbeeStatus(value: string | null) {
+  const labels: Record<string, string> = {
+    OPEN: "Aberto", WAITINGPAYMENT: "Aguardando pagamento", PAYMENTRECEIVED: "Pagamento recebido",
+    PRODUCTIONQUEUE: "Fila de produção", PRODUCTION: "Em produção", PRODUCTIONCOMPLETED: "Produção concluída",
+    WAITINGFINALPAYMENT: "Aguardando pagamento final", DISPATCH: "Aguardando coleta",
+    TRANSIT: "Em trânsito", DELIVERED: "Entregue", ATTENDED: "Atendido", LOST: "Extraviado",
+    RETURNED: "Devolvido", CANCELED: "Cancelado", UNDERREVIEW: "Em revisão",
+  };
+  return labels[value?.replace(/[_\s-]/g, "").toUpperCase() || ""] || "Aguardando atualização";
+}
 export async function callPrintbee(body: { action: "generate"; order: string } | { action: "view"; linkId: string }): Promise<TrackingResult> {
   const { data, error } = await supabase.functions.invoke("printbee-tracking", { body });
   if (error) {

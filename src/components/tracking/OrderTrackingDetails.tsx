@@ -1,7 +1,7 @@
 import { CalendarCheck, Truck, Package, Copy, ExternalLink, MapPin, CheckCircle2, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { trackingDate, type PrintbeeTracking } from "@/lib/printbeeTracking";
+import { trackingDate, printbeeStatus, type PrintbeeTracking } from "@/lib/printbeeTracking";
 
 export async function copyTracking(value: string) {
   try { await navigator.clipboard.writeText(value); toast.success("Copiado!"); }
@@ -10,7 +10,7 @@ export async function copyTracking(value: string) {
 export function OrderTrackingDetails({ tracking, updatedAt }: { tracking: PrintbeeTracking; updatedAt: string }) {
   const events = [
     { title: "Pedido recebido", detail: tracking.saleDate ? trackingDate(tracking.saleDate) : null, icon: Package, completed: Boolean(tracking.saleDate) },
-    { title: "Status do pedido", detail: tracking.orderStatus || "Aguardando atualização", icon: Clock, completed: Boolean(tracking.orderStatus) },
+    { title: "Status do pedido", detail: printbeeStatus(tracking.orderStatus), icon: Clock, completed: Boolean(tracking.orderStatus) },
     { title: "Envio", detail: tracking.postedAt ? trackingDate(tracking.postedAt, true) : "Postagem ainda não informada", icon: Truck, completed: Boolean(tracking.postedAt) },
     { title: "Entrega", detail: tracking.deliveredAt ? trackingDate(tracking.deliveredAt, true) : "Aguardando entrega", icon: CheckCircle2, completed: Boolean(tracking.deliveredAt) },
   ];
