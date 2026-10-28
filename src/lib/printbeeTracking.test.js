@@ -13,12 +13,43 @@ describe("Printbee order tracking", () => {
   test("rejects input that could change the provider request path", () => {
     expect(orderIdentifierSchema.safeParse("../Orders").success).toBe(false);
   });
-  test("shared tracking excludes recipient contact and street address", () => {
-    const data = projectTracking({ orderNSU: "BEE00004696", recipientEmail: "private@example.test", recipientName: "Private", street: "Private address", trackingCode: "LGI-EXAMPLE", city: "São Paulo" });
+  test("shared tracking includes recipient name and street address but excludes private contact email", () => {
+    const data = projectTracking({
+      orderNSU: "BEE00004696",
+      recipientEmail: "private@example.test",
+      recipientName: "Maria Silva",
+      street: "Rua das Flores",
+      number: "123",
+      trackingCode: "LGI-EXAMPLE",
+      city: "São Paulo",
+      state: "SP",
+    });
     expect(data).not.toHaveProperty("recipientEmail");
-    expect(data).not.toHaveProperty("recipientName");
-    expect(data).not.toHaveProperty("street");
+    expect(data.recipientName).toBe("Maria Silva");
+    expect(data.street).toBe("Rua das Flores");
+    expect(data.number).toBe("123");
     expect(data.trackingCode).toBe("LGI-EXAMPLE");
+  });
+  test("accepts nested deliveryAddress and recipient object", () => {
+    const data = projectTracking({
+      orderNSU: "BEE00004696",
+      deliveryAddress: {
+        street: "Av. Paulista",
+        number: "1000",
+        neighborhood: "Bela Vista",
+        city: "São Paulo",
+        state: "SP",
+        zipCode: "01310-100",
+      },
+      customer: {
+        name: "João Santos",
+      },
+      trackingCode: "BR123456789",
+    });
+    expect(data.customerName).toBe("João Santos");
+    expect(data.street).toBe("Av. Paulista");
+    expect(data.district).toBe("Bela Vista");
+    expect(data.zipCode).toBe("01310-100");
   });
   test("rejects unsafe carrier links", () => {
     expect(projectTracking({ trackingUrl: "javascript:alert(1)" }).trackingUrl).toBeNull();

@@ -8,6 +8,9 @@ export interface PrintbeeTracking {
   deliveryDate: string | null; trackingCode: string | null; trackingUrl: string | null;
   shipmentStatus: string | null; carrierName: string | null; serviceName: string | null;
   postedAt: string | null; deliveredAt: string | null; city: string | null; state: string | null;
+  recipientName?: string | null; customerName?: string | null;
+  street?: string | null; number?: string | null; complement?: string | null;
+  district?: string | null; zipCode?: string | null; address?: string | null;
 }
 export interface TrackingResult { linkId?: string; tracking: PrintbeeTracking; updatedAt: string; warning?: string }
 export function printbeeStatus(value: string | null) {

@@ -47,7 +47,40 @@ async function lookup(order: string, retry = true) {
   const payload = await response.json().catch(() => null);
   if (!response.ok) throw new ProviderError(response.status, `A Printbee não permitiu consultar este pedido (HTTP ${response.status}).`);
   const source = payload && typeof payload === "object" && "data" in payload ? payload.data : payload;
-  const projected = projectTracking(source);
+  let projected = projectTracking(source);
+
+  // If customerName or address is missing, check nuvemshop_orders as fallback
+  if (!projected.customerName || !projected.street) {
+    try {
+      const orderNum = order.replace(/^BEE0*/i, "");
+      const service = createServiceClient();
+      const { data: nsOrder } = await service
+        .from("nuvemshop_orders")
+        .select("customer_name, raw_data")
+        .or(`order_number.eq.${orderNum},nuvemshop_order_id.eq.${orderNum}`)
+        .maybeSingle();
+
+      if (nsOrder) {
+        const raw = nsOrder.raw_data && typeof nsOrder.raw_data === "object" ? (nsOrder.raw_data as any) : {};
+        const shipping = raw.shipping_address || {};
+        projected = projectTracking({
+          ...projected,
+          customerName: projected.customerName || nsOrder.customer_name || [shipping.first_name, shipping.last_name].filter(Boolean).join(" ") || null,
+          recipientName: projected.recipientName || nsOrder.customer_name || [shipping.first_name, shipping.last_name].filter(Boolean).join(" ") || null,
+          street: projected.street || shipping.address || null,
+          number: projected.number || (shipping.number ? String(shipping.number) : null),
+          complement: projected.complement || shipping.floor || null,
+          district: projected.district || shipping.locality || null,
+          city: projected.city || shipping.city || null,
+          state: projected.state || shipping.province || null,
+          zipCode: projected.zipCode || (shipping.zipcode ? String(shipping.zipcode) : null),
+        });
+      }
+    } catch {
+      // Non-blocking fallback
+    }
+  }
+
   return { ...projected, orderNSU: projected.orderNSU || order };
 }
 
