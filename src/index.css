@@ -305,3 +305,37 @@ html, body, #root {
 #lovable-badge {
   display: none !important;
 }
+
+/* The shared tracking view stays light independently of the admin theme. */
+.tracking-theme {
+  --background: 0 0% 100%;
+  --foreground: 220 25% 10%;
+  --card: 0 0% 100%;
+  --card-foreground: 220 25% 10%;
+  --muted: 210 20% 97%;
+  --muted-foreground: 215 12% 46%;
+  --border: 215 20% 90%;
+  --input: 215 20% 90%;
+  --primary: 158 72% 34%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 213 100% 50%;
+  --secondary-foreground: 0 0% 100%;
+  --accent: 158 60% 93%;
+  --accent-foreground: 158 72% 30%;
+  --ring: 158 72% 34%;
+  --warning: 38 92% 48%;
+  --tracking-header: 0 0% 0%;
+  --tracking-notice: 45 100% 97%;
+  --tracking-notice-text: 28 90% 34%;
+  --tracking-notice-border: 44 95% 75%;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  letter-spacing: 0;
+}
+.tracking-theme h1, .tracking-theme h2, .tracking-theme h3 { letter-spacing: 0; }
+.tracking-header { background: hsl(var(--tracking-header)); }
+.tracking-notice {
+  background: hsl(var(--tracking-notice));
+  color: hsl(var(--tracking-notice-text));
+  border-color: hsl(var(--tracking-notice-border));
+}
