@@ -21,6 +21,7 @@ import {
   Wallet,
   PackageSearch,
   Layers,
+  Truck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -64,6 +65,7 @@ const navigation: NavItem[] = [
     ],
   },
   { name: "Rastreamento", href: "/tracking", icon: Eye },
+  { name: "Gerador de Rastreio", href: "/gerador-rastreio", icon: Truck },
   { name: "Bot", href: "/bot", icon: Bot },
   { name: "APIs", href: "/apis", icon: Zap },
 ];

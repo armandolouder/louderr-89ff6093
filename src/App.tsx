@@ -19,6 +19,8 @@ const Automations = lazy(() => import("./pages/Automations"));
 const RFMMatrixPage = lazy(() => import("./pages/RFMMatrix"));
 const EmailMarketing = lazy(() => import("./pages/EmailMarketing"));
 const Tracking = lazy(() => import("./pages/Tracking"));
+const TrackingGenerator = lazy(() => import("./pages/TrackingGenerator"));
+const PublicOrderTracking = lazy(() => import("./pages/PublicOrderTracking"));
 const Journeys = lazy(() => import("./pages/Journeys"));
 const Expenses = lazy(() => import("./pages/Expenses"));
 const Catalog = lazy(() => import("./pages/Catalog"));
@@ -48,6 +50,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/install" element={<Install />} />
+            <Route path="/rastreio/:linkId" element={<PublicOrderTracking />} />
             <Route element={<AppLayout />}>
               <Route path="/home" element={<HomeDashboard />} />
               <Route path="/dashboard" element={<Navigate to="/home" replace />} />
@@ -63,6 +66,7 @@ const App = () => (
               <Route path="/automations" element={<Automations />} />
               <Route path="/email-marketing" element={<EmailMarketing />} />
               <Route path="/tracking" element={<Tracking />} />
+              <Route path="/gerador-rastreio" element={<TrackingGenerator />} />
               <Route path="/journeys" element={<Journeys />} />
               <Route path="/expenses" element={<Expenses />} />
               <Route path="/catalog" element={<Catalog />} />
