@@ -15,6 +15,13 @@
       "when": 1792788273641,
       "tag": "0001_add_ativo_variation_models",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793218171793,
+      "tag": "0002_create_printbee_tracking_links",
+      "breakpoints": true
     }
   ]
 }
