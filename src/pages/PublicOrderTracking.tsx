@@ -22,6 +22,12 @@ export default function PublicOrderTracking() {
   const isStore = (n?: string | null) => !n || /^louder(\.ink)?$/i.test(n.trim());
   const clientName = (!isStore(query.data?.tracking?.recipientName) ? query.data?.tracking?.recipientName : null)
     || (!isStore(query.data?.tracking?.customerName) ? query.data?.tracking?.customerName : null);
+  const firstName = clientName
+    ? (() => {
+        const first = clientName.trim().split(/\s+/)[0];
+        return first ? first.charAt(0).toLocaleUpperCase("pt-BR") + first.slice(1).toLocaleLowerCase("pt-BR") : null;
+      })()
+    : null;
   const orderNumber = query.data?.tracking?.orderNSU?.replace(/^BEE0*/i, "") || query.data?.tracking?.orderNSU?.replace(/^BEE/i, "") || "";
 
   return (
@@ -106,7 +112,7 @@ export default function PublicOrderTracking() {
 
               <div className="space-y-1">
                 <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-                  {clientName ? `Olá, ${clientName}!` : "Olá!"}
+                  {firstName ? `Olá, ${firstName}!` : "Olá!"}
                 </h1>
                 <p className="text-sm text-slate-500">
                   Acompanhe abaixo o status e o trajeto da sua entrega.
