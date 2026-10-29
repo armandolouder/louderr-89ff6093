@@ -1,3 +1,4 @@
+import { Component, type ReactNode } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2, RefreshCw, PackageSearch, Sparkles } from "lucide-react";
@@ -5,6 +6,38 @@ import { Button } from "@/components/ui/button";
 import { callPrintbee, trackingDate } from "@/lib/printbeeTracking";
 import { OrderTrackingDetails } from "@/components/tracking/OrderTrackingDetails";
 import logo from "@/assets/tracking-logo.webp.asset.json";
+
+class TrackingErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error?: Error }> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <section className="tracking-glass rounded-3xl p-8 sm:p-10 space-y-5 text-center my-8">
+          <div className="mx-auto w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-500">
+            <PackageSearch className="h-7 w-7" />
+          </div>
+          <div className="space-y-1.5">
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Rastreio temporariamente indisponível</h1>
+            <p className="text-sm text-slate-500 max-w-sm mx-auto">Ocorreu uma falha ao exibir os dados deste pedido.</p>
+          </div>
+          <Button
+            onClick={() => window.location.reload()}
+            className="rounded-2xl h-11 px-6 bg-slate-900 hover:bg-slate-800 text-white font-medium shadow-md transition-all active:scale-95"
+          >
+            <RefreshCw className="mr-2 h-4 w-4" /> Recarregar página
+          </Button>
+        </section>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 export default function PublicOrderTracking() {
   const { linkId } = useParams();
@@ -127,7 +160,9 @@ export default function PublicOrderTracking() {
               </div>
             )}
 
-            <OrderTrackingDetails tracking={query.data.tracking} updatedAt={query.data.updatedAt} />
+            <TrackingErrorBoundary>
+              <OrderTrackingDetails tracking={query.data.tracking} updatedAt={query.data.updatedAt} />
+            </TrackingErrorBoundary>
           </>
         )}
       </main>

@@ -151,14 +151,6 @@ export function OrderTrackingDetails({ tracking, updatedAt }: { tracking: Printb
                       <span className="font-mono font-bold text-slate-900 text-xs sm:text-sm tracking-wider select-all">
                         {tracking.trackingCode}
                       </span>
-                      <button
-                        onClick={() => handleCopy(tracking.trackingCode || "")}
-                        className="p-1 text-slate-500 hover:text-emerald-700 hover:bg-emerald-500/15 rounded-lg transition-colors"
-                        title="Copiar código de rastreio"
-                        aria-label="Copiar código de rastreio"
-                      >
-                        {copied ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
-                      </button>
                     </div>
 
                     {tracking.trackingUrl && (
