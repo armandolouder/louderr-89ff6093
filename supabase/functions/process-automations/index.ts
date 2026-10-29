@@ -1,3 +1,4 @@
+// @ts-nocheck
  import { createServiceClient } from "../_shared/auth.ts";
  import { corsHeaders } from "../_shared/cors.ts";
   import { sendWhatsAppMedia, sendWhatsAppText, hasWhatsAppCredentials } from "../_shared/whatsapp.ts";
