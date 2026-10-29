@@ -19,7 +19,9 @@ export default function PublicOrderTracking() {
     refetchInterval: 60000,
   });
 
-  const clientName = query.data?.tracking?.customerName || query.data?.tracking?.recipientName;
+  const isStore = (n?: string | null) => !n || /^louder(\.ink)?$/i.test(n.trim());
+  const clientName = (!isStore(query.data?.tracking?.recipientName) ? query.data?.tracking?.recipientName : null)
+    || (!isStore(query.data?.tracking?.customerName) ? query.data?.tracking?.customerName : null);
   const orderNumber = query.data?.tracking?.orderNSU?.replace(/^BEE0*/i, "") || query.data?.tracking?.orderNSU?.replace(/^BEE/i, "") || "";
 
   return (
@@ -31,27 +33,27 @@ export default function PublicOrderTracking() {
         <div className="absolute -bottom-32 right-1/4 w-96 h-96 rounded-full bg-blue-400/10 blur-3xl" />
       </div>
 
-      {/* Glass Header */}
-      <header className="sticky top-0 z-30 tracking-glass border-b border-white/60 shadow-sm transition-all">
-        <div className="mx-auto max-w-[620px] px-4 py-3.5 sm:py-4 flex items-center justify-between">
+      {/* Header Preto */}
+      <header className="sticky top-0 z-30 bg-black text-white border-b border-zinc-800 shadow-md transition-all">
+        <div className="mx-auto max-w-[620px] px-4 py-3 sm:py-3.5 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src={logo.url} alt="LOUDER.ink" className="h-10 sm:h-12 w-auto object-contain drop-shadow-sm" />
+            <img src={logo.url} alt="LOUDER.ink" className="h-9 sm:h-11 w-auto object-contain drop-shadow-sm brightness-110" />
           </div>
           <div className="flex items-center gap-2">
-            <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider text-emerald-800 bg-emerald-500/10 border border-emerald-500/20">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-950/70 border border-emerald-500/30">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
               Rastreio Oficial
             </span>
             <Button
               variant="outline"
               size="icon"
-              className="rounded-2xl h-9 w-9 bg-white/60 hover:bg-white border-slate-200/80 shadow-sm transition-all"
+              className="rounded-2xl h-9 w-9 bg-zinc-900 hover:bg-zinc-800 border-zinc-700 text-white shadow-sm transition-all"
               disabled={query.isFetching}
               onClick={() => query.refetch()}
               title="Atualizar status"
               aria-label="Atualizar status"
             >
-              <RefreshCw className={`h-4 w-4 text-slate-700 ${query.isFetching ? "animate-spin text-emerald-600" : ""}`} />
+              <RefreshCw className={`h-4 w-4 text-zinc-200 ${query.isFetching ? "animate-spin text-emerald-400" : ""}`} />
             </Button>
           </div>
         </div>

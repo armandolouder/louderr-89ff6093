@@ -51,7 +51,7 @@ export function OrderTrackingDetails({ tracking, updatedAt }: { tracking: Printb
         ? "Pacote postado e a caminho da distribuição."
         : tracking.trackingCode
         ? "Código de rastreamento oficial disponível."
-        : "Aguardando liberação do código de rastreamento.",
+        : "Fase de Logística.",
       date: tracking.postedAt,
       icon: Truck,
       completed: Boolean(tracking.trackingCode) || stages.dispatched,
@@ -68,13 +68,15 @@ export function OrderTrackingDetails({ tracking, updatedAt }: { tracking: Printb
       title: "Entregue",
       description: stages.delivered ? "Pacote entregue com sucesso no endereço cadastrado!" : "Aguardando chegada final no endereço.",
       date: tracking.deliveredAt,
-      forecast: !stages.delivered ? `Previsão: ${trackingDate(tracking.deliveryDate)}` : null,
+      forecast: !stages.delivered ? `Previsão máxima: ${trackingDate(tracking.deliveryDate)}` : null,
       icon: CheckCircle2,
       completed: stages.delivered,
     },
   ];
 
-  const clientName = tracking.recipientName || tracking.customerName;
+  const isStore = (n?: string | null) => !n || /^louder(\.ink)?$/i.test(n.trim());
+  const clientName = (!isStore(tracking.recipientName) ? tracking.recipientName : null)
+    || (!isStore(tracking.customerName) ? tracking.customerName : null);
   const addressStreet = [tracking.street, tracking.number].filter(Boolean).join(", ");
   const addressStreetComp = [addressStreet, tracking.complement].filter(Boolean).join(" - ");
   const addressCityState = [tracking.city, tracking.state].filter(Boolean).join(" - ");
@@ -88,12 +90,12 @@ export function OrderTrackingDetails({ tracking, updatedAt }: { tracking: Printb
 
   return (
     <div className="tracking-theme space-y-4 sm:space-y-6">
-      {/* Notice Card */}
-      <div className="tracking-glass rounded-2xl p-4 sm:p-5 flex items-start gap-3.5 border-emerald-500/20 text-slate-700 text-xs sm:text-sm leading-relaxed shadow-sm">
-        <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 shrink-0 mt-0.5">
+      {/* Notice Card Amarelo */}
+      <div className="rounded-2xl p-4 sm:p-5 flex items-start gap-3.5 bg-amber-50/95 border border-amber-300 text-amber-950 text-xs sm:text-sm leading-relaxed shadow-sm">
+        <div className="p-2 rounded-xl bg-amber-200/90 text-amber-900 shrink-0 mt-0.5">
           <Info className="h-4 w-4" />
         </div>
-        <p>
+        <p className="font-medium text-amber-950">
           Entre a confecção e a entrega final, seu pedido passa pela logística das transportadoras parceiras, podendo chegar antes da estimativa. Acompanhe as etapas abaixo!
         </p>
       </div>
@@ -235,7 +237,7 @@ export function OrderTrackingDetails({ tracking, updatedAt }: { tracking: Printb
           </div>
 
           <div className="p-4 rounded-2xl bg-slate-50/70 border border-slate-200/60 backdrop-blur-sm space-y-0.5">
-            <span className="text-[11px] uppercase font-bold tracking-wider text-slate-400">Previsão de entrega</span>
+            <span className="text-[11px] uppercase font-bold tracking-wider text-slate-400">Previsão máxima</span>
             <p className="font-bold text-slate-900 text-sm sm:text-base">{trackingDate(tracking.deliveryDate)}</p>
           </div>
         </div>
@@ -245,7 +247,7 @@ export function OrderTrackingDetails({ tracking, updatedAt }: { tracking: Printb
           <div className="min-w-0 space-y-0.5">
             <span className="text-[11px] uppercase font-bold tracking-wider text-emerald-800">Código de rastreio</span>
             <p className="font-mono font-bold text-slate-900 text-base sm:text-xl tracking-wider select-all break-all">
-              {tracking.trackingCode || "Aguardando envio"}
+              {tracking.trackingCode || "Fase de Logística"}
             </p>
           </div>
 
