@@ -74,19 +74,19 @@ export default function PublicOrderTracking() {
 
       {/* Header Preto */}
       <header className="sticky top-0 z-30 bg-black text-white border-b border-zinc-800 shadow-md transition-all">
-        <div className="mx-auto max-w-[620px] px-4 py-3 sm:py-3.5 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <img src={logo.url} alt="LOUDER.ink" className="h-9 sm:h-11 w-auto object-contain drop-shadow-sm brightness-110" />
+        <div className="mx-auto max-w-[620px] px-3.5 sm:px-4 py-2.5 sm:py-3.5 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <img src={logo.url} alt="LOUDER.ink" className="h-11 sm:h-12 w-auto object-contain drop-shadow-sm brightness-110" />
           </div>
-          <div className="flex items-center gap-2">
-            <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-950/70 border border-emerald-500/30">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            <span className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-950/70 border border-emerald-500/30 shrink-0">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
               Rastreio Oficial
             </span>
             <Button
               variant="outline"
               size="icon"
-              className="rounded-2xl h-9 w-9 bg-zinc-900 hover:bg-zinc-800 border-zinc-700 text-white shadow-sm transition-all"
+              className="rounded-2xl h-8.5 w-8.5 sm:h-9 sm:w-9 bg-zinc-900 hover:bg-zinc-800 border-zinc-700 text-white shadow-sm transition-all shrink-0"
               disabled={query.isFetching}
               onClick={() => query.refetch()}
               title="Atualizar status"
