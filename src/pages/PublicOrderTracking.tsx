@@ -2,7 +2,7 @@ import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2, RefreshCw, PackageSearch, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { callPrintbee } from "@/lib/printbeeTracking";
+import { callPrintbee, trackingDate } from "@/lib/printbeeTracking";
 import { OrderTrackingDetails } from "@/components/tracking/OrderTrackingDetails";
 import logo from "@/assets/tracking-logo.webp.asset.json";
 
@@ -66,7 +66,7 @@ export default function PublicOrderTracking() {
       </header>
 
       {/* Main Container */}
-      <main className="relative z-10 mx-auto max-w-[620px] px-4 sm:px-6 py-6 sm:py-10 space-y-5">
+      <main className="relative z-10 mx-auto max-w-[620px] px-4 sm:px-6 pt-6 sm:pt-10 pb-3 space-y-5">
         {query.isLoading ? (
           <div role="status" className="tracking-glass rounded-3xl p-12 text-center space-y-4 my-8">
             <div className="relative mx-auto w-12 h-12 flex items-center justify-center">
@@ -133,7 +133,10 @@ export default function PublicOrderTracking() {
       </main>
 
       {/* Safe bottom spacing for mobile browsers */}
-      <footer className="py-6 text-center text-xs text-slate-400">
+      <footer className="pb-8 pt-1 text-center text-xs text-slate-700 font-medium space-y-1">
+        {query.data?.updatedAt && (
+          <p>Última atualização: {trackingDate(query.data.updatedAt, true)}</p>
+        )}
         <p>© {new Date().getFullYear()} LOUDER.ink · Rastreamento de entregas</p>
       </footer>
     </div>

@@ -1,5 +1,4 @@
-import { Truck, Package, Copy, ExternalLink, MapPin, CheckCircle2, Clock, Factory, ListChecks, Info, Hourglass, User, Check } from "lucide-react";
-import { useState } from "react";
+import { Truck, Package, ExternalLink, MapPin, CheckCircle2, Clock, Factory, ListChecks, Info, Hourglass, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { trackingDate, printbeeStatus, type PrintbeeTracking } from "@/lib/printbeeTracking";
@@ -15,7 +14,6 @@ export async function copyTracking(value: string) {
 }
 
 export function OrderTrackingDetails({ tracking, updatedAt }: { tracking: PrintbeeTracking; updatedAt: string }) {
-  const [copied, setCopied] = useState(false);
   const stages = trackingStages(tracking);
 
   const events = [
@@ -82,11 +80,6 @@ export function OrderTrackingDetails({ tracking, updatedAt }: { tracking: Printb
   const addressCityState = [tracking.city, tracking.state].filter(Boolean).join(" - ");
   const hasAnyAddress = Boolean(tracking.street || tracking.address || tracking.district || tracking.city || tracking.state || tracking.zipCode || clientName);
 
-  const handleCopy = (text: string) => {
-    copyTracking(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   return (
     <div className="tracking-theme space-y-4 sm:space-y-6">
@@ -243,32 +236,13 @@ export function OrderTrackingDetails({ tracking, updatedAt }: { tracking: Printb
         </div>
 
         {/* Highlighted Tracking Code Card */}
-        <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-emerald-50/70 to-teal-50/50 border border-emerald-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+        <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-emerald-50/70 to-teal-50/50 border border-emerald-500/20 shadow-xs">
           <div className="min-w-0 space-y-0.5">
             <span className="text-[11px] uppercase font-bold tracking-wider text-emerald-800">Código de rastreio</span>
             <p className="font-mono font-bold text-slate-900 text-base sm:text-xl tracking-wider select-all break-all">
               {tracking.trackingCode || "Fase de Logística"}
             </p>
           </div>
-
-          {tracking.trackingCode && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="rounded-xl h-10 px-4 bg-white/90 hover:bg-white text-slate-800 border-slate-200 shadow-xs font-semibold shrink-0 transition-all active:scale-95"
-              onClick={() => handleCopy(tracking.trackingCode || "")}
-            >
-              {copied ? (
-                <>
-                  <Check className="mr-1.5 h-4 w-4 text-emerald-600" /> Copiado!
-                </>
-              ) : (
-                <>
-                  <Copy className="mr-1.5 h-4 w-4 text-slate-600" /> Copiar código
-                </>
-              )}
-            </Button>
-          )}
         </div>
 
         {tracking.trackingUrl && (
@@ -320,10 +294,7 @@ export function OrderTrackingDetails({ tracking, updatedAt }: { tracking: Printb
         </section>
       )}
 
-      {/* Footer Update Timestamp */}
-      <p className="text-center pt-2 text-xs text-slate-400">
-        Última atualização: {trackingDate(updatedAt, true)}
-      </p>
+
     </div>
   );
 }
