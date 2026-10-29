@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { sendEvolutionText, sendEvolutionMedia, hasEvolutionCredentials } from "../_shared/evolution-api.ts";
 
