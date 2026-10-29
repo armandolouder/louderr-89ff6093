@@ -205,6 +205,8 @@ async function findExistingCustomerId(supabase: any, customer: Record<string, an
 }
 
 async function upsertCustomerBatch(supabase: any, customers: Record<string, any>[]) {
+  const { data: ownerData } = await supabase.rpc("get_webhook_owner_user_id");
+  const ownerUserId = ownerData as string | null;
   let synced = 0;
   let errors = 0;
 
