@@ -76,7 +76,8 @@ export function OrderTrackingDetails({ tracking, updatedAt }: { tracking: Printb
   const clientName = (!isStore(tracking.recipientName) ? tracking.recipientName : null)
     || (!isStore(tracking.customerName) ? tracking.customerName : null);
   const addressStreet = [tracking.street, tracking.number].filter(Boolean).join(", ");
-  const addressStreetComp = [addressStreet, tracking.complement].filter(Boolean).join(" - ");
+  const cleanComplement = tracking.complement && !/sala\s*802/i.test(tracking.complement.trim()) ? tracking.complement : null;
+  const addressStreetComp = [addressStreet, cleanComplement].filter(Boolean).join(" - ");
   const addressCityState = [tracking.city, tracking.state].filter(Boolean).join(" - ");
   const hasAnyAddress = Boolean(tracking.street || tracking.address || tracking.district || tracking.city || tracking.state || tracking.zipCode || clientName);
 

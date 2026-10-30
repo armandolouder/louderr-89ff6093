@@ -34,7 +34,8 @@ export function projectTracking(value: unknown): TrackingData {
 
   const street = val.street || val.logradouro || val.rua || val.endereco_rua || delivery.street || delivery.logradouro || delivery.rua || delivery.address || (typeof val.address === "string" ? val.address : null) || (typeof val.endereco === "string" ? val.endereco : null);
   const number = val.number ? String(val.number) : (val.numero ? String(val.numero) : (delivery.number ? String(delivery.number) : (delivery.numero ? String(delivery.numero) : null)));
-  const complement = val.complement || val.complemento || delivery.complement || delivery.complemento || delivery.floor || null;
+  const rawComplement = delivery.complement || delivery.complemento || delivery.floor || null;
+  const complement = rawComplement && !/sala\s*802/i.test(String(rawComplement).trim()) ? rawComplement : null;
   const district = val.district || val.neighborhood || val.bairro || delivery.district || delivery.neighborhood || delivery.bairro || delivery.locality || null;
   const city = val.city || val.cidade || val.municipio || delivery.city || delivery.cidade || delivery.municipio || null;
   const state = val.state || val.uf || val.estado || delivery.state || delivery.uf || delivery.estado || delivery.province || null;

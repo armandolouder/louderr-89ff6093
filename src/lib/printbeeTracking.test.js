@@ -51,6 +51,29 @@ describe("Printbee order tracking", () => {
     expect(data.district).toBe("Bela Vista");
     expect(data.zipCode).toBe("01310-100");
   });
+  test("filters out store complement like Sala 802 and prioritizes delivery complement", () => {
+    const dataWithStoreComp = projectTracking({
+      orderNSU: "BEE00004777",
+      complement: "SALA 802",
+      deliveryAddress: {
+        street: "Rua Guilherme Branca",
+        number: "268",
+      },
+    });
+    expect(dataWithStoreComp.complement).toBeNull();
+    expect(dataWithStoreComp.street).toBe("Rua Guilherme Branca");
+    expect(dataWithStoreComp.number).toBe("268");
+
+    const dataWithRealComp = projectTracking({
+      orderNSU: "BEE00004778",
+      deliveryAddress: {
+        street: "Rua das Flores",
+        number: "50",
+        complement: "Apto 101",
+      },
+    });
+    expect(dataWithRealComp.complement).toBe("Apto 101");
+  });
   test("rejects unsafe carrier links", () => {
     expect(projectTracking({ trackingUrl: "javascript:alert(1)" }).trackingUrl).toBeNull();
   });
